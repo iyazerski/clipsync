@@ -1,0 +1,14 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: clipsync-relay
+  labels:
+    app.kubernetes.io/part-of: clipsync
+    app: clipsync-relay
+spec:
+  secretName: clipsync-relay-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - __PUBLIC_HOST__

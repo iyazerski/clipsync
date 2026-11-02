@@ -1,0 +1,40 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: clipsync-relay-https-redirect
+  labels:
+    app.kubernetes.io/part-of: clipsync
+    app: clipsync-relay
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: clipsync-relay-security-headers
+  labels:
+    app.kubernetes.io/part-of: clipsync
+    app: clipsync-relay
+spec:
+  headers:
+    contentTypeNosniff: true
+    frameDeny: true
+    browserXssFilter: true
+    stsSeconds: 31536000
+    stsIncludeSubdomains: true
+    referrerPolicy: no-referrer
+---
+# Per client IP. Devices make a request per copy, plus a reconnect now and then.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: clipsync-relay-rate-limit
+  labels:
+    app.kubernetes.io/part-of: clipsync
+    app: clipsync-relay
+spec:
+  rateLimit:
+    average: 10
+    burst: 30

@@ -1,0 +1,9 @@
+[package]
+name = "clipsync-proto"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "What the clipsync relay and its clients agree on"
+
+[lints]
+workspace = true

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: clipsync-relay
+  labels:
+    app.kubernetes.io/part-of: clipsync
+    app: clipsync-relay
+spec:
+  type: ClusterIP
+  selector:
+    app: clipsync-relay
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

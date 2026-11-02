@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Pair with clipsync</title>
+<style>
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #0b0b0c; color: #eee;
+         font: 17px/1.5 system-ui, sans-serif; }
+  main { max-width: 22rem; padding: 2rem; text-align: center; }
+  a.button { display: block; margin: 1.5rem 0 1rem; padding: 0.9rem; border-radius: 0.8rem; background: #eee; color: #111;
+             font-weight: 600; text-decoration: none; }
+  a { color: #aaa; }
+  p.small { color: #888; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>clipsync</h1>
+  <p id="hint">Tap below to pair this phone with your Macs.</p>
+  <a class="button" id="open" href="#">Open clipsync</a>
+  <p class="small">No app yet? <a href="https://github.com/iyazerski/clipsync/releases/latest/download/clipsync.apk">Download the APK</a>, install it, then come back to this page.</p>
+</main>
+<script>
+  // The secret stays in the URL fragment: browsers never send it to the relay.
+  const secret = location.hash.slice(1);
+  const open = document.getElementById("open");
+  if (/^[A-Za-z0-9_-]{43}$/.test(secret)) {
+    open.href = "clipsync://pair?relay=" + encodeURIComponent(location.origin) + "&secret=" + secret;
+    history.replaceState(null, "", location.pathname);
+  } else {
+    document.getElementById("hint").textContent = "This link has no pairing secret. Run `clipsync pair` on a Mac and scan its QR code.";
+    open.remove();
+  }
+</script>
+</body>
+</html>

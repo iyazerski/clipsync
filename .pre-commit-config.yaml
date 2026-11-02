@@ -1,0 +1,33 @@
+# Run with `prek run --all-files` (or `prek install` to run on every commit).
+repos:
+  - repo: builtin
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-yaml
+        # Kubernetes manifests hold several documents.
+        args: [--allow-multiple-documents]
+      - id: check-toml
+
+  - repo: local
+    hooks:
+      - id: cargo-fmt
+        name: cargo fmt
+        entry: cargo fmt --all
+        language: system
+        pass_filenames: false
+        files: \.rs$
+
+      - id: cargo-clippy
+        name: cargo clippy
+        entry: cargo clippy --workspace --all-targets --locked -- -D warnings
+        language: system
+        pass_filenames: false
+        files: ^(src/|relay/|proto/|Cargo\.(toml|lock)|.*/Cargo\.toml)
+
+      - id: android-lint
+        name: android lint and tests
+        entry: sh -c 'cd android && ./gradlew -q lintRelease testDebugUnitTest'
+        language: system
+        pass_filenames: false
+        files: ^android/
