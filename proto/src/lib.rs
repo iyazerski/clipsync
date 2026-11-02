@@ -2,7 +2,8 @@
 //! app) agree on. The Android app repeats these values in `Relay.kt`.
 //!
 //! Every request carries `Authorization: Bearer <token>` and the device's id
-//! in [`DEVICE_HEADER`]. The relay keeps only the latest clip, in memory.
+//! in [`DEVICE_HEADER`]. The relay keeps only the latest clip, in memory,
+//! for a couple of minutes.
 //!
 //! - `POST` [`CLIP_PATH`] publishes a clip: the body is the sealed text.
 //! - `GET` [`EVENTS_PATH`] streams clips from the other devices as

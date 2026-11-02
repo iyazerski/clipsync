@@ -2,8 +2,10 @@
 //!
 //! Each device keeps one server-sent event stream open and publishes what
 //! you copy with a POST (see [`clipsync_proto`]). The relay holds only the
-//! latest clip, in memory, and forwards it to every other device. Clips are
-//! sealed on the devices, so the relay can't read them.
+//! latest clip, in memory, and forwards it to every other device. Like
+//! Apple's Universal Clipboard, it forgets the clip after a short while
+//! (`CLIP_TTL_SECS`), so a device that reconnects later doesn't get stale
+//! text. Clips are sealed on the devices, so the relay can't read them.
 //!
 //! It serves plain HTTP behind a TLS-terminating proxy, for one token
 //! (`CLIPSYNC_TOKEN`), which `clipsync token` prints on a Mac. `/pair` is
@@ -43,6 +45,10 @@ struct Opts {
     /// The token every device sends (`clipsync token` prints it)
     #[arg(long, env = "CLIPSYNC_TOKEN", hide_env_values = true)]
     token: String,
+    /// How long, in seconds, the relay keeps the latest clip for devices
+    /// that connect later
+    #[arg(long, env = "CLIP_TTL_SECS", default_value_t = 120)]
+    clip_ttl_secs: u64,
 }
 
 /// A sealed clip, and the device that sent it.
@@ -52,16 +58,24 @@ struct Clip {
     sealed: String,
 }
 
+/// The latest clip, until it expires, and the last id given out.
+#[derive(Default)]
+struct Latest {
+    clip: Option<Arc<Clip>>,
+    id: u64,
+}
+
 struct Relay {
     /// The token's SHA-256, compared with the request token's: comparing
     /// digests leaks nothing useful through timing.
     token: Vec<u8>,
-    latest: Mutex<Option<Arc<Clip>>>,
+    ttl: Duration,
+    latest: Mutex<Latest>,
     clips: broadcast::Sender<Arc<Clip>>,
 }
 
 impl Relay {
-    fn latest(&self) -> MutexGuard<'_, Option<Arc<Clip>>> {
+    fn latest(&self) -> MutexGuard<'_, Latest> {
         // A panic aborts the process (see the release profile), so the lock
         // is never poisoned in release; tests just carry on.
         self.latest.lock().unwrap_or_else(|e| e.into_inner())
@@ -96,16 +110,17 @@ async fn main() -> Result<()> {
     // Not a graceful shutdown: event streams never end on their own, so it
     // would only wait for the kill. Clients reconnect and catch up.
     tokio::select! {
-        served = axum::serve(listener, app(&opts.token)) => served?,
+        served = axum::serve(listener, app(&opts.token, Duration::from_secs(opts.clip_ttl_secs))) => served?,
         stopped = shutdown() => stopped?,
     }
     Ok(())
 }
 
-/// The relay's routes, for `token`.
-fn app(token: &str) -> Router {
+/// The relay's routes, for `token`, keeping clips for `ttl`.
+fn app(token: &str, ttl: Duration) -> Router {
     let relay = Arc::new(Relay {
         token: digest(&SHA256, token.as_bytes()).as_ref().to_vec(),
+        ttl,
         latest: Mutex::default(),
         clips: broadcast::channel(QUEUE).0,
     });
@@ -148,11 +163,26 @@ async fn publish(State(relay): State<Arc<Relay>>, headers: HeaderMap, sealed: St
             .map_or(0, |d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX));
         // Ids keep growing even if the clock steps back, so devices that
         // remember the last id never skip a clip.
-        let id = latest.as_ref().map_or(now, |clip| now.max(clip.id + 1));
-        let clip = Arc::new(Clip { id, from, sealed });
-        *latest = Some(clip.clone());
+        latest.id = now.max(latest.id + 1);
+        let clip = Arc::new(Clip {
+            id: latest.id,
+            from,
+            sealed,
+        });
+        latest.clip = Some(clip.clone());
         clip
     };
+    // Forget it after the TTL, unless a newer clip replaced it.
+    tokio::spawn({
+        let (relay, id) = (relay.clone(), clip.id);
+        async move {
+            tokio::time::sleep(relay.ttl).await;
+            let mut latest = relay.latest();
+            if latest.clip.as_ref().is_some_and(|clip| clip.id == id) {
+                latest.clip = None;
+            }
+        }
+    });
     // No listeners is fine: they get the latest clip when they connect.
     let _ = relay.clips.send(clip.clone());
     Json(json!({ "id": clip.id })).into_response()
@@ -172,7 +202,7 @@ async fn events(State(relay): State<Arc<Relay>>, headers: HeaderMap) -> Response
         .unwrap_or(0);
     // Subscribe before reading the latest clip, so none falls in between.
     let clips = relay.clips.subscribe();
-    let first = relay.latest().clone();
+    let first = relay.latest().clip.clone();
     Sse::new(stream(relay, clips, first, device, seen))
         .keep_alive(KeepAlive::new().interval(KEEP_ALIVE))
         .into_response()
@@ -200,7 +230,7 @@ fn stream(
                             // Only the latest clip matters, so a stream that
                             // fell behind skips to it.
                             Err(broadcast::error::RecvError::Lagged(_)) => {
-                                match relay.latest().clone() {
+                                match relay.latest().clip.clone() {
                                     Some(clip) => clip,
                                     None => continue,
                                 }
@@ -240,12 +270,13 @@ mod tests {
     use super::*;
 
     const TOKEN: &str = "test-token";
+    const TTL: Duration = Duration::from_millis(500);
 
     /// Serve the relay on a free local port and return its address.
     async fn serve() -> String {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
-        tokio::spawn(async move { axum::serve(listener, app(TOKEN)).await });
+        tokio::spawn(async move { axum::serve(listener, app(TOKEN, TTL)).await });
         format!("http://{addr}")
     }
 
@@ -350,6 +381,24 @@ mod tests {
         );
         assert_eq!(listen(&base, "mac", Some(id - 1), wait).await.len(), 1);
         assert_eq!(listen(&base, "mac", Some(id), wait).await, vec![]);
+    }
+
+    #[tokio::test]
+    async fn clips_expire() {
+        let base = serve().await;
+        publish(&base, "phone", "b2xk").await;
+        tokio::time::sleep(TTL + Duration::from_millis(100)).await;
+        let wait = Duration::from_millis(200);
+        assert_eq!(listen(&base, "mac", None, wait).await, vec![]);
+        // A newer clip resets the clock: the first one's expiry leaves it alone.
+        publish(&base, "phone", "YQ").await;
+        tokio::time::sleep(TTL / 2).await;
+        let id = publish(&base, "phone", "Yg").await;
+        tokio::time::sleep(TTL * 2 / 3).await;
+        assert_eq!(
+            listen(&base, "mac", None, wait).await,
+            vec![(id, "Yg".to_owned())]
+        );
     }
 
     #[tokio::test]

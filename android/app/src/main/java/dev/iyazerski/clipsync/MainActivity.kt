@@ -8,16 +8,19 @@ import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings as SystemSettings
 import android.text.InputType
+import android.view.Gravity
+import android.view.HapticFeedbackConstants
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowInsets
-import android.widget.Button
-import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -25,28 +28,20 @@ import android.widget.Toast
 
 /**
  * The only screen: pair with the Macs (from the relay's pairing link, or by typing the relay and
- * the secret), see whether sync is connected, and set up the ways to send.
+ * the secret), see whether sync is connected, and set up the ways to send. Same black "liquid
+ * glass" look as TG Prep ([Ui.kt][Backdrop]).
  */
 class MainActivity : Activity() {
     private lateinit var settings: Settings
+    private lateinit var backdrop: Backdrop
     private lateinit var content: LinearLayout
-    private lateinit var status: TextView
+    private var status: TextView? = null
+    private var dot: View? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settings = Settings(this)
-        status = text("", 16f, DIM)
-        content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        val scroll = ScrollView(this).apply {
-            addView(content)
-            setOnApplyWindowInsetsListener { view, insets ->
-                val bars = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.ime())
-                val pad = dp(24)
-                view.setPadding(pad, bars.top + pad, pad, bars.bottom + pad)
-                insets
-            }
-        }
-        setContentView(scroll)
+        buildUi()
         handlePairing(intent)
         if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             // Without it the service still runs, but its notification (and the Send action) is hidden.
@@ -61,8 +56,9 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        SyncService.onStatus = { status.text = it }
+        SyncService.onStatus = ::showStatus
         if (settings.paired) SyncService.start(this)
+        // The tile or the battery setting may have changed while the app was away.
         render()
     }
 
@@ -90,98 +86,197 @@ class MainActivity : Activity() {
         render()
     }
 
-    private fun render() {
-        content.removeAllViews()
-        content.addView(text("clipsync", 34f, TEXT, bold = true))
-        if (settings.paired) renderPaired() else renderUnpaired()
+    private fun buildUi() {
+        window.setDecorFitsSystemWindows(false)
+        val root = FrameLayout(this)
+        backdrop = Backdrop(this)
+        root.addView(backdrop, FrameLayout.LayoutParams(MATCH, MATCH))
+        content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val scroll = ScrollView(this).apply {
+            isFillViewport = true
+            // Glass panels redraw the moving backdrop each frame, so they must follow scrolling too.
+            setOnScrollChangeListener { _, _, _, _, _ -> backdrop.panels.forEach(View::invalidate) }
+            addView(content, FrameLayout.LayoutParams(MATCH, WRAP))
+        }
+        root.addView(scroll, FrameLayout.LayoutParams(MATCH, MATCH))
+        // Edge to edge: the backdrop fills the screen; content stays clear of the system bars and keyboard.
+        root.setOnApplyWindowInsetsListener { _, insets ->
+            val bars = insets.getInsets(
+                WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout() or WindowInsets.Type.ime(),
+            )
+            val side = dpi(20)
+            content.setPadding(bars.left + side, bars.top + dpi(12), bars.right + side, bars.bottom + dpi(16))
+            insets
+        }
+        setContentView(root)
     }
 
-    private fun renderUnpaired() {
-        content.addView(gap(text("Not paired", 16f, DIM)))
-        content.addView(gap(text(
-            "On a Mac, run `clipsync pair` and scan its QR code with the camera. Or type the relay and the secret it shows:",
-            16f, TEXT,
-        )))
-        val relay = field("Relay, like https://clip.example.com", InputType.TYPE_TEXT_VARIATION_URI)
-        val secret = field("Secret", InputType.TYPE_TEXT_VARIATION_PASSWORD)
-        content.addView(gap(relay))
-        content.addView(gap(secret))
-        content.addView(gap(button("Pair") { pair(relay.text.toString(), secret.text.toString()) }))
+    private fun render() {
+        content.removeAllViews()
+        status = null
+        dot = null
+        content.addView(text("clipsync", 28f, Style.TEXT, Style.BOLD), LinearLayout.LayoutParams(MATCH, WRAP))
+        if (settings.paired) renderPaired() else renderUnpaired()
+        // Cards rise into place, one after another.
+        for (i in 1 until content.childCount) {
+            content.getChildAt(i).apply {
+                alpha = 0f
+                translationY = dp(16f)
+                animate().alpha(1f).translationY(0f).setStartDelay(i * 40L).setDuration(500).setInterpolator(Style.EASE).start()
+            }
+        }
     }
 
     private fun renderPaired() {
-        status.text = SyncService.status
-        content.addView(gap(status))
-        content.addView(gap(text("Relay: ${settings.relay}", 14f, DIM)))
-        content.addView(gap(text(
-            "What you copy on your Macs lands on this phone's clipboard.\n\n" +
-                "To send from the phone, select text and pick \"Send to Macs\", share text to clipsync, " +
-                "or tap the \"Send clipboard\" tile or notification action.",
-            16f, TEXT,
-        )))
-        content.addView(gap(button("Send clipboard") {
-            val clip = getSystemService(ClipboardManager::class.java).primaryClip
-            Sender.send(this, clip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(this)?.toString())
-        }))
-        content.addView(gap(button("Add the Quick Settings tile") {
-            getSystemService(StatusBarManager::class.java).requestAddTileService(
-                ComponentName(this, SendTile::class.java),
-                "Send clipboard",
-                Icon.createWithResource(this, R.drawable.ic_tile),
-                mainExecutor,
-            ) {}
-        }))
+        val body = card(top = dpi(24))
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        dot = View(this).apply { background = GradientDrawable().apply { shape = GradientDrawable.OVAL } }
+        row.addView(dot, LinearLayout.LayoutParams(dpi(10), dpi(10)).apply { marginEnd = dpi(12) })
+        status = text("", 22f, Style.TEXT, Style.BOLD)
+        row.addView(status, LinearLayout.LayoutParams(0, WRAP, 1f))
+        body.addView(row)
+        body.addView(text(Uri.parse(settings.relay).host.orEmpty(), 15f, Style.TEXT_DIM), below(dpi(6)))
+        body.addView(text("What you copy on your Macs lands on this phone's clipboard.", 16f, Style.TEXT), below(dpi(16)))
+        showStatus(SyncService.status)
+
+        val send = card(top = dpi(12))
+        send.addView(text("Send to your Macs", 18f, Style.TEXT, Style.BOLD))
+        send.addView(
+            text(
+                "• Select text and pick \"Send to Macs\"\n" +
+                    "• Share text to clipsync\n" +
+                    "• Tap the tile or the notification button",
+                15f, Style.TEXT_DIM,
+            ).apply { setLineSpacing(0f, 1.3f) },
+            below(dpi(10)),
+        )
+
+        content.addView(button("Send clipboard", accent = true) { sendClipboard() }, below(dpi(20)))
+        if (!settings.tileAdded) {
+            content.addView(button("Add the Quick Settings tile") { addTile() }, below(dpi(12)))
+        }
         if (!getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(packageName)) {
-            content.addView(gap(text(
-                "Let clipsync run in the background, or the phone may stop it to save battery. " +
-                    "On ColorOS, also set App info → Battery usage → Allow background activity.",
-                14f, DIM,
-            )))
-            content.addView(gap(button("Allow background activity") {
+            content.addView(button("Allow background activity") {
                 startActivity(
                     Intent(SystemSettings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")),
                 )
-            }))
+            }, below(dpi(12)))
+            content.addView(
+                text(
+                    "So the phone doesn't stop clipsync to save battery. On ColorOS, also set App info → " +
+                        "Battery usage → Allow background activity.",
+                    13f, Style.TEXT_DIM,
+                ).apply { setPadding(dpi(8), 0, dpi(8), 0) },
+                below(dpi(8)),
+            )
         }
-        content.addView(gap(button("Unpair") {
+        content.addView(View(this), LinearLayout.LayoutParams(MATCH, 0, 1f))
+        content.addView(button("Unpair") {
             SyncService.stop(this)
             settings.unpair()
             render()
-        }))
+        }.apply { alpha = 0.8f }, below(dpi(24)))
     }
 
-    private fun text(value: String, size: Float, color: Int, bold: Boolean = false) = TextView(this).apply {
+    private fun renderUnpaired() {
+        val body = card(top = dpi(24))
+        body.addView(text("Pair with your Macs", 22f, Style.TEXT, Style.BOLD))
+        body.addView(
+            text(
+                "On a Mac, run clipsync pair and scan its QR code with the camera. Or type the relay and the " +
+                    "secret it shows.",
+                15f, Style.TEXT_DIM,
+            ).apply { setLineSpacing(0f, 1.2f) },
+            below(dpi(10)),
+        )
+        val relay = GlassField(this).apply {
+            backdrop = this@MainActivity.backdrop
+            input.hint = "Relay, like https://clip.example.com"
+            input.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+        }
+        val secret = GlassField(this).apply {
+            backdrop = this@MainActivity.backdrop
+            input.hint = "Secret"
+            input.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            // Password fields default to monospace; keep the screen's font.
+            input.typeface = Typeface.DEFAULT
+        }
+        content.addView(relay, below(dpi(20)))
+        content.addView(secret, below(dpi(12)))
+        content.addView(button("Pair", accent = true) {
+            pair(relay.input.text.toString(), secret.input.text.toString())
+        }, below(dpi(20)))
+    }
+
+    private fun showStatus(text: String) {
+        status?.text = text
+        val connected = text.startsWith("Connected")
+        (dot?.background as? GradientDrawable)?.setColor(if (connected) CONNECTED else Style.TEXT_DIM)
+    }
+
+    private fun sendClipboard() {
+        val clip = getSystemService(ClipboardManager::class.java).primaryClip
+        Sender.send(this, clip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(this)?.toString())
+    }
+
+    private fun addTile() {
+        getSystemService(StatusBarManager::class.java).requestAddTileService(
+            ComponentName(this, SendTile::class.java),
+            "Send clipboard",
+            Icon.createWithResource(this, R.drawable.ic_tile),
+            mainExecutor,
+        ) { result ->
+            if (result == StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ADDED ||
+                result == StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ALREADY_ADDED
+            ) {
+                settings.tileAdded = true
+                render()
+            }
+        }
+    }
+
+    /** Add a glass card to the screen and return the layout for its contents. */
+    private fun card(top: Int): LinearLayout {
+        val panel = GlassPanel(this).apply {
+            backdrop = this@MainActivity.backdrop
+            cornerRadius = dp(28f)
+        }
+        val body = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dpi(22), dpi(20), dpi(22), dpi(22))
+        }
+        panel.addView(body, FrameLayout.LayoutParams(MATCH, WRAP))
+        content.addView(panel, below(top))
+        return body
+    }
+
+    private fun text(value: String, size: Float, color: Int, face: Typeface? = null) = TextView(this).apply {
         text = value
         textSize = size
         setTextColor(color)
-        if (bold) typeface = Typeface.DEFAULT_BOLD
+        if (face != null) typeface = face
     }
 
-    private fun field(hint: String, variation: Int) = EditText(this).apply {
-        this.hint = hint
-        inputType = InputType.TYPE_CLASS_TEXT or variation
-        setTextColor(TEXT)
-        setHintTextColor(DIM)
-        isSingleLine = true
-    }
-
-    private fun button(label: String, onClick: () -> Unit) = Button(this).apply {
+    private fun button(label: String, accent: Boolean = false, onClick: () -> Unit) = GlassButton(this).apply {
         text = label
-        isAllCaps = false
-        setOnClickListener { onClick() }
+        this.accent = accent
+        backdrop = this@MainActivity.backdrop
+        setOnClickListener {
+            it.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
+            onClick()
+        }
     }
 
-    /** [view] with space above it. */
-    private fun <T : View> gap(view: T): T = view.apply {
-        layoutParams = LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT,
-        ).apply { topMargin = dp(16) }
-    }
-
-    private fun dp(value: Int): Int = (value * resources.displayMetrics.density + 0.5f).toInt()
+    /** Full-width layout params with [top] space above. */
+    private fun below(top: Int) = LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = top }
 
     private companion object {
-        const val TEXT = 0xFFF5F5F7.toInt()
-        const val DIM = 0x99F5F5F7.toInt()
+        const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
+        const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
+        /** A soft green, the one color on screen: sync is live. */
+        const val CONNECTED = 0xFF5BD68A.toInt()
     }
 }

@@ -34,6 +34,11 @@ class Settings(context: Context) {
         get() = prefs.getLong(SEEN, 0)
         set(value) = prefs.edit().putLong(SEEN, value).apply()
 
+    /** Whether the Send clipboard tile is in Quick Settings, as [SendTile] last heard. */
+    var tileAdded: Boolean
+        get() = prefs.getBoolean(TILE_ADDED, false)
+        set(value) = prefs.edit().putBoolean(TILE_ADDED, value).apply()
+
     /** Save a pairing after checking the secret; clips from before now are old news. */
     fun pair(relay: String, secret: String) {
         val url = relay.trim().trimEnd('/')
@@ -55,6 +60,7 @@ class Settings(context: Context) {
         const val SECRET = "secret"
         const val DEVICE = "device"
         const val SEEN = "seen"
+        const val TILE_ADDED = "tile_added"
     }
 }
 
