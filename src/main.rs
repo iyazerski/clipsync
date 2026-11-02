@@ -3,13 +3,14 @@
 //!
 //! `setup` saves the relay and the shared secret and starts the background
 //! service ([`agent`]), which runs [`sync`]. `pair` shows how to add the
-//! phone and other Macs.
+//! phone and other Macs, and `update` installs the latest release.
 
 mod agent;
 mod config;
 mod pasteboard;
 mod seal;
 mod sync;
+mod update;
 
 use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand};
@@ -56,6 +57,8 @@ enum Cmd {
     Run,
     /// Stop syncing in the background (the settings stay)
     Uninstall,
+    /// Install the latest release if it's newer, and restart the background service on it
+    Update,
 }
 
 #[tokio::main]
@@ -68,6 +71,7 @@ async fn main() -> Result<()> {
             Ok(())
         }
         Cmd::Run => sync::run(saved()?).await,
+        Cmd::Update => update::run().await,
         Cmd::Uninstall => {
             if agent::uninstall()? {
                 println!("stopped; clipsync no longer runs in the background");

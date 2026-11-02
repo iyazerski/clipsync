@@ -74,6 +74,16 @@ pub fn install(args: &[&str]) -> Result<PathBuf> {
     Ok(log_path())
 }
 
+/// Restart the agent on the current binary, if it's installed. Returns
+/// whether it was.
+pub fn restart() -> Result<bool> {
+    if !plist_path().exists() {
+        return Ok(false);
+    }
+    launchctl(&["kickstart", "-k", &format!("{}/{LABEL}", domain())])?;
+    Ok(true)
+}
+
 /// Stop and remove the agent. Returns whether one was installed.
 pub fn uninstall() -> Result<bool> {
     let plist = plist_path();

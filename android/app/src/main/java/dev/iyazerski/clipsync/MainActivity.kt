@@ -117,6 +117,7 @@ class MainActivity : Activity() {
         dot = null
         content.addView(text("clipsync", 28f, Style.TEXT, Style.BOLD), LinearLayout.LayoutParams(MATCH, WRAP))
         if (settings.paired) renderPaired() else renderUnpaired()
+        renderFooter()
         // Cards rise into place, one after another.
         for (i in 1 until content.childCount) {
             content.getChildAt(i).apply {
@@ -173,12 +174,41 @@ class MainActivity : Activity() {
                 below(dpi(8)),
             )
         }
+    }
+
+    /** The bottom of the screen: updates, unpairing, and the version. */
+    private fun renderFooter() {
         content.addView(View(this), LinearLayout.LayoutParams(MATCH, 0, 1f))
-        content.addView(button("Unpair") {
-            SyncService.stop(this)
-            settings.unpair()
-            render()
-        }.apply { alpha = 0.8f }, below(dpi(24)))
+        val update = button("Check for updates") {}
+        update.setOnClickListener { checkForUpdates(update) }
+        content.addView(update, below(dpi(24)))
+        if (settings.paired) {
+            content.addView(button("Unpair") {
+                SyncService.stop(this)
+                settings.unpair()
+                render()
+            }, below(dpi(12)))
+        }
+        val version = packageManager.getPackageInfo(packageName, 0).versionName
+        content.addView(
+            text("clipsync $version", 13f, Style.TEXT_DIM).apply { gravity = Gravity.CENTER },
+            below(dpi(12)),
+        )
+    }
+
+    private fun checkForUpdates(button: GlassButton) {
+        if (!packageManager.canRequestPackageInstalls()) {
+            // Android asks once per app before it may install anything, updates included.
+            Toast.makeText(this, "Allow clipsync to install updates, then tap again", Toast.LENGTH_LONG).show()
+            startActivity(
+                Intent(SystemSettings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")),
+            )
+            return
+        }
+        Updater.update(this) { state ->
+            button.text = state ?: "Check for updates"
+            button.isEnabled = state == null
+        }
     }
 
     private fun renderUnpaired() {

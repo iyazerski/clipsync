@@ -33,17 +33,7 @@ phone ┘   (encrypted text)   └── …
 
 ## Setup
 
-### 1. Relay
-
-Pushes to `main` deploy the relay to the k3s cluster (`clip.iyazerski.dev`). The relay needs a token, which
-comes from the secret on your first Mac (step 2). Set it once:
-
-```sh
-kubectl create secret generic clipsync-relay-secrets --from-literal=CLIPSYNC_TOKEN="$(clipsync token)"
-kubectl rollout restart deployment/clipsync-relay   # if the relay was already running
-```
-
-### 2. Macs (Apple silicon)
+### 1. Macs (Apple silicon)
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/iyazerski/clipsync/main/install.sh | sh
@@ -54,28 +44,27 @@ On the first Mac, this makes a new secret. On your other Macs, run the command t
 on the first one. It includes the secret.
 
 The service starts at login and logs to `~/Library/Logs/clipsync.log`. `clipsync uninstall` stops it.
-Running `install.sh` again updates it. If macOS asks whether clipsync may access the pasteboard, choose to
+`clipsync update` installs the latest version. If macOS asks whether clipsync may access the pasteboard, choose to
 always allow it.
 
-### 3. Phone
+### 2. Android Phone
 
 1. Install the app: https://github.com/iyazerski/clipsync/releases/latest/download/clipsync.apk
 2. Run `clipsync pair` on a Mac, scan the QR code with the phone's camera, and tap **Open clipsync**.
 3. In the app, tap **Allow background activity** and **Add the Quick Settings tile**. On ColorOS, also go to
    App info → Battery usage and turn on **Allow background activity** and **Allow auto launch**.
+4. To update, tap **Check for updates** in the app. The first time, Android asks you to allow clipsync to
+   install apps.
 
 ## Good to know
 
-- Keep the secret private. Anyone with it can read and change what you copy. To replace it, delete
-  `~/Library/Application Support/clipsync/config.json` on one Mac and run `clipsync setup` there again. Then
-  update the relay token (step 1, with `--dry-run=client -o yaml | kubectl apply -f -`), and pair your other
-  Macs and the phone again.
 - Text only, up to 256 KB. The last copy wins. There's no history.
 - A device that was offline for more than 2 minutes doesn't get what was copied in the meantime.
 
 ## Development
 
-`cargo test --workspace` tests the Mac service and the relay. `cd android && ./gradlew lintRelease
-testDebugUnitTest assembleRelease` builds the app. `prek run --all-files` runs every check. Every push to
-`main` runs CI, deploys the relay when it changed, and publishes a new release with the Mac binary and the
+- `cargo test --workspace` tests the Mac service and the relay.
+- `cd android && ./gradlew lintRelease testDebugUnitTest assembleRelease` builds the app.
+- `prek run --all-files` runs every check.
+- Every push to `main` runs CI, deploys the relay when it changed, and publishes a new release with the Mac binary and the
 signed APK.
