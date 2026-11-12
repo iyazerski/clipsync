@@ -1,271 +1,128 @@
 package dev.iyazerski.clipsync
 
-import android.content.Context
-import android.graphics.Canvas
-import android.graphics.LinearGradient
-import android.graphics.Matrix
-import android.graphics.Paint
-import android.graphics.Path
-import android.graphics.RadialGradient
-import android.graphics.RectF
-import android.graphics.RenderEffect
-import android.graphics.RenderNode
-import android.graphics.Shader
-import android.graphics.Typeface
-import android.os.SystemClock
-import android.util.AttributeSet
-import android.view.Gravity
-import android.view.View
-import android.view.animation.OvershootInterpolator
-import android.view.animation.PathInterpolator
-import android.widget.Button
-import android.widget.EditText
-import android.widget.FrameLayout
-import android.widget.TextView
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
+import dev.chrisbanes.haze.glass.GlassStyle
+import dev.chrisbanes.haze.glass.hazeGlass
+import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.sin
 
-/** Colors, type, and motion shared by the UI: monochrome, in shades of black. */
-object Style {
-    const val BACKGROUND = 0xFF000000.toInt()
-    /** Solid graphite for opaque elements such as the main button. */
-    const val GRAPHITE = 0xFF3A3A3D.toInt()
-    const val TEXT = 0xFFF5F5F7.toInt()
-    const val TEXT_DIM = 0x99F5F5F7.toInt()
-    /** Fast start, long soft landing: used for state changes. */
-    val EASE = PathInterpolator(0.2f, 0.9f, 0.1f, 1f)
-    val SEMIBOLD: Typeface = Typeface.create(Typeface.DEFAULT, 600, false)
-    val BOLD: Typeface = Typeface.create(Typeface.DEFAULT, 700, false)
+/** Green for a live connection, the one fixed color on screen. */
+val Connected = Color(0xFF5BD68A)
+
+/** The backdrop that glass surfaces below it in the tree refract. */
+private val LocalBackdrop = staticCompositionLocalOf<HazeState> { error("No GlassScreen above") }
+
+/** Material 3 theme in the wallpaper's colors, light or dark as the system is. */
+@Composable
+fun ClipsyncTheme(content: @Composable () -> Unit) {
+    val context = LocalContext.current
+    // Glass follows the system appearance too, so the theme must not override it.
+    val dark = isSystemInDarkTheme()
+    val scheme = remember(context, dark) {
+        if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    }
+    MaterialTheme(colorScheme = scheme, content = content)
 }
 
-fun Context.dp(value: Float): Float = value * resources.displayMetrics.density
-
-fun Context.dpi(value: Int): Int = (value * resources.displayMetrics.density + 0.5f).toInt()
-
-/** Black background with faint graphite light that drifts slowly. Glass panels show it blurred through them. */
-class Backdrop @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null) : View(context, attrs) {
-    private class Blob(val color: Int, val x: Float, val y: Float, val size: Float, val speed: Float, val phase: Float) {
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        val matrix = Matrix()
-        var radius = 0f
+/** Full screen [content] over a slowly drifting backdrop that [GlassCard]s refract. */
+@Composable
+fun GlassScreen(content: @Composable BoxScope.() -> Unit) {
+    val backdrop = rememberHazeState()
+    Box(Modifier.fillMaxSize()) {
+        Backdrop(Modifier.fillMaxSize().hazeSource(backdrop))
+        CompositionLocalProvider(LocalBackdrop provides backdrop) { content() }
     }
+}
 
-    private val blobs = listOf(
-        Blob(0xFF5A5A60.toInt(), 0.12f, 0.16f, 0.70f, 0.21f, 0f),
-        Blob(0xFF3A3A3F.toInt(), 0.95f, 0.38f, 0.65f, 0.16f, 2.1f),
-        Blob(0xFF4A4A50.toInt(), 0.20f, 0.80f, 0.60f, 0.19f, 4.2f),
-        Blob(0xFF2E2E33.toInt(), 0.90f, 0.96f, 0.55f, 0.25f, 1.3f),
+/** The theme's background with soft glows in its colors that drift slowly, so glass has something to bend. */
+@Composable
+private fun Backdrop(modifier: Modifier) {
+    val colors = MaterialTheme.colorScheme
+    val glows = remember(colors) {
+        listOf(
+            Glow(colors.primary, 0.15f, 0.12f, 0.75f, 0f),
+            Glow(colors.tertiary, 0.95f, 0.40f, 0.65f, 2.1f),
+            Glow(colors.secondary, 0.10f, 0.85f, 0.70f, 4.2f),
+        )
+    }
+    val turn by rememberInfiniteTransition(label = "backdrop").animateFloat(
+        initialValue = 0f,
+        targetValue = (2 * PI).toFloat(),
+        animationSpec = infiniteRepeatable(tween(DRIFT_MS, easing = LinearEasing), RepeatMode.Restart),
+        label = "drift",
     )
-    private val started = SystemClock.uptimeMillis()
-
-    /** Glass panels that show this backdrop and must redraw with each frame. */
-    val panels = mutableSetOf<View>()
-
-    /** Animation time in seconds. */
-    val seconds: Float get() = (SystemClock.uptimeMillis() - started) / 1000f
-
-    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-        val extent = max(w, h).toFloat()
-        for (b in blobs) {
-            b.radius = b.size * extent
-            val rgb = b.color and 0xFFFFFF
-            b.paint.shader = RadialGradient(
-                0f, 0f, b.radius,
-                intArrayOf(rgb or 0x80000000.toInt(), rgb or 0x2E000000, rgb),
-                floatArrayOf(0f, 0.45f, 1f), Shader.TileMode.CLAMP,
+    Canvas(modifier) {
+        drawRect(colors.background)
+        val extent = max(size.width, size.height)
+        for (glow in glows) {
+            val center = Offset(
+                size.width * glow.x + extent * 0.08f * cos(turn + glow.phase),
+                size.height * glow.y + extent * 0.06f * sin(turn * 2 + glow.phase),
+            )
+            val radius = extent * glow.size
+            drawCircle(
+                Brush.radialGradient(
+                    0f to glow.color.copy(alpha = 0.45f),
+                    0.5f to glow.color.copy(alpha = 0.15f),
+                    1f to Color.Transparent,
+                    center = center,
+                    radius = radius,
+                ),
+                radius = radius,
+                center = center,
             )
         }
     }
-
-    /** Draw the scene at time [t] (seconds) in this view's coordinates. */
-    fun drawScene(canvas: Canvas, t: Float) {
-        canvas.drawColor(Style.BACKGROUND)
-        for (b in blobs) {
-            val x = width * (b.x + 0.16f * sin(t * b.speed + b.phase))
-            val y = height * (b.y + 0.09f * cos(t * b.speed * 1.3f + b.phase))
-            b.matrix.setTranslate(x, y)
-            b.paint.shader?.setLocalMatrix(b.matrix)
-            canvas.drawCircle(x, y, b.radius, b.paint)
-        }
-    }
-
-    override fun onDraw(canvas: Canvas) {
-        drawScene(canvas, seconds)
-        panels.forEach { it.invalidate() }
-        postInvalidateOnAnimation()
-    }
 }
 
-/**
- * Smoked glass panel: shows the [backdrop] behind it blurred, under a dark translucent tint, a soft
- * top highlight, and a thin silver edge.
- */
-open class GlassPanel @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null) : FrameLayout(context, attrs) {
-    /** Registered with the backdrop only while attached, so panels of a discarded screen don't pile up. */
-    var backdrop: Backdrop? = null
-        set(value) {
-            field?.panels?.remove(this)
-            field = value
-            if (isAttachedToWindow) value?.panels?.add(this)
-        }
-    var cornerRadius = context.dp(28f)
-        set(value) {
-            field = value
-            updateShape()
-        }
-    /** Fill drawn over the blurred backdrop. */
-    var tint = 0x0FFFFFFF
-        set(value) {
-            field = value
-            invalidate()
-        }
+private class Glow(val color: Color, val x: Float, val y: Float, val size: Float, val phase: Float)
 
-    private val node = RenderNode("glass").apply {
-        setRenderEffect(RenderEffect.createBlurEffect(context.dp(36f), context.dp(36f), Shader.TileMode.CLAMP))
-    }
-    private val path = Path()
-    private val edgeRect = RectF()
-    private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val highlight = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val edge = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeWidth = context.dp(1f)
-    }
-    private val location = IntArray(2)
-    private val backdropLocation = IntArray(2)
-
-    init {
-        setWillNotDraw(false)
-    }
-
-    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-        super.onSizeChanged(w, h, oldw, oldh)
-        updateShape()
-    }
-
-    private fun updateShape() {
-        val w = width.toFloat()
-        val h = height.toFloat()
-        val r = min(cornerRadius, h / 2)
-        path.reset()
-        path.addRoundRect(0f, 0f, w, h, r, r, Path.Direction.CW)
-        val half = edge.strokeWidth / 2
-        edgeRect.set(half, half, w - half, h - half)
-        highlight.shader = LinearGradient(0f, 0f, 0f, max(1f, min(h, context.dp(90f))), 0x14FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP)
-        edge.shader = LinearGradient(
-            0f, 0f, w, h,
-            intArrayOf(0x66FFFFFF, 0x0FFFFFFF, 0x0FFFFFFF, 0x33FFFFFF),
-            floatArrayOf(0f, 0.35f, 0.7f, 1f), Shader.TileMode.CLAMP,
-        )
-        invalidate()
-    }
-
-    override fun draw(canvas: Canvas) {
-        val b = backdrop
-        if (b != null && canvas.isHardwareAccelerated && width > 0 && height > 0) {
-            getLocationInWindow(location)
-            b.getLocationInWindow(backdropLocation)
-            node.setPosition(0, 0, width, height)
-            val recording = node.beginRecording(width, height)
-            // Undo the scale of press animations so the blurred scene stays aligned with the backdrop.
-            recording.scale(1 / scaleX, 1 / scaleY, width / 2f, height / 2f)
-            recording.translate((backdropLocation[0] - location[0]).toFloat(), (backdropLocation[1] - location[1]).toFloat())
-            b.drawScene(recording, b.seconds)
-            node.endRecording()
-            canvas.save()
-            canvas.clipPath(path)
-            canvas.drawRenderNode(node)
-            canvas.restore()
-        }
-        fill.color = tint
-        canvas.drawPath(path, fill)
-        canvas.drawPath(path, highlight)
-        val r = min(cornerRadius, height / 2f) - edge.strokeWidth / 2
-        canvas.drawRoundRect(edgeRect, r, r, edge)
-        super.draw(canvas)
-    }
-
-    override fun onAttachedToWindow() {
-        super.onAttachedToWindow()
-        backdrop?.panels?.add(this)
-    }
-
-    override fun onDetachedFromWindow() {
-        super.onDetachedFromWindow()
-        backdrop?.panels?.remove(this)
-        node.discardDisplayList()
-    }
+/** A rounded liquid glass surface over the screen's backdrop. */
+@Composable
+fun GlassCard(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
+    val shape = RoundedCornerShape(28.dp)
+    val style = remember { GlassStyle.regular.then { shape(shape) } }
+    Box(
+        modifier
+            .hazeGlass(HazeInput.Backdrop(LocalBackdrop.current), style)
+            .clip(shape)
+            .padding(20.dp),
+        content = content,
+    )
 }
 
-/** Glass pill button that sinks in when pressed and springs back on release. */
-class GlassButton @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null) : GlassPanel(context, attrs) {
-    private val label = TextView(context).apply {
-        setTextColor(Style.TEXT)
-        textSize = 17f
-        typeface = Style.SEMIBOLD
-        gravity = Gravity.CENTER
-        isDuplicateParentStateEnabled = true
-    }
-
-    var text: CharSequence
-        get() = label.text
-        set(value) {
-            label.text = value
-        }
-
-    /** Accent buttons are solid graphite; others are smoked glass. */
-    var accent = false
-        set(value) {
-            field = value
-            tint = if (value) Style.GRAPHITE else 0x59000000
-        }
-
-    init {
-        cornerRadius = context.dp(28f)
-        tint = 0x59000000
-        isClickable = true
-        isFocusable = true
-        minimumHeight = context.dpi(56)
-        addView(label, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT, Gravity.CENTER))
-    }
-
-    override fun setPressed(pressed: Boolean) {
-        val changed = pressed != isPressed
-        super.setPressed(pressed)
-        if (!changed) return
-        animate()
-            .scaleX(if (pressed) 0.95f else 1f)
-            .scaleY(if (pressed) 0.95f else 1f)
-            .setInterpolator(if (pressed) Style.EASE else OvershootInterpolator(3f))
-            .setDuration(if (pressed) 140 else 420)
-            .start()
-    }
-
-    override fun setEnabled(enabled: Boolean) {
-        super.setEnabled(enabled)
-        animate().alpha(if (enabled) 1f else 0.45f).setDuration(200).start()
-    }
-
-    override fun getAccessibilityClassName(): CharSequence = Button::class.java.name
-}
-
-/** A single-line text field on smoked glass. */
-class GlassField @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null) : GlassPanel(context, attrs) {
-    val input = EditText(context).apply {
-        background = null
-        setTextColor(Style.TEXT)
-        setHintTextColor(Style.TEXT_DIM)
-        textSize = 16f
-        isSingleLine = true
-        setPadding(context.dpi(20), 0, context.dpi(20), 0)
-    }
-
-    init {
-        cornerRadius = context.dp(22f)
-        tint = 0x59000000
-        minimumHeight = context.dpi(52)
-        addView(input, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT, Gravity.CENTER_VERTICAL))
-    }
-}
+/** One full drift of the backdrop, slow enough to read as still at a glance. */
+private const val DRIFT_MS = 40_000
