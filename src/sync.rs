@@ -86,6 +86,7 @@ pub async fn check(config: Config) -> Result<Check> {
     let sync = Sync::new(config)?;
     let resp = sync
         .request(reqwest::Method::GET, EVENTS_PATH)
+        .timeout(REQUEST_TIMEOUT)
         .send()
         .await?;
     if resp.status() == StatusCode::UNAUTHORIZED {
@@ -136,15 +137,23 @@ impl Sync {
             return None;
         }
         last.count = count;
-        let text = pasteboard::read().filter(|text| !text.trim().is_empty())?;
-        if text.len() > MAX_TEXT {
-            eprintln!(
-                "not sending a copy of {} KB: the limit is {} KB",
-                text.len() / 1024,
-                MAX_TEXT / 1024
-            );
-            return None;
-        }
+        let text = pasteboard::read().filter(|text| !text.trim().is_empty());
+        let text = match text {
+            Some(text) if text.len() <= MAX_TEXT => text,
+            skipped => {
+                if let Some(text) = skipped {
+                    eprintln!(
+                        "not sending a copy of {} KB: the limit is {} KB",
+                        text.len() / 1024,
+                        MAX_TEXT / 1024
+                    );
+                }
+                // The synced text is no longer on the pasteboard, so the same
+                // text arriving or copied again must not be skipped.
+                last.text = None;
+                return None;
+            }
+        };
         let id = text_id(&text);
         if last.text == Some(id) {
             return None;
@@ -237,16 +246,24 @@ impl Sync {
         Ok(())
     }
 
-    /// Publish `text`, retrying with backoff for [`SEND_FOR`]. Returns
-    /// early, with `true`, when newer text arrives in `pending`.
+    /// Publish `text`, retrying with backoff for [`SEND_FOR`] while it's
+    /// still the last text. Returns early, with `true`, when newer text
+    /// arrives in `pending`.
     async fn send_one(
         &self,
         text: &str,
         pending: &mut watch::Receiver<Option<String>>,
     ) -> Result<bool> {
-        let started = Instant::now();
+        // The wall clock, unlike Instant on macOS, counts time asleep.
+        let deadline = SystemTime::now() + SEND_FOR;
+        let id = text_id(text);
         let mut backoff = MIN_BACKOFF;
         loop {
+            // A newer copy or a clip from another device replaced it: sending
+            // it now would overwrite the newer text on the other devices.
+            if self.last().text != Some(id) {
+                return Ok(false);
+            }
             match self.publish(text).await {
                 Ok(()) => {
                     eprintln!("sent {} characters", text.chars().count());
@@ -254,7 +271,7 @@ impl Sync {
                 }
                 Err(e) => eprintln!("sending failed: {e:#}"),
             }
-            if started.elapsed() > SEND_FOR {
+            if SystemTime::now() > deadline {
                 eprintln!("gave up sending a copy after {}s", SEND_FOR.as_secs());
                 return Ok(false);
             }
