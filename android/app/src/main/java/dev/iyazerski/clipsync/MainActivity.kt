@@ -37,11 +37,15 @@ class MainActivity : Activity() {
     private lateinit var content: LinearLayout
     private var status: TextView? = null
     private var dot: View? = null
+    /** What the screen was last built for; see [screen]. */
+    private var shown: List<Boolean>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settings = Settings(this)
         buildUi()
+        // Built here rather than in onResume, so Android restores what was typed into the fields.
+        render()
         handlePairing(intent)
         if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             // Without it the service still runs, but its notification (and the Send action) is hidden.
@@ -58,9 +62,17 @@ class MainActivity : Activity() {
         super.onResume()
         SyncService.onStatus = ::showStatus
         if (settings.paired) SyncService.start(this)
-        // The tile or the battery setting may have changed while the app was away.
-        render()
+        // The tile or the battery setting may have changed while the app was away. Rebuilding
+        // otherwise would clear the pairing fields.
+        if (screen() != shown) render()
     }
+
+    /** The settings the screen shows: it's rebuilt when they change. */
+    private fun screen() = listOf(
+        settings.paired,
+        settings.tileAdded,
+        getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(packageName),
+    )
 
     override fun onPause() {
         SyncService.onStatus = null
@@ -112,6 +124,7 @@ class MainActivity : Activity() {
     }
 
     private fun render() {
+        shown = screen()
         content.removeAllViews()
         status = null
         dot = null
@@ -224,11 +237,13 @@ class MainActivity : Activity() {
         )
         val relay = GlassField(this).apply {
             backdrop = this@MainActivity.backdrop
+            input.id = R.id.relay
             input.hint = "Relay, like https://clip.example.com"
             input.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
         }
         val secret = GlassField(this).apply {
             backdrop = this@MainActivity.backdrop
+            input.id = R.id.secret
             input.hint = "Secret"
             input.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
             // Password fields default to monospace; keep the screen's font.

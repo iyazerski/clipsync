@@ -103,11 +103,12 @@ class Backdrop @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
  * top highlight, and a thin silver edge.
  */
 open class GlassPanel @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null) : FrameLayout(context, attrs) {
+    /** Registered with the backdrop only while attached, so panels of a discarded screen don't pile up. */
     var backdrop: Backdrop? = null
         set(value) {
             field?.panels?.remove(this)
             field = value
-            value?.panels?.add(this)
+            if (isAttachedToWindow) value?.panels?.add(this)
         }
     var cornerRadius = context.dp(28f)
         set(value) {
@@ -186,8 +187,14 @@ open class GlassPanel @JvmOverloads constructor(context: Context, attrs: Attribu
         super.draw(canvas)
     }
 
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        backdrop?.panels?.add(this)
+    }
+
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
+        backdrop?.panels?.remove(this)
         node.discardDisplayList()
     }
 }
