@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
+import androidx.core.content.edit
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
@@ -25,34 +26,34 @@ class Settings(context: Context) {
         get() = prefs.getString(DEVICE, null) ?: run {
             val id = "phone-" + Base64.getUrlEncoder().withoutPadding()
                 .encodeToString(ByteArray(9).also(SecureRandom()::nextBytes))
-            prefs.edit().putString(DEVICE, id).apply()
+            prefs.edit { putString(DEVICE, id) }
             id
         }
 
     /** The id of the last clip from the relay, so a reconnect brings only what was missed. */
     var seen: Long
         get() = prefs.getLong(SEEN, 0)
-        set(value) = prefs.edit().putLong(SEEN, value).apply()
+        set(value) = prefs.edit { putLong(SEEN, value) }
 
     /** Whether the Send clipboard tile is in Quick Settings, as [SendTile] last heard. */
     var tileAdded: Boolean
         get() = prefs.getBoolean(TILE_ADDED, false)
-        set(value) = prefs.edit().putBoolean(TILE_ADDED, value).apply()
+        set(value) = prefs.edit { putBoolean(TILE_ADDED, value) }
 
     /** Save a pairing after checking the secret; clips from before now are old news. */
     fun pair(relay: String, secret: String) {
         val url = relay.trim().trimEnd('/')
         require(url.startsWith("https://")) { "The relay should be an https:// address" }
         Seal(secret)
-        prefs.edit()
-            .putString(RELAY, url)
-            .putString(SECRET, secret.trim())
-            .putLong(SEEN, System.currentTimeMillis())
-            .apply()
+        prefs.edit {
+            putString(RELAY, url)
+            putString(SECRET, secret.trim())
+            putLong(SEEN, System.currentTimeMillis())
+        }
     }
 
     fun unpair() {
-        prefs.edit().remove(RELAY).remove(SECRET).apply()
+        prefs.edit { remove(RELAY).remove(SECRET) }
     }
 
     private companion object {

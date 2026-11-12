@@ -1,56 +1,110 @@
 package dev.iyazerski.clipsync
 
 import android.Manifest
-import android.app.Activity
 import android.app.StatusBarManager
 import android.content.ClipboardManager
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.Icon
-import android.net.Uri
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings as SystemSettings
-import android.text.InputType
-import android.view.Gravity
-import android.view.HapticFeedbackConstants
-import android.view.View
-import android.view.ViewGroup
-import android.view.WindowInsets
-import android.widget.FrameLayout
-import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon as M3Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 
 /**
  * The only screen: pair with the Macs (from the relay's pairing link, or by typing the relay and
- * the secret), see whether sync is connected, and set up the ways to send. Same black "liquid
- * glass" look as TG Prep ([Ui.kt][Backdrop]).
+ * the secret), see whether sync is connected, and set up the ways to send.
  */
-class MainActivity : Activity() {
+class MainActivity : ComponentActivity() {
     private lateinit var settings: Settings
-    private lateinit var backdrop: Backdrop
-    private lateinit var content: LinearLayout
-    private var status: TextView? = null
-    private var dot: View? = null
-    /** What the screen was last built for; see [screen]. */
-    private var shown: List<Boolean>? = null
+    private val snackbar = SnackbarHostState()
+    private var setup by mutableStateOf(Setup())
+    private var status by mutableStateOf(SyncService.status)
+    /** The update check's progress, or null when idle. */
+    private var updating by mutableStateOf<String?>(null)
+    private val notifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+        setup = readSetup()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         settings = Settings(this)
-        buildUi()
-        // Built here rather than in onResume, so Android restores what was typed into the fields.
-        render()
-        handlePairing(intent)
-        if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+        setup = readSetup()
+        if (!setup.notifications) {
             // Without it the service still runs, but its notification (and the Send action) is hidden.
-            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 0)
+            notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
+        setContent { ClipsyncTheme { GlassScreen { Screen() } } }
+        handlePairing(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -60,26 +114,26 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        SyncService.onStatus = ::showStatus
+        SyncService.onStatus = { status = it }
         if (settings.paired) SyncService.start(this)
-        // The tile or the battery setting may have changed while the app was away. Rebuilding
-        // otherwise would clear the pairing fields.
-        if (screen() != shown) render()
+        // The tile, battery, or notification settings may have changed while the app was away.
+        setup = readSetup()
         // Status changes while paused don't reach the screen.
-        showStatus(SyncService.status)
+        status = SyncService.status
     }
-
-    /** The settings the screen shows: it's rebuilt when they change. */
-    private fun screen() = listOf(
-        settings.paired,
-        settings.tileAdded,
-        getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(packageName),
-    )
 
     override fun onPause() {
         SyncService.onStatus = null
         super.onPause()
     }
+
+    private fun readSetup() = Setup(
+        paired = settings.paired,
+        relayHost = settings.relay?.toUri()?.host.orEmpty(),
+        tileAdded = settings.tileAdded,
+        battery = getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(packageName),
+        notifications = checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED,
+    )
 
     /** Pair from a `clipsync://pair?relay=…&secret=…` link. */
     private fun handlePairing(intent: Intent?) {
@@ -91,177 +145,23 @@ class MainActivity : Activity() {
         try {
             settings.pair(relay, secret)
         } catch (e: IllegalArgumentException) {
-            Toast.makeText(this, e.message, Toast.LENGTH_LONG).show()
+            notify(e.message ?: "Couldn't pair")
             return
         }
-        Toast.makeText(this, "Paired", Toast.LENGTH_SHORT).show()
+        notify("Paired")
         SyncService.stop(this)
         SyncService.start(this)
-        render()
+        setup = readSetup()
     }
 
-    private fun buildUi() {
-        window.setDecorFitsSystemWindows(false)
-        val root = FrameLayout(this)
-        backdrop = Backdrop(this)
-        root.addView(backdrop, FrameLayout.LayoutParams(MATCH, MATCH))
-        content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        val scroll = ScrollView(this).apply {
-            isFillViewport = true
-            // Glass panels redraw the moving backdrop each frame, so they must follow scrolling too.
-            setOnScrollChangeListener { _, _, _, _, _ -> backdrop.panels.forEach(View::invalidate) }
-            addView(content, FrameLayout.LayoutParams(MATCH, WRAP))
-        }
-        root.addView(scroll, FrameLayout.LayoutParams(MATCH, MATCH))
-        // Edge to edge: the backdrop fills the screen; content stays clear of the system bars and keyboard.
-        root.setOnApplyWindowInsetsListener { _, insets ->
-            val bars = insets.getInsets(
-                WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout() or WindowInsets.Type.ime(),
-            )
-            val side = dpi(20)
-            content.setPadding(bars.left + side, bars.top + dpi(12), bars.right + side, bars.bottom + dpi(16))
-            insets
-        }
-        setContentView(root)
+    private fun unpair() {
+        SyncService.stop(this)
+        settings.unpair()
+        setup = readSetup()
     }
 
-    private fun render() {
-        shown = screen()
-        content.removeAllViews()
-        status = null
-        dot = null
-        content.addView(text("clipsync", 28f, Style.TEXT, Style.BOLD), LinearLayout.LayoutParams(MATCH, WRAP))
-        if (settings.paired) renderPaired() else renderUnpaired()
-        renderFooter()
-        // Cards rise into place, one after another.
-        for (i in 1 until content.childCount) {
-            content.getChildAt(i).apply {
-                alpha = 0f
-                translationY = dp(16f)
-                animate().alpha(1f).translationY(0f).setStartDelay(i * 40L).setDuration(500).setInterpolator(Style.EASE).start()
-            }
-        }
-    }
-
-    private fun renderPaired() {
-        val body = card(top = dpi(24))
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        dot = View(this).apply { background = GradientDrawable().apply { shape = GradientDrawable.OVAL } }
-        row.addView(dot, LinearLayout.LayoutParams(dpi(10), dpi(10)).apply { marginEnd = dpi(12) })
-        status = text("", 22f, Style.TEXT, Style.BOLD)
-        row.addView(status, LinearLayout.LayoutParams(0, WRAP, 1f))
-        body.addView(row)
-        body.addView(text(Uri.parse(settings.relay).host.orEmpty(), 15f, Style.TEXT_DIM), below(dpi(6)))
-        body.addView(text("What you copy on your Macs lands on this phone's clipboard.", 16f, Style.TEXT), below(dpi(16)))
-        showStatus(SyncService.status)
-
-        val send = card(top = dpi(12))
-        send.addView(text("Send to your Macs", 18f, Style.TEXT, Style.BOLD))
-        send.addView(
-            text(
-                "• Select text and pick \"Send to Macs\"\n" +
-                    "• Share text to clipsync\n" +
-                    "• Tap the tile or the notification button",
-                15f, Style.TEXT_DIM,
-            ).apply { setLineSpacing(0f, 1.3f) },
-            below(dpi(10)),
-        )
-
-        content.addView(button("Send clipboard", accent = true) { sendClipboard() }, below(dpi(20)))
-        if (!settings.tileAdded) {
-            content.addView(button("Add the Quick Settings tile") { addTile() }, below(dpi(12)))
-        }
-        if (!getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(packageName)) {
-            content.addView(button("Allow background activity") {
-                startActivity(
-                    Intent(SystemSettings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")),
-                )
-            }, below(dpi(12)))
-            content.addView(
-                text(
-                    "So the phone doesn't stop clipsync to save battery. On ColorOS, also set App info → " +
-                        "Battery usage → Allow background activity.",
-                    13f, Style.TEXT_DIM,
-                ).apply { setPadding(dpi(8), 0, dpi(8), 0) },
-                below(dpi(8)),
-            )
-        }
-    }
-
-    /** The bottom of the screen: updates, unpairing, and the version. */
-    private fun renderFooter() {
-        content.addView(View(this), LinearLayout.LayoutParams(MATCH, 0, 1f))
-        val update = button("Check for updates") {}
-        update.setOnClickListener { checkForUpdates(update) }
-        content.addView(update, below(dpi(24)))
-        if (settings.paired) {
-            content.addView(button("Unpair") {
-                SyncService.stop(this)
-                settings.unpair()
-                render()
-            }, below(dpi(12)))
-        }
-        val version = packageManager.getPackageInfo(packageName, 0).versionName
-        content.addView(
-            text("clipsync $version", 13f, Style.TEXT_DIM).apply { gravity = Gravity.CENTER },
-            below(dpi(12)),
-        )
-    }
-
-    private fun checkForUpdates(button: GlassButton) {
-        if (!packageManager.canRequestPackageInstalls()) {
-            // Android asks once per app before it may install anything, updates included.
-            Toast.makeText(this, "Allow clipsync to install updates, then tap again", Toast.LENGTH_LONG).show()
-            startActivity(
-                Intent(SystemSettings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")),
-            )
-            return
-        }
-        Updater.update(this) { state ->
-            button.text = state ?: "Check for updates"
-            button.isEnabled = state == null
-        }
-    }
-
-    private fun renderUnpaired() {
-        val body = card(top = dpi(24))
-        body.addView(text("Pair with your Macs", 22f, Style.TEXT, Style.BOLD))
-        body.addView(
-            text(
-                "On a Mac, run clipsync pair and scan its QR code with the camera. Or type the relay and the " +
-                    "secret it shows.",
-                15f, Style.TEXT_DIM,
-            ).apply { setLineSpacing(0f, 1.2f) },
-            below(dpi(10)),
-        )
-        val relay = GlassField(this).apply {
-            backdrop = this@MainActivity.backdrop
-            input.id = R.id.relay
-            input.hint = "Relay, like https://clip.example.com"
-            input.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
-        }
-        val secret = GlassField(this).apply {
-            backdrop = this@MainActivity.backdrop
-            input.id = R.id.secret
-            input.hint = "Secret"
-            input.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-            // Password fields default to monospace; keep the screen's font.
-            input.typeface = Typeface.DEFAULT
-        }
-        content.addView(relay, below(dpi(20)))
-        content.addView(secret, below(dpi(12)))
-        content.addView(button("Pair", accent = true) {
-            pair(relay.input.text.toString(), secret.input.text.toString())
-        }, below(dpi(20)))
-    }
-
-    private fun showStatus(text: String) {
-        status?.text = text
-        val connected = text.startsWith("Connected")
-        (dot?.background as? GradientDrawable)?.setColor(if (connected) CONNECTED else Style.TEXT_DIM)
+    private fun notify(message: String) {
+        lifecycleScope.launch { snackbar.showSnackbar(message) }
     }
 
     private fun sendClipboard() {
@@ -280,50 +180,349 @@ class MainActivity : Activity() {
                 result == StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ALREADY_ADDED
             ) {
                 settings.tileAdded = true
-                render()
+                setup = readSetup()
             }
         }
     }
 
-    /** Add a glass card to the screen and return the layout for its contents. */
-    private fun card(top: Int): LinearLayout {
-        val panel = GlassPanel(this).apply {
-            backdrop = this@MainActivity.backdrop
-            cornerRadius = dp(28f)
+    private fun allowBackground() {
+        startActivity(Intent(SystemSettings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, "package:$packageName".toUri()))
+    }
+
+    private fun allowNotifications() {
+        // After a denial Android may not ask again, so send the user to the app's notification settings.
+        startActivity(Intent(SystemSettings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(SystemSettings.EXTRA_APP_PACKAGE, packageName))
+    }
+
+    private fun checkForUpdates() {
+        if (!packageManager.canRequestPackageInstalls()) {
+            // Android asks once per app before it may install anything, updates included.
+            Toast.makeText(this, "Allow clipsync to install updates, then tap again", Toast.LENGTH_LONG).show()
+            startActivity(Intent(SystemSettings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, "package:$packageName".toUri()))
+            return
         }
-        val body = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dpi(22), dpi(20), dpi(22), dpi(22))
+        Updater.update(this) { updating = it }
+    }
+
+    @Composable
+    private fun Screen() {
+        Scaffold(
+            containerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onBackground,
+            snackbarHost = { SnackbarHost(snackbar) },
+        ) { insets ->
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .padding(insets)
+                    .imePadding()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    "clipsync",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(start = 4.dp, bottom = 12.dp),
+                )
+                AnimatedContent(
+                    targetState = setup.paired,
+                    transitionSpec = { (fadeIn() + slideInVertically { it / 8 }) togetherWith fadeOut() },
+                    label = "screen",
+                ) { paired ->
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (paired) Paired() else Unpaired(::pair)
+                    }
+                }
+                Spacer(Modifier.weight(1f))
+                Footer()
+            }
         }
-        panel.addView(body, FrameLayout.LayoutParams(MATCH, WRAP))
-        content.addView(panel, below(top))
-        return body
     }
 
-    private fun text(value: String, size: Float, color: Int, face: Typeface? = null) = TextView(this).apply {
-        text = value
-        textSize = size
-        setTextColor(color)
-        if (face != null) typeface = face
+    @Composable
+    private fun Paired() {
+        StatusCard(status, setup.relayHost)
+        if (!setup.battery || !setup.notifications) SetupCard()
+        SendCard()
     }
 
-    private fun button(label: String, accent: Boolean = false, onClick: () -> Unit) = GlassButton(this).apply {
-        text = label
-        this.accent = accent
-        backdrop = this@MainActivity.backdrop
-        setOnClickListener {
-            it.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
-            onClick()
+    @Composable
+    private fun SendCard() {
+        val haptics = LocalHapticFeedback.current
+        GlassCard(Modifier.fillMaxWidth()) {
+            Column {
+                Text("Send to your Macs", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                        sendClipboard()
+                    },
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+                ) {
+                    Symbol(R.drawable.sym_content_paste_go, Modifier.size(ButtonDefaults.IconSize))
+                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                    Text("Send clipboard")
+                }
+                Spacer(Modifier.height(8.dp))
+                Item(R.drawable.sym_text_select_start, "Select text", "Then pick Send to Macs")
+                Item(R.drawable.sym_share, "Share", "Share text to clipsync")
+                Item(R.drawable.sym_notifications, "Notification", "Tap Send clipboard")
+                Item(R.drawable.sym_widgets, "Quick Settings tile", "One tap from anywhere") {
+                    if (setup.tileAdded) {
+                        Symbol(R.drawable.sym_check, tint = Connected)
+                    } else {
+                        FilledTonalButton(onClick = ::addTile) { Text("Add") }
+                    }
+                }
+            }
         }
     }
 
-    /** Full-width layout params with [top] space above. */
-    private fun below(top: Int) = LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = top }
-
-    private companion object {
-        const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
-        const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
-        /** A soft green, the one color on screen: sync is live. */
-        const val CONNECTED = 0xFF5BD68A.toInt()
+    @Composable
+    private fun SetupCard() {
+        GlassCard(Modifier.fillMaxWidth()) {
+            Column {
+                Text("Finish setup", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(8.dp))
+                if (!setup.battery) {
+                    Item(
+                        R.drawable.sym_battery_android_full,
+                        "Run in the background",
+                        "So Android doesn't stop sync to save battery. On ColorOS, also allow background activity " +
+                            "in App info → Battery usage.",
+                    ) { FilledTonalButton(onClick = ::allowBackground) { Text("Allow") } }
+                }
+                if (!setup.notifications) {
+                    Item(R.drawable.sym_notifications, "Notifications", "Shows the sync status and a Send button") {
+                        FilledTonalButton(onClick = ::allowNotifications) { Text("Allow") }
+                    }
+                }
+            }
+        }
     }
+
+    /** The bottom of the screen: updates, unpairing, and the version. */
+    @Composable
+    private fun Footer() {
+        var confirmUnpair by rememberSaveable { mutableStateOf(false) }
+        Column(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = ::checkForUpdates, enabled = updating == null) {
+                    Symbol(R.drawable.sym_system_update, Modifier.size(ButtonDefaults.IconSize))
+                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                    Text(updating ?: "Check for updates")
+                }
+                if (setup.paired) {
+                    TextButton(
+                        onClick = { confirmUnpair = true },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    ) {
+                        Symbol(R.drawable.sym_link_off, Modifier.size(ButtonDefaults.IconSize))
+                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                        Text("Unpair")
+                    }
+                }
+            }
+            Text(
+                "clipsync ${packageManager.getPackageInfo(packageName, 0).versionName}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (confirmUnpair) {
+            AlertDialog(
+                onDismissRequest = { confirmUnpair = false },
+                icon = { Symbol(R.drawable.sym_link_off) },
+                title = { Text("Unpair this phone?") },
+                text = { Text("Sync stops. To pair again, run clipsync pair on a Mac.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        confirmUnpair = false
+                        unpair()
+                    }) { Text("Unpair") }
+                },
+                dismissButton = { TextButton(onClick = { confirmUnpair = false }) { Text("Cancel") } },
+            )
+        }
+    }
+}
+
+/** What the screen shows, read from settings and system state. */
+private data class Setup(
+    val paired: Boolean = false,
+    val relayHost: String = "",
+    val tileAdded: Boolean = false,
+    val battery: Boolean = true,
+    val notifications: Boolean = true,
+)
+
+/** How a [SyncService.status] text reads on screen. */
+private class StatusView(val icon: Int, val title: String, val detail: String, val tint: Color?)
+
+@Composable
+private fun statusView(status: String, host: String): StatusView = when {
+    status.startsWith("Connected") -> StatusView(
+        R.drawable.sym_check_circle,
+        "Connected",
+        status.substringAfter(" · ", "").replaceFirstChar(Char::uppercase).ifEmpty { "Waiting for clips from $host" },
+        Connected,
+    )
+    status == "Connecting…" -> StatusView(R.drawable.sym_sync, "Connecting…", host, null)
+    status.startsWith("Offline") -> StatusView(R.drawable.sym_cloud_off, "Offline", "Retrying soon", null)
+    status == "Stopped" -> StatusView(R.drawable.sym_cloud_off, "Stopped", "Open clipsync to resume", null)
+    else -> StatusView(R.drawable.sym_error, "Not syncing", status, MaterialTheme.colorScheme.error)
+}
+
+@Composable
+private fun StatusCard(status: String, host: String) {
+    val view = statusView(status, host)
+    val tint by animateColorAsState(view.tint ?: MaterialTheme.colorScheme.onSurfaceVariant, label = "tint")
+    GlassCard(Modifier.fillMaxWidth()) {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier.size(48.dp).background(tint.copy(alpha = 0.16f), CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) { Symbol(view.icon, tint = tint) }
+                Spacer(Modifier.width(16.dp))
+                Column {
+                    Text(view.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        view.detail,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            Text("What you copy on your Macs lands on this phone's clipboard.", style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+}
+
+@Composable
+private fun Unpaired(onPair: (relay: String, secret: String) -> Unit) {
+    var relay by rememberSaveable { mutableStateOf("") }
+    var secret by rememberSaveable { mutableStateOf("") }
+    var showSecret by rememberSaveable { mutableStateOf(false) }
+    val ready = relay.isNotBlank() && secret.isNotBlank()
+    GlassCard(Modifier.fillMaxWidth()) {
+        Column {
+            Box(
+                Modifier.size(48.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) { Symbol(R.drawable.sym_qr_code_scanner, tint = MaterialTheme.colorScheme.onPrimaryContainer) }
+            Spacer(Modifier.height(16.dp))
+            Text("Pair with your Macs", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(16.dp))
+            Step(1) {
+                Text("On a Mac, run ", style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    "clipsync pair",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.surfaceContainerHighest, RoundedCornerShape(6.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            Step(2) { Text("Scan its QR code with this phone's camera", style = MaterialTheme.typography.bodyLarge) }
+            Row(Modifier.padding(vertical = 20.dp), verticalAlignment = Alignment.CenterVertically) {
+                HorizontalDivider(Modifier.weight(1f))
+                Text(
+                    "or type what it shows",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                )
+                HorizontalDivider(Modifier.weight(1f))
+            }
+            OutlinedTextField(
+                value = relay,
+                onValueChange = { relay = it },
+                label = { Text("Relay") },
+                placeholder = { Text("https://clip.example.com") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next, autoCorrectEnabled = false),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = secret,
+                onValueChange = { secret = it },
+                label = { Text("Secret") },
+                singleLine = true,
+                visualTransformation = if (showSecret) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { showSecret = !showSecret }) {
+                        Symbol(
+                            if (showSecret) R.drawable.sym_visibility_off else R.drawable.sym_visibility,
+                            description = if (showSecret) "Hide secret" else "Show secret",
+                        )
+                    }
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { if (ready) onPair(relay, secret) }),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(20.dp))
+            Button(
+                onClick = { onPair(relay, secret) },
+                enabled = ready,
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+            ) { Text("Pair") }
+        }
+    }
+}
+
+/** A numbered pairing step. */
+@Composable
+private fun Step(number: Int, content: @Composable () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier.size(28.dp).background(MaterialTheme.colorScheme.secondaryContainer, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                "$number",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) { content() }
+    }
+}
+
+/** A list row inside a card: icon, title, explanation, and an optional action at the end. */
+@Composable
+private fun Item(icon: Int, title: String, detail: String, action: (@Composable () -> Unit)? = null) {
+    Row(Modifier.fillMaxWidth().padding(PaddingValues(vertical = 10.dp)), verticalAlignment = Alignment.CenterVertically) {
+        Symbol(icon, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Text(detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (action != null) {
+            Spacer(Modifier.width(12.dp))
+            action()
+        }
+    }
+}
+
+/** A Material Symbols icon from the drawables. */
+@Composable
+private fun Symbol(
+    icon: Int,
+    modifier: Modifier = Modifier,
+    tint: Color = LocalContentColor.current,
+    description: String? = null,
+) {
+    M3Icon(painterResource(icon), contentDescription = description, modifier = modifier, tint = tint)
 }

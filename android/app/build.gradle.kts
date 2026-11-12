@@ -1,5 +1,6 @@
 plugins {
     id("com.android.application")
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 android {
@@ -15,7 +16,7 @@ android {
     }
 
     namespace = "dev.iyazerski.clipsync"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "dev.iyazerski.clipsync"
@@ -51,6 +52,10 @@ android {
         }
     }
 
+    buildFeatures {
+        compose = true
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
@@ -61,6 +66,12 @@ android {
 }
 
 dependencies {
-    // Tests only: the app itself has no dependencies.
+    implementation(platform("androidx.compose:compose-bom:2026.09.00"))
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.activity:activity-compose:1.13.0")
+    // Liquid glass surfaces (refraction, blur, highlights) over the backdrop.
+    implementation("dev.chrisbanes.haze:haze:2.1.0")
+    implementation("dev.chrisbanes.haze:haze-glass:2.1.0")
+
     testImplementation("junit:junit:4.13.2")
 }
