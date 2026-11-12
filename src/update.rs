@@ -27,6 +27,17 @@ struct Asset {
     browser_download_url: String,
 }
 
+impl Release {
+    /// The download address of the asset called `name`.
+    fn asset(&self, name: &str) -> Result<&str> {
+        self.assets
+            .iter()
+            .find(|asset| asset.name == name)
+            .map(|asset| asset.browser_download_url.as_str())
+            .with_context(|| format!("release {} has no {name}", self.tag_name))
+    }
+}
+
 /// Install the latest release over this binary if it's newer than [`VERSION`].
 pub async fn run() -> Result<()> {
     let http = reqwest::Client::builder()
@@ -54,24 +65,12 @@ pub async fn run() -> Result<()> {
         println!("clipsync {VERSION} is up to date");
         return Ok(());
     }
-    let url = |name: &str| {
-        release
-            .assets
-            .iter()
-            .find(|asset| asset.name == name)
-            .map(|asset| asset.browser_download_url.clone())
-            .with_context(|| format!("release {} has no {name}", release.tag_name))
-    };
     println!("downloading clipsync {latest}…");
-    let download = |url: String| {
-        let http = http.clone();
-        async move {
-            let resp = http.get(url).send().await?.error_for_status()?;
-            anyhow::Ok(resp.bytes().await?)
-        }
-    };
-    let archive = download(url(ASSET)?).await?;
-    let checksum = download(url(&format!("{ASSET}.sha256"))?).await?;
+    let archive = get(&http, release.asset(ASSET)?).await?.bytes().await?;
+    let checksum = get(&http, release.asset(&format!("{ASSET}.sha256"))?)
+        .await?
+        .bytes()
+        .await?;
     let expected = String::from_utf8_lossy(&checksum);
     let expected = expected.split_whitespace().next().unwrap_or_default();
     ensure!(
@@ -87,33 +86,36 @@ pub async fn run() -> Result<()> {
     Ok(())
 }
 
+/// A successful GET of `url`.
+async fn get(http: &reqwest::Client, url: &str) -> Result<reqwest::Response> {
+    Ok(http.get(url).send().await?.error_for_status()?)
+}
+
 /// Unpack the `clipsync` binary from `archive` next to `exe`, then move it
 /// over `exe` in one step, so a failure never leaves a broken binary.
 fn replace(exe: &Path, archive: &[u8]) -> Result<()> {
     let dir = exe.parent().context("the binary has no folder")?;
-    let staging = dir.join(".clipsync-update");
-    let _ = std::fs::remove_dir_all(&staging);
-    std::fs::create_dir_all(&staging).with_context(|| format!("creating {}", staging.display()))?;
-    let unpack = || -> Result<()> {
-        let tarball = staging.join(ASSET);
-        std::fs::write(&tarball, archive).context("saving the download")?;
-        let out = Command::new("/usr/bin/tar")
-            .arg("-xzf")
-            .arg(&tarball)
-            .arg("-C")
-            .arg(&staging)
-            .arg("clipsync")
-            .output()
-            .context("running tar")?;
-        if !out.status.success() {
-            bail!("unpacking: {}", String::from_utf8_lossy(&out.stderr).trim());
-        }
-        std::fs::rename(staging.join("clipsync"), exe)
-            .with_context(|| format!("replacing {}", exe.display()))
-    };
-    let done = unpack();
-    let _ = std::fs::remove_dir_all(&staging);
-    done
+    // Next to the binary, so the rename stays on one file system; removed
+    // when dropped.
+    let staging = tempfile::Builder::new()
+        .prefix(".clipsync-update")
+        .tempdir_in(dir)
+        .with_context(|| format!("creating a folder in {}", dir.display()))?;
+    let tarball = staging.path().join(ASSET);
+    std::fs::write(&tarball, archive).context("saving the download")?;
+    let out = Command::new("/usr/bin/tar")
+        .arg("-xzf")
+        .arg(&tarball)
+        .arg("-C")
+        .arg(staging.path())
+        .arg("clipsync")
+        .output()
+        .context("running tar")?;
+    if !out.status.success() {
+        bail!("unpacking: {}", String::from_utf8_lossy(&out.stderr).trim());
+    }
+    std::fs::rename(staging.path().join("clipsync"), exe)
+        .with_context(|| format!("replacing {}", exe.display()))
 }
 
 /// Whether version `a` (like `0.1.12`) is newer than `b`, comparing the
