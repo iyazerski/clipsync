@@ -65,6 +65,8 @@ class MainActivity : Activity() {
         // The tile or the battery setting may have changed while the app was away. Rebuilding
         // otherwise would clear the pairing fields.
         if (screen() != shown) render()
+        // Status changes while paused don't reach the screen.
+        showStatus(SyncService.status)
     }
 
     /** The settings the screen shows: it's rebuilt when they change. */
