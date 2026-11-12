@@ -29,15 +29,18 @@ tar -xzf "$install_tmp/$asset" -C "$install_tmp"
 mkdir -p "$HOME/.local/bin"
 install -m 755 "$install_tmp/clipsync" "$HOME/.local/bin/clipsync"
 
-PATH="$HOME/.local/bin:$PATH"
-export PATH
+echo "$("$HOME/.local/bin/clipsync" --version) is installed to $HOME/.local/bin/clipsync"
 
-if ! command -v clipsync >/dev/null 2>&1; then
-  echo "clipsync installed, but it is not on PATH. Add $HOME/.local/bin to PATH." >&2
-  exit 1
-fi
+# This script runs in its own shell, so only the caller's PATH tells whether
+# `clipsync` works in the next command.
+case ":$PATH:" in
+  *":$HOME/.local/bin:"*) ;;
+  *)
+    echo "$HOME/.local/bin is not on your PATH. Add it, then open a new terminal:"
+    echo "  echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.zshrc"
+    ;;
+esac
 
-echo "$(clipsync --version) is installed to $HOME/.local/bin/clipsync"
 # A running service keeps the old binary: restart it on the new one.
 if [ -f "$HOME/Library/LaunchAgents/dev.iyazerski.clipsync.plist" ]; then
   launchctl kickstart -k "gui/$(id -u)/dev.iyazerski.clipsync" && echo "restarted the background service"
