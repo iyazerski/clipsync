@@ -9,7 +9,6 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD as B64;
-use ring::rand::{SecureRandom, SystemRandom};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, PartialEq, Serialize, Deserialize)]
@@ -54,11 +53,7 @@ pub fn short_path(path: &Path) -> String {
 
 /// A new random device id for this Mac.
 pub fn new_device_id() -> Result<String> {
-    let mut id = [0; 9];
-    SystemRandom::new()
-        .fill(&mut id)
-        .map_err(|_| anyhow::anyhow!("no randomness"))?;
-    Ok(format!("mac-{}", B64.encode(id)))
+    Ok(format!("mac-{}", B64.encode(crate::seal::random::<9>()?)))
 }
 
 impl Config {
