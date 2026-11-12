@@ -1,7 +1,7 @@
 //! The service: send what you copy on this Mac to the relay, and put what
 //! the other devices copy on this Mac's clipboard.
 //!
-//! Three loops run side by side. [`watch`] polls the pasteboard and hands
+//! Three loops run side by side. [`poll`] polls the pasteboard and hands
 //! new text to [`send`], which publishes the latest one and retries for a
 //! while if the relay is out of reach. [`listen`] keeps an event stream to
 //! the relay open, reconnecting when it drops or the Mac wakes from sleep,
@@ -45,7 +45,7 @@ const MAX_BACKOFF: Duration = Duration::from_secs(30);
 /// fast again.
 const STABLE_AFTER: Duration = Duration::from_secs(60);
 
-/// This Mac's clipboard, as far as syncing goes.
+/// What the pasteboard last held, as far as syncing goes.
 struct Last {
     /// The change count already handled.
     count: isize,
@@ -53,11 +53,17 @@ struct Last {
     text: Option<[u8; 32]>,
 }
 
-struct Sync {
+/// This Mac's pasteboard. Most methods block on AppKit and run on blocking
+/// threads, so the loops share it in an `Arc`.
+struct Clipboard {
+    last: Mutex<Last>,
+}
+
+/// The relay, as this Mac talks to it.
+struct Relay {
     config: Config,
     keys: Keys,
     http: reqwest::Client,
-    last: Mutex<Last>,
 }
 
 /// Whether the relay accepts a secret's token.
@@ -70,21 +76,21 @@ pub enum Check {
 
 /// Sync this Mac's clipboard until something fails for good.
 pub async fn run(config: Config) -> Result<()> {
-    let sync = Arc::new(Sync::new(config)?);
-    eprintln!("syncing through {}", sync.config.relay);
+    let relay = Relay::new(config)?;
+    let clipboard = Arc::new(Clipboard::new());
+    eprintln!("syncing through {}", relay.config.relay);
     let (copied, pending) = watch::channel(None);
-    let woke = Arc::new(Notify::new());
+    let woke = Notify::new();
     tokio::select! {
-        done = watch(sync.clone(), copied, woke.clone()) => done,
-        done = send(sync.clone(), pending) => done,
-        done = listen(sync, woke) => done,
+        done = poll(&clipboard, copied, &woke) => done,
+        done = send(&relay, &clipboard, pending) => done,
+        done = listen(&relay, &clipboard, &woke) => done,
     }
 }
 
 /// Whether the relay accepts `config`'s secret.
 pub async fn check(config: Config) -> Result<Check> {
-    let sync = Sync::new(config)?;
-    let resp = sync
+    let resp = Relay::new(config)?
         .request(reqwest::Method::GET, EVENTS_PATH)
         .timeout(REQUEST_TIMEOUT)
         .send()
@@ -96,36 +102,26 @@ pub async fn check(config: Config) -> Result<Check> {
     Ok(Check::Accepted)
 }
 
-impl Sync {
-    fn new(config: Config) -> Result<Self> {
-        let keys = Keys::derive(&config.secret)?;
-        let http = reqwest::Client::builder()
-            .connect_timeout(Duration::from_secs(10))
-            .build()
-            .context("setting up HTTP")?;
-        Ok(Self {
-            config,
-            keys,
-            http,
+impl Clipboard {
+    /// Start from the pasteboard as it is: only new copies sync. Blocks on AppKit.
+    fn new() -> Self {
+        Self {
             last: Mutex::new(Last {
-                // What's on the pasteboard now stays here: only new copies sync.
                 count: pasteboard::change_count(),
                 text: None,
             }),
-        })
+        }
     }
 
     fn last(&self) -> MutexGuard<'_, Last> {
-        // A panic aborts the process (see the release profile), so the lock
-        // is never poisoned in release; tests just carry on.
-        self.last.lock().unwrap_or_else(|e| e.into_inner())
+        self.last
+            .lock()
+            .expect("a panic aborts the service, so the lock is never poisoned")
     }
 
-    fn request(&self, method: reqwest::Method, path: &str) -> reqwest::RequestBuilder {
-        self.http
-            .request(method, format!("{}{path}", self.config.relay))
-            .bearer_auth(&self.keys.token)
-            .header(DEVICE_HEADER, &self.config.device)
+    /// Whether the text with digest `id` is still the last one sent or received.
+    fn holds(&self, id: [u8; 32]) -> bool {
+        self.last().text == Some(id)
     }
 
     /// The pasteboard's text, if it was copied since the last look and
@@ -174,6 +170,24 @@ impl Sync {
         last.text = Some(id);
         true
     }
+}
+
+impl Relay {
+    fn new(config: Config) -> Result<Self> {
+        let keys = Keys::derive(&config.secret)?;
+        let http = reqwest::Client::builder()
+            .connect_timeout(Duration::from_secs(10))
+            .build()
+            .context("setting up HTTP")?;
+        Ok(Self { config, keys, http })
+    }
+
+    fn request(&self, method: reqwest::Method, path: &str) -> reqwest::RequestBuilder {
+        self.http
+            .request(method, format!("{}{path}", self.config.relay))
+            .bearer_auth(&self.keys.token)
+            .header(DEVICE_HEADER, &self.config.device)
+    }
 
     /// Seal `text` and publish it.
     async fn publish(&self, text: &str) -> Result<()> {
@@ -190,10 +204,42 @@ impl Sync {
         Ok(())
     }
 
+    /// Publish `text`, retrying with backoff for [`SEND_FOR`] while it's
+    /// still the last text on `clipboard`.
+    async fn send_one(&self, clipboard: &Clipboard, text: &str) {
+        // The wall clock, unlike Instant on macOS, counts time asleep.
+        let deadline = SystemTime::now() + SEND_FOR;
+        let id = text_id(text);
+        let mut backoff = MIN_BACKOFF;
+        // A clip from another device replaced it: sending it now would
+        // overwrite the newer text on the other devices.
+        while clipboard.holds(id) {
+            match self.publish(text).await {
+                Ok(()) => {
+                    eprintln!("sent {} characters", text.chars().count());
+                    return;
+                }
+                Err(e) => eprintln!("sending failed: {e:#}"),
+            }
+            if SystemTime::now() > deadline {
+                eprintln!("gave up sending a copy after {}s", SEND_FOR.as_secs());
+                return;
+            }
+            tokio::time::sleep(backoff).await;
+            backoff = (backoff * 2).min(MAX_BACKOFF);
+        }
+    }
+
     /// Follow the relay's event stream until it ends, goes silent, or the
-    /// Mac wakes from sleep. `seen` is the last clip's id, kept across
-    /// streams so a reconnect brings only what was missed.
-    async fn stream(self: &Arc<Self>, seen: &mut u64, woke: &Notify) -> Result<()> {
+    /// Mac wakes from sleep, and put each clip on `clipboard`. `seen` is
+    /// the last clip's id, kept across streams so a reconnect brings only
+    /// what was missed.
+    async fn stream(
+        &self,
+        clipboard: &Arc<Clipboard>,
+        seen: &mut u64,
+        woke: &Notify,
+    ) -> Result<()> {
         let resp = self
             .request(reqwest::Method::GET, EVENTS_PATH)
             .header(ACCEPT, "text/event-stream")
@@ -224,13 +270,13 @@ impl Sync {
             };
             for event in events.push(&chunk) {
                 *seen = (*seen).max(event.id.unwrap_or(0));
-                self.apply(event).await?;
+                self.apply(clipboard, event).await?;
             }
         }
     }
 
-    /// Open a clip and put it on the pasteboard.
-    async fn apply(self: &Arc<Self>, event: Event) -> Result<()> {
+    /// Open a clip and put it on `clipboard`.
+    async fn apply(&self, clipboard: &Arc<Clipboard>, event: Event) -> Result<()> {
         let text = match self.keys.open(&event.data) {
             Ok(text) => text,
             Err(e) => {
@@ -239,60 +285,20 @@ impl Sync {
             }
         };
         let chars = text.chars().count();
-        let sync = self.clone();
-        if tokio::task::spawn_blocking(move || sync.received(&text)).await? {
+        let clipboard = Arc::clone(clipboard);
+        if tokio::task::spawn_blocking(move || clipboard.received(&text)).await? {
             eprintln!("received {chars} characters");
         }
         Ok(())
-    }
-
-    /// Publish `text`, retrying with backoff for [`SEND_FOR`] while it's
-    /// still the last text. Returns early, with `true`, when newer text
-    /// arrives in `pending`.
-    async fn send_one(
-        &self,
-        text: &str,
-        pending: &mut watch::Receiver<Option<String>>,
-    ) -> Result<bool> {
-        // The wall clock, unlike Instant on macOS, counts time asleep.
-        let deadline = SystemTime::now() + SEND_FOR;
-        let id = text_id(text);
-        let mut backoff = MIN_BACKOFF;
-        loop {
-            // A newer copy or a clip from another device replaced it: sending
-            // it now would overwrite the newer text on the other devices.
-            if self.last().text != Some(id) {
-                return Ok(false);
-            }
-            match self.publish(text).await {
-                Ok(()) => {
-                    eprintln!("sent {} characters", text.chars().count());
-                    return Ok(false);
-                }
-                Err(e) => eprintln!("sending failed: {e:#}"),
-            }
-            if SystemTime::now() > deadline {
-                eprintln!("gave up sending a copy after {}s", SEND_FOR.as_secs());
-                return Ok(false);
-            }
-            tokio::select! {
-                () = tokio::time::sleep(backoff) => {}
-                changed = pending.changed() => {
-                    changed.context("the pasteboard watch stopped")?;
-                    return Ok(true);
-                }
-            }
-            backoff = (backoff * 2).min(MAX_BACKOFF);
-        }
     }
 }
 
 /// Poll the pasteboard and pass new text to [`send`]; tell [`listen`] when
 /// the Mac woke from sleep.
-async fn watch(
-    sync: Arc<Sync>,
+async fn poll(
+    clipboard: &Arc<Clipboard>,
     copied: watch::Sender<Option<String>>,
-    woke: Arc<Notify>,
+    woke: &Notify,
 ) -> Result<()> {
     let mut tick = tokio::time::interval(POLL);
     tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
@@ -305,41 +311,48 @@ async fn watch(
             woke.notify_one();
         }
         wall = now;
-        let sync = sync.clone();
-        if let Some(text) = tokio::task::spawn_blocking(move || sync.copied()).await? {
+        let clipboard = Arc::clone(clipboard);
+        if let Some(text) = tokio::task::spawn_blocking(move || clipboard.copied()).await? {
             copied.send_replace(Some(text));
         }
     }
 }
 
-/// Publish the latest text from [`watch`]; text copied while an older one
-/// is still being sent replaces it.
-async fn send(sync: Arc<Sync>, mut pending: watch::Receiver<Option<String>>) -> Result<()> {
+/// Publish the latest text from [`poll`]; newer text stops sending an
+/// older one and takes its place.
+async fn send(
+    relay: &Relay,
+    clipboard: &Clipboard,
+    mut pending: watch::Receiver<Option<String>>,
+) -> Result<()> {
     loop {
+        // Owned, as the borrow would block `poll` while the text is sent.
+        let text = pending.borrow_and_update().clone();
+        if let Some(text) = text {
+            tokio::select! {
+                () = relay.send_one(clipboard, &text) => {}
+                changed = pending.changed() => {
+                    changed.context("the pasteboard watch stopped")?;
+                    continue;
+                }
+            }
+        }
         pending
             .changed()
             .await
             .context("the pasteboard watch stopped")?;
-        loop {
-            let text = pending.borrow_and_update().clone();
-            let Some(text) = text else { break };
-            if !sync.send_one(&text, &mut pending).await? {
-                break;
-            }
-        }
     }
 }
 
 /// Keep an event stream to the relay open and apply what comes.
-async fn listen(sync: Arc<Sync>, woke: Arc<Notify>) -> Result<()> {
+async fn listen(relay: &Relay, clipboard: &Arc<Clipboard>, woke: &Notify) -> Result<()> {
     // Clips from before this start are old news.
     let mut seen = now_ms();
     let mut backoff = MIN_BACKOFF;
     loop {
         let started = Instant::now();
-        match sync.stream(&mut seen, &woke).await {
-            Ok(()) => {}
-            Err(e) => eprintln!("relay: {e:#}"),
+        if let Err(e) = relay.stream(clipboard, &mut seen, woke).await {
+            eprintln!("relay: {e:#}");
         }
         if started.elapsed() > STABLE_AFTER {
             backoff = MIN_BACKOFF;
@@ -372,35 +385,49 @@ struct Event {
     data: String,
 }
 
+impl Event {
+    /// Parse the lines of one event; `None` for one without data, like a
+    /// keep-alive comment.
+    fn parse(block: &[u8]) -> Option<Self> {
+        let mut event = Self::default();
+        for line in String::from_utf8_lossy(block).lines() {
+            let (field, value) = line.split_once(':').unwrap_or((line, ""));
+            let value = value.strip_prefix(' ').unwrap_or(value);
+            match field {
+                "id" => event.id = value.parse().ok(),
+                "data" => event.data.push_str(value),
+                _ => {}
+            }
+        }
+        (!event.data.is_empty()).then_some(event)
+    }
+}
+
 /// A server-sent event parser for the relay's events: an `id` and one
 /// `data` line each, separated by blank lines. Comments (keep-alives) and
 /// other fields are skipped.
 #[derive(Default)]
 struct Events {
+    /// The start of an event that hasn't ended yet.
     buffer: Vec<u8>,
 }
 
 impl Events {
     /// Add a chunk of the stream and return the events it completed.
     fn push(&mut self, chunk: &[u8]) -> Vec<Event> {
+        // The buffer holds no event end, so one can only end in the new
+        // bytes, or start with the buffer's last byte.
+        let mut from = self.buffer.len().saturating_sub(1);
         self.buffer.extend_from_slice(chunk);
+        let mut start = 0;
         let mut events = Vec::new();
-        while let Some(end) = self.buffer.windows(2).position(|w| w == b"\n\n") {
-            let block: Vec<u8> = self.buffer.drain(..end + 2).collect();
-            let mut event = Event::default();
-            for line in String::from_utf8_lossy(&block).lines() {
-                let (field, value) = line.split_once(':').unwrap_or((line, ""));
-                let value = value.strip_prefix(' ').unwrap_or(value);
-                match field {
-                    "id" => event.id = value.parse().ok(),
-                    "data" => event.data.push_str(value),
-                    _ => {}
-                }
-            }
-            if !event.data.is_empty() {
-                events.push(event);
-            }
+        while let Some(end) = self.buffer[from..].windows(2).position(|w| w == b"\n\n") {
+            let end = from + end;
+            events.extend(Event::parse(&self.buffer[start..end]));
+            start = end + 2;
+            from = start;
         }
+        self.buffer.drain(..start);
         events
     }
 }
@@ -422,5 +449,8 @@ mod tests {
             vec![event(5, "abc")]
         );
         assert_eq!(events.push(b"ef\n\n"), vec![event(6, "def")]);
+        // The blank line that ends an event can be split between chunks.
+        assert_eq!(events.push(b"id: 7\ndata: g\n"), vec![]);
+        assert_eq!(events.push(b"\n"), vec![event(7, "g")]);
     }
 }
