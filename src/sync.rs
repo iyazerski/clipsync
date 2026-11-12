@@ -205,8 +205,15 @@ impl Relay {
     }
 
     /// Publish `text`, retrying with backoff for [`SEND_FOR`] while it's
-    /// still the last text on `clipboard`.
-    async fn send_one(&self, clipboard: &Clipboard, text: &str) {
+    /// still the last text on `clipboard`. Newer text in `newer` ends the
+    /// wait between tries, never a request in flight: the relay could still
+    /// get an abandoned one after the newer text.
+    async fn send_one(
+        &self,
+        clipboard: &Clipboard,
+        text: &str,
+        mut newer: watch::Receiver<Option<String>>,
+    ) {
         // The wall clock, unlike Instant on macOS, counts time asleep.
         let deadline = SystemTime::now() + SEND_FOR;
         let id = text_id(text);
@@ -225,7 +232,12 @@ impl Relay {
                 eprintln!("gave up sending a copy after {}s", SEND_FOR.as_secs());
                 return;
             }
-            tokio::time::sleep(backoff).await;
+            tokio::select! {
+                () = tokio::time::sleep(backoff) => {}
+                // The caller sends the newer text next (or stops, if the
+                // watch closed).
+                _ = newer.changed() => return,
+            }
             backoff = (backoff * 2).min(MAX_BACKOFF);
         }
     }
@@ -318,7 +330,7 @@ async fn poll(
     }
 }
 
-/// Publish the latest text from [`poll`]; newer text stops sending an
+/// Publish the latest text from [`poll`]; newer text stops retrying an
 /// older one and takes its place.
 async fn send(
     relay: &Relay,
@@ -326,21 +338,17 @@ async fn send(
     mut pending: watch::Receiver<Option<String>>,
 ) -> Result<()> {
     loop {
-        // Owned, as the borrow would block `poll` while the text is sent.
-        let text = pending.borrow_and_update().clone();
-        if let Some(text) = text {
-            tokio::select! {
-                () = relay.send_one(clipboard, &text) => {}
-                changed = pending.changed() => {
-                    changed.context("the pasteboard watch stopped")?;
-                    continue;
-                }
-            }
-        }
         pending
             .changed()
             .await
             .context("the pasteboard watch stopped")?;
+        // Owned, as the borrow would block `poll` while the text is sent.
+        let text = pending.borrow_and_update().clone();
+        if let Some(text) = text {
+            // A second receiver, so text that arrives during the send stays
+            // unseen here and is sent next.
+            relay.send_one(clipboard, &text, pending.clone()).await;
+        }
     }
 }
 
