@@ -12,7 +12,7 @@ mod seal;
 mod sync;
 mod update;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result, ensure};
 use clap::{Parser, Subcommand};
 use qrcode::QrCode;
 use qrcode::render::unicode::Dense1x2;
@@ -93,22 +93,23 @@ fn saved() -> Result<Config> {
 /// background service.
 async fn setup(relay: String, secret: Option<String>) -> Result<()> {
     let relay = relay.trim().trim_end_matches('/').to_owned();
-    if !relay.starts_with("https://") && !relay.starts_with("http://") {
-        bail!("the relay should be a URL, like https://clip.example.com");
-    }
+    let valid = reqwest::Url::parse(&relay)
+        .is_ok_and(|url| matches!(url.scheme(), "https" | "http") && url.has_host());
+    ensure!(
+        valid,
+        "the relay should be a URL, like https://clip.example.com"
+    );
     let path = config::path();
-    let old = Config::load(&path)?;
-    let secret = match (secret, &old) {
-        (Some(secret), _) => secret.trim().to_owned(),
-        (None, Some(old)) => old.secret.clone(),
-        (None, None) => seal::new_secret()?,
+    let secret = secret.map(|secret| secret.trim().to_owned());
+    let (secret, device) = match Config::load(&path)? {
+        Some(old) => (secret.unwrap_or(old.secret), old.device),
+        None => (
+            secret.map_or_else(seal::new_secret, Ok)?,
+            config::new_device_id()?,
+        ),
     };
     // Fails early on a mistyped secret.
     Keys::derive(&secret)?;
-    let device = match old {
-        Some(old) => old.device,
-        None => config::new_device_id()?,
-    };
     let config = Config {
         relay,
         secret,
@@ -116,7 +117,7 @@ async fn setup(relay: String, secret: Option<String>) -> Result<()> {
     };
     config.save(&path)?;
     println!("saved to {}", config::short_path(&path));
-    match sync::check(config.clone()).await {
+    match sync::check(config).await {
         Ok(Check::Accepted) => println!("the relay accepts this secret"),
         Ok(Check::Refused) => println!(
             "the relay doesn't accept this secret yet: set its CLIPSYNC_TOKEN to the output of `clipsync token` (see the README); the service keeps trying"

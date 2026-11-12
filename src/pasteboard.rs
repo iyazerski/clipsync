@@ -27,7 +27,7 @@ pub fn read() -> Option<String> {
         let private = pasteboard.types().is_some_and(|types| {
             types
                 .iter()
-                .any(|kind| PRIVATE_TYPES.iter().any(|p| kind.to_string() == *p))
+                .any(|kind| PRIVATE_TYPES.contains(&kind.to_string().as_str()))
         });
         if private {
             return None;
