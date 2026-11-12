@@ -21,7 +21,7 @@ class SendActivity : Activity() {
         super.onCreate(savedInstanceState)
         val text = when (intent.action) {
             Intent.ACTION_PROCESS_TEXT -> intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString()
-            Intent.ACTION_SEND -> intent.getStringExtra(Intent.EXTRA_TEXT)
+            Intent.ACTION_SEND -> intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()
             else -> {
                 readClipboard = true
                 return

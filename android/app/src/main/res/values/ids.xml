@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fixed ids for the pairing fields, so Android restores what was typed after a rotation. -->
+    <item name="relay" type="id" />
+    <item name="secret" type="id" />
+</resources>
