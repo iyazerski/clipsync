@@ -13,12 +13,14 @@ use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD as B64;
 use ring::aead::{AES_256_GCM, Aad, LessSafeKey, NONCE_LEN, Nonce, UnboundKey};
 use ring::hmac;
-use ring::rand::{SecureRandom, SystemRandom};
+use ring::rand::SystemRandom;
 
 /// The secret's length in bytes.
 const SECRET_LEN: usize = 32;
 /// The first byte of a sealed clip; bumped if the format changes.
 const VERSION: u8 = 1;
+/// The version and the nonce, before the ciphertext.
+const HEADER: usize = 1 + NONCE_LEN;
 
 /// The token and the key that a secret gives.
 pub struct Keys {
@@ -28,11 +30,15 @@ pub struct Keys {
 
 /// Make a new random secret, in base64url.
 pub fn new_secret() -> Result<String> {
-    let mut secret = [0; SECRET_LEN];
-    SystemRandom::new()
-        .fill(&mut secret)
-        .map_err(|_| anyhow::anyhow!("no randomness"))?;
-    Ok(B64.encode(secret))
+    Ok(B64.encode(random::<SECRET_LEN>()?))
+}
+
+/// `N` random bytes from the system.
+pub fn random<const N: usize>() -> Result<[u8; N]> {
+    // ring's error says nothing more than that it failed.
+    let bytes =
+        ring::rand::generate(&SystemRandom::new()).map_err(|_| anyhow::anyhow!("no randomness"))?;
+    Ok(bytes.expose())
 }
 
 impl Keys {
@@ -57,47 +63,48 @@ impl Keys {
 
     /// Seal `text` with a fresh random nonce.
     pub fn seal(&self, text: &str) -> Result<String> {
-        let mut nonce = [0; NONCE_LEN];
-        SystemRandom::new()
-            .fill(&mut nonce)
-            .map_err(|_| anyhow::anyhow!("no randomness"))?;
-        self.seal_with(nonce, text)
+        self.seal_with(random()?, text)
     }
 
     fn seal_with(&self, nonce: [u8; NONCE_LEN], text: &str) -> Result<String> {
-        let mut body = text.as_bytes().to_vec();
-        self.key
-            .seal_in_place_append_tag(Nonce::assume_unique_for_key(nonce), Aad::empty(), &mut body)
-            .map_err(|_| anyhow::anyhow!("sealing failed"))?;
-        let mut sealed = Vec::with_capacity(1 + NONCE_LEN + body.len());
+        let tag_len = self.key.algorithm().tag_len();
+        let mut sealed = Vec::with_capacity(HEADER + text.len() + tag_len);
         sealed.push(VERSION);
         sealed.extend_from_slice(&nonce);
-        sealed.extend_from_slice(&body);
+        sealed.extend_from_slice(text.as_bytes());
+        let tag = self
+            .key
+            .seal_in_place_separate_tag(
+                Nonce::assume_unique_for_key(nonce),
+                Aad::empty(),
+                &mut sealed[HEADER..],
+            )
+            .map_err(|_| anyhow::anyhow!("sealing failed"))?;
+        sealed.extend_from_slice(tag.as_ref());
         Ok(B64.encode(sealed))
     }
 
     /// Open a sealed clip; fails if it was sealed with another secret or changed.
     pub fn open(&self, sealed: &str) -> Result<String> {
-        let sealed = B64.decode(sealed).context("not base64url")?;
-        let Some((&version, rest)) = sealed.split_first() else {
+        let mut sealed = B64.decode(sealed).context("not base64url")?;
+        let Some(&version) = sealed.first() else {
             bail!("empty clip");
         };
         ensure!(
             version == VERSION,
             "clip format {version} is unknown; update clipsync"
         );
-        ensure!(rest.len() >= NONCE_LEN, "clip too short");
-        let (nonce, body) = rest.split_at(NONCE_LEN);
-        let nonce =
-            Nonce::try_assume_unique_for_key(nonce).map_err(|_| anyhow::anyhow!("bad nonce"))?;
-        let mut body = body.to_vec();
-        let text = self
+        ensure!(sealed.len() >= HEADER, "clip too short");
+        let nonce = Nonce::try_assume_unique_for_key(&sealed[1..HEADER])
+            .map_err(|_| anyhow::anyhow!("bad nonce"))?;
+        // Decrypts in place and moves the text to the front of the buffer.
+        let len = self
             .key
-            .open_in_place(nonce, Aad::empty(), &mut body)
-            .map_err(|_| {
-                anyhow::anyhow!("can't open the clip: the devices use different secrets")
-            })?;
-        String::from_utf8(text.to_vec()).context("the clip isn't UTF-8")
+            .open_within(nonce, Aad::empty(), &mut sealed, HEADER..)
+            .map_err(|_| anyhow::anyhow!("can't open the clip: the devices use different secrets"))?
+            .len();
+        sealed.truncate(len);
+        String::from_utf8(sealed).context("the clip isn't UTF-8")
     }
 }
 
