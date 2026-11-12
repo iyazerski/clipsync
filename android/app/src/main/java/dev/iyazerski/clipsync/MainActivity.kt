@@ -25,6 +25,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -65,6 +66,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
@@ -310,7 +312,8 @@ class MainActivity : ComponentActivity() {
     private fun Footer() {
         var confirmUnpair by rememberSaveable { mutableStateOf(false) }
         Column(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Wraps so neither button is squeezed out with large text.
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
                 TextButton(onClick = ::checkForUpdates, enabled = updating == null) {
                     Symbol(R.drawable.sym_system_update, Modifier.size(ButtonDefaults.IconSize))
                     Spacer(Modifier.width(ButtonDefaults.IconSpacing))
@@ -502,14 +505,20 @@ private fun Step(number: Int, content: @Composable () -> Unit) {
 /** A list row inside a card: icon, title, explanation, and an optional action at the end. */
 @Composable
 private fun Item(icon: Int, title: String, detail: String, action: (@Composable () -> Unit)? = null) {
+    // With large text a trailing button would squeeze the words, so it goes under them instead.
+    val stacked = LocalDensity.current.fontScale > 1.3f
     Row(Modifier.fillMaxWidth().padding(PaddingValues(vertical = 10.dp)), verticalAlignment = Alignment.CenterVertically) {
         Symbol(icon, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.bodyLarge)
             Text(detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (action != null && stacked) {
+                Spacer(Modifier.height(8.dp))
+                action()
+            }
         }
-        if (action != null) {
+        if (action != null && !stacked) {
             Spacer(Modifier.width(12.dp))
             action()
         }
