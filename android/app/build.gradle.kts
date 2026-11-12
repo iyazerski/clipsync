@@ -7,7 +7,7 @@ android {
         // UI strings are intentionally inline (single-language private app).
         disable += setOf("SetTextI18n", "HardcodedText")
         // Pinned to the API level of the target phone (Android 16); not chasing newer SDKs.
-        disable += setOf("OldTargetApi", "GradleDependency")
+        disable += setOf("OldTargetApi", "GradleDependency", "AndroidGradlePluginVersion")
         // A sideloaded app (not on Play) whose whole job is a long-lived connection: it asks to skip battery
         // optimizations on purpose.
         disable += "BatteryLife"
