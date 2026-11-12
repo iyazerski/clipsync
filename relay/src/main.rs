@@ -17,16 +17,17 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
-use axum::extract::{DefaultBodyLimit, State};
-use axum::http::{HeaderMap, StatusCode, header};
+use axum::extract::{DefaultBodyLimit, FromRequestParts, State};
+use axum::http::request::Parts;
+use axum::http::{StatusCode, header};
+use axum::response::IntoResponse;
 use axum::response::sse::{Event, KeepAlive, Sse};
-use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use clap::Parser;
 use clipsync_proto::{CLIP_PATH, DEVICE_HEADER, EVENTS_PATH, MAX_DEVICE_ID, MAX_SEALED};
 use futures_util::Stream;
-use ring::digest::{SHA256, digest};
+use ring::digest::{Digest, SHA256, digest};
 use serde_json::json;
 use tokio::sync::broadcast;
 
@@ -68,7 +69,7 @@ struct Latest {
 struct Relay {
     /// The token's SHA-256, compared with the request token's: comparing
     /// digests leaks nothing useful through timing.
-    token: Vec<u8>,
+    token: Digest,
     ttl: Duration,
     latest: Mutex<Latest>,
     clips: broadcast::Sender<Arc<Clip>>,
@@ -76,27 +77,53 @@ struct Relay {
 
 impl Relay {
     fn latest(&self) -> MutexGuard<'_, Latest> {
-        // A panic aborts the process (see the release profile), so the lock
-        // is never poisoned in release; tests just carry on.
-        self.latest.lock().unwrap_or_else(|e| e.into_inner())
+        self.latest
+            .lock()
+            .expect("a panic aborts the relay, so the lock is never poisoned")
     }
+}
 
-    /// The requesting device's id, if the request has the right token.
-    fn device(&self, headers: &HeaderMap) -> Result<String, StatusCode> {
-        let token = headers
+/// The requesting device's id: extracting it refuses requests without the
+/// right token or a valid id.
+struct Device(String);
+
+impl FromRequestParts<Arc<Relay>> for Device {
+    type Rejection = StatusCode;
+
+    async fn from_request_parts(parts: &mut Parts, relay: &Arc<Relay>) -> Result<Self, StatusCode> {
+        let token = parts
+            .headers
             .get(header::AUTHORIZATION)
             .and_then(|v| v.to_str().ok())
             .and_then(|v| v.strip_prefix("Bearer "))
             .ok_or(StatusCode::UNAUTHORIZED)?;
-        if digest(&SHA256, token.as_bytes()).as_ref() != self.token {
+        if digest(&SHA256, token.as_bytes()).as_ref() != relay.token.as_ref() {
             return Err(StatusCode::UNAUTHORIZED);
         }
-        headers
+        parts
+            .headers
             .get(DEVICE_HEADER)
             .and_then(|v| v.to_str().ok())
             .filter(|id| !id.is_empty() && id.len() <= MAX_DEVICE_ID)
-            .map(str::to_owned)
+            .map(|id| Self(id.to_owned()))
             .ok_or(StatusCode::BAD_REQUEST)
+    }
+}
+
+/// The last clip id a device has seen, from `Last-Event-ID`; 0 without one.
+struct LastEventId(u64);
+
+impl<S: Send + Sync> FromRequestParts<S> for LastEventId {
+    type Rejection = Infallible;
+
+    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Infallible> {
+        let seen = parts
+            .headers
+            .get("last-event-id")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(0);
+        Ok(Self(seen))
     }
 }
 
@@ -119,7 +146,7 @@ async fn main() -> Result<()> {
 /// The relay's routes, for `token`, keeping clips for `ttl`.
 fn app(token: &str, ttl: Duration) -> Router {
     let relay = Arc::new(Relay {
-        token: digest(&SHA256, token.as_bytes()).as_ref().to_vec(),
+        token: digest(&SHA256, token.as_bytes()),
         ttl,
         latest: Mutex::default(),
         clips: broadcast::channel(QUEUE).0,
@@ -146,15 +173,15 @@ async fn pair_page() -> impl IntoResponse {
 }
 
 /// Keep a clip as the latest and pass it to the other devices.
-async fn publish(State(relay): State<Arc<Relay>>, headers: HeaderMap, sealed: String) -> Response {
-    let from = match relay.device(&headers) {
-        Ok(device) => device,
-        Err(status) => return status.into_response(),
-    };
+async fn publish(
+    State(relay): State<Arc<Relay>>,
+    Device(from): Device,
+    sealed: String,
+) -> Result<Json<serde_json::Value>, StatusCode> {
     // Base64url only: event data must not hold line breaks.
     let valid = |c: char| c.is_ascii_alphanumeric() || c == '-' || c == '_';
     if sealed.is_empty() || !sealed.chars().all(valid) {
-        return StatusCode::BAD_REQUEST.into_response();
+        return Err(StatusCode::BAD_REQUEST);
     }
     let clip = {
         let mut latest = relay.latest();
@@ -169,85 +196,87 @@ async fn publish(State(relay): State<Arc<Relay>>, headers: HeaderMap, sealed: St
             from,
             sealed,
         });
-        latest.clip = Some(clip.clone());
+        latest.clip = Some(Arc::clone(&clip));
         clip
     };
+    let id = clip.id;
     // Forget it after the TTL, unless a newer clip replaced it.
-    tokio::spawn({
-        let (relay, id) = (relay.clone(), clip.id);
-        async move {
-            tokio::time::sleep(relay.ttl).await;
-            let mut latest = relay.latest();
-            if latest.clip.as_ref().is_some_and(|clip| clip.id == id) {
-                latest.clip = None;
-            }
+    let expiring = Arc::clone(&relay);
+    tokio::spawn(async move {
+        tokio::time::sleep(expiring.ttl).await;
+        let mut latest = expiring.latest();
+        if latest.clip.as_ref().is_some_and(|clip| clip.id == id) {
+            latest.clip = None;
         }
     });
     // No listeners is fine: they get the latest clip when they connect.
-    let _ = relay.clips.send(clip.clone());
-    Json(json!({ "id": clip.id })).into_response()
+    let _ = relay.clips.send(clip);
+    Ok(Json(json!({ "id": id })))
 }
 
 /// Stream clips from the other devices: the latest one first, if it's newer
 /// than `Last-Event-ID`, then each new one.
-async fn events(State(relay): State<Arc<Relay>>, headers: HeaderMap) -> Response {
-    let device = match relay.device(&headers) {
-        Ok(device) => device,
-        Err(status) => return status.into_response(),
-    };
-    let seen = headers
-        .get("last-event-id")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(0);
+async fn events(
+    State(relay): State<Arc<Relay>>,
+    Device(device): Device,
+    LastEventId(seen): LastEventId,
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     // Subscribe before reading the latest clip, so none falls in between.
     let clips = relay.clips.subscribe();
     let first = relay.latest().clip.clone();
-    Sse::new(stream(relay, clips, first, device, seen))
-        .keep_alive(KeepAlive::new().interval(KEEP_ALIVE))
-        .into_response()
+    let listener = Listener {
+        relay,
+        clips,
+        first,
+        device,
+        seen,
+    };
+    let events = futures_util::stream::unfold(listener, |mut listener| async move {
+        let clip = listener.next_clip().await?;
+        let event = Event::default().id(clip.id.to_string()).data(&clip.sealed);
+        Some((Ok(event), listener))
+    });
+    Sse::new(events).keep_alive(KeepAlive::new().interval(KEEP_ALIVE))
 }
 
-/// The events for `device`: `first`, then each clip from `clips`, skipping
-/// its own clips and those it has already seen.
-fn stream(
+/// One device's place in the stream of clips.
+struct Listener {
     relay: Arc<Relay>,
     clips: broadcast::Receiver<Arc<Clip>>,
+    /// The latest clip when the device connected, sent before the new ones.
     first: Option<Arc<Clip>>,
     device: String,
+    /// The last clip id the device has, so it gets no clip twice.
     seen: u64,
-) -> impl Stream<Item = Result<Event, Infallible>> {
-    futures_util::stream::unfold(
-        (clips, first, seen),
-        move |(mut clips, mut next, mut seen)| {
-            let (relay, device) = (relay.clone(), device.clone());
-            async move {
-                loop {
-                    let clip = match next.take() {
-                        Some(clip) => clip,
-                        None => match clips.recv().await {
-                            Ok(clip) => clip,
-                            // Only the latest clip matters, so a stream that
-                            // fell behind skips to it.
-                            Err(broadcast::error::RecvError::Lagged(_)) => {
-                                match relay.latest().clip.clone() {
-                                    Some(clip) => clip,
-                                    None => continue,
-                                }
-                            }
-                            Err(broadcast::error::RecvError::Closed) => return None,
-                        },
-                    };
-                    if clip.id <= seen || clip.from == device {
-                        continue;
+}
+
+impl Listener {
+    /// The next clip for the device, skipping its own; `None` once the
+    /// relay stops.
+    async fn next_clip(&mut self) -> Option<Arc<Clip>> {
+        loop {
+            let clip = match self.first.take() {
+                Some(clip) => clip,
+                None => match self.clips.recv().await {
+                    Ok(clip) => clip,
+                    // Only the latest clip matters, so a stream that fell
+                    // behind skips to it.
+                    Err(broadcast::error::RecvError::Lagged(_)) => {
+                        let latest = self.relay.latest().clip.clone();
+                        match latest {
+                            Some(clip) => clip,
+                            None => continue,
+                        }
                     }
-                    seen = clip.id;
-                    let event = Event::default().id(clip.id.to_string()).data(&clip.sealed);
-                    return Some((Ok(event), (clips, None, seen)));
-                }
+                    Err(broadcast::error::RecvError::Closed) => return None,
+                },
+            };
+            if clip.id > self.seen && clip.from != self.device {
+                self.seen = clip.id;
+                return Some(clip);
             }
-        },
-    )
+        }
+    }
 }
 
 /// Wait for Ctrl-C or SIGTERM (Kubernetes stopping the pod).
