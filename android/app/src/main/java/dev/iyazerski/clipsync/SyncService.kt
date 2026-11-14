@@ -40,6 +40,8 @@ class SyncService : Service() {
     /** Set by [kick] to cut a backoff wait short. */
     private var kicked = false
     private val lock = Object()
+    /** Kept across streams, so a reconnect can't bring a clip twice. Listener thread only. */
+    private val opened = Seal.Opened()
 
     private val network = object : ConnectivityManager.NetworkCallback() {
         private var current: Network? = null
@@ -160,7 +162,7 @@ class SyncService : Service() {
     private fun received(seal: Seal, id: Long?, sealed: String) {
         if (id != null && id > settings.seen) settings.seen = id
         val text = try {
-            seal.open(sealed)
+            seal.open(sealed, opened)
         } catch (e: IllegalArgumentException) {
             setStatus(e.message ?: "Couldn't open a clip")
             return

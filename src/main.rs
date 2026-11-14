@@ -93,11 +93,11 @@ fn saved() -> Result<Config> {
 /// background service.
 async fn setup(relay: String, secret: Option<String>) -> Result<()> {
     let relay = relay.trim().trim_end_matches('/').to_owned();
-    let valid = reqwest::Url::parse(&relay)
-        .is_ok_and(|url| matches!(url.scheme(), "https" | "http") && url.has_host());
+    let valid =
+        reqwest::Url::parse(&relay).is_ok_and(|url| url.scheme() == "https" && url.has_host());
     ensure!(
         valid,
-        "the relay should be a URL, like https://clip.example.com"
+        "the relay should be an https:// URL, like https://clip.example.com"
     );
     let path = config::path();
     let secret = secret.map(|secret| secret.trim().to_owned());

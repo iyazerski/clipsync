@@ -10,7 +10,7 @@
 //! text arriving twice (say, from Universal Clipboard too) is ignored.
 
 use std::sync::{Arc, Mutex, MutexGuard};
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime};
 
 use anyhow::{Context, Result, bail};
 use clipsync_proto::{CLIP_PATH, DEVICE_HEADER, EVENTS_PATH, MAX_TEXT};
@@ -22,7 +22,7 @@ use tokio::sync::{Notify, watch};
 
 use crate::config::Config;
 use crate::pasteboard;
-use crate::seal::Keys;
+use crate::seal::{Keys, Opened, now_ms};
 
 /// How often to look at the pasteboard's change count.
 const POLL: Duration = Duration::from_millis(300);
@@ -245,11 +245,12 @@ impl Relay {
     /// Follow the relay's event stream until it ends, goes silent, or the
     /// Mac wakes from sleep, and put each clip on `clipboard`. `seen` is
     /// the last clip's id, kept across streams so a reconnect brings only
-    /// what was missed.
+    /// what was missed; `opened` is kept too, so no clip opens twice.
     async fn stream(
         &self,
         clipboard: &Arc<Clipboard>,
         seen: &mut u64,
+        opened: &mut Opened,
         woke: &Notify,
     ) -> Result<()> {
         let resp = self
@@ -282,14 +283,19 @@ impl Relay {
             };
             for event in events.push(&chunk) {
                 *seen = (*seen).max(event.id.unwrap_or(0));
-                self.apply(clipboard, event).await?;
+                self.apply(clipboard, event, opened).await?;
             }
         }
     }
 
     /// Open a clip and put it on `clipboard`.
-    async fn apply(&self, clipboard: &Arc<Clipboard>, event: Event) -> Result<()> {
-        let text = match self.keys.open(&event.data) {
+    async fn apply(
+        &self,
+        clipboard: &Arc<Clipboard>,
+        event: Event,
+        opened: &mut Opened,
+    ) -> Result<()> {
+        let text = match self.keys.open(&event.data, now_ms(), opened) {
             Ok(text) => text,
             Err(e) => {
                 eprintln!("skipped a clip: {e:#}");
@@ -356,10 +362,11 @@ async fn send(
 async fn listen(relay: &Relay, clipboard: &Arc<Clipboard>, woke: &Notify) -> Result<()> {
     // Clips from before this start are old news.
     let mut seen = now_ms();
+    let mut opened = Opened::default();
     let mut backoff = MIN_BACKOFF;
     loop {
         let started = Instant::now();
-        if let Err(e) = relay.stream(clipboard, &mut seen, woke).await {
+        if let Err(e) = relay.stream(clipboard, &mut seen, &mut opened, woke).await {
             eprintln!("relay: {e:#}");
         }
         if started.elapsed() > STABLE_AFTER {
@@ -371,12 +378,6 @@ async fn listen(relay: &Relay, clipboard: &Arc<Clipboard>, woke: &Notify) -> Res
         }
         backoff = (backoff * 2).min(MAX_BACKOFF);
     }
-}
-
-fn now_ms() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX))
 }
 
 /// A text's SHA-256: what the service remembers instead of the text.

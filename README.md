@@ -29,7 +29,7 @@ phone ┘   (encrypted text)   └── …
   the phone, it takes one tap: select text and pick **Send to Macs**, share text to clipsync, or tap the
   **Send clipboard** tile in Quick Settings.
 - **Privacy:** your devices share one secret. Text is encrypted on the device before it leaves, and the
-  relay can't read it. Without the secret, the relay refuses to talk to a device.
+  relay can't read it, or replay old copies. Without the secret, the relay refuses to talk to a device.
 
 ## Setup
 
