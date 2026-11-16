@@ -6,6 +6,11 @@ on:
       - main
   pull_request:
 
+# Only PR runs share a group, so a new push cancels the outdated run and frees its macOS runner.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   rust:
     # The Mac service builds on macOS only (AppKit); the relay builds anywhere.
