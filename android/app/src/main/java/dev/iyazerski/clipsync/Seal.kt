@@ -11,7 +11,7 @@ import javax.crypto.spec.SecretKeySpec
 import kotlin.math.absoluteValue
 
 /**
- * Sealing clips, so the relay passes them on without reading them. The same scheme as the Mac's
+ * Sealing clips, so the relay passes them on without reading them. The same scheme as the desktop's
  * `src/seal.rs`, which shares its test vectors with SealTest.
  *
  * One secret, shared by your devices, gives the relay token and the sealing key: each is an

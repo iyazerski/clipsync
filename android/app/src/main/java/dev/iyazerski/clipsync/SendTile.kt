@@ -4,7 +4,7 @@ import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 
 /**
- * A Quick Settings tile that sends the clipboard to the Macs in one tap. It also tells the app
+ * A Quick Settings tile that sends the clipboard to the computers in one tap. It also tells the app
  * whether it's in Quick Settings: Android has no call to ask that.
  */
 class SendTile : TileService() {

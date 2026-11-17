@@ -1,9 +1,10 @@
 name: Release
 
-# Every push to main that changes the Mac service or the app publishes a
-# release v0.1.<run> with both, so these links always get the newest:
+# Every push to main that changes the desktop service or the app publishes a
+# release v0.1.<run> with all of them, so these links always get the newest:
 #   https://github.com/<owner>/<repo>/releases/latest/download/clipsync.apk
 #   https://github.com/<owner>/<repo>/releases/latest/download/clipsync-aarch64-apple-darwin.tar.gz
+#   https://github.com/<owner>/<repo>/releases/latest/download/clipsync-x86_64-pc-windows-msvc.zip
 on:
   push:
     branches: [main]
@@ -56,6 +57,45 @@ jobs:
           path: dist/*
           if-no-files-found: error
 
+  windows:
+    # x86_64 only: Windows on Arm runs it through emulation.
+    runs-on: windows-latest
+    env:
+      TARGET: x86_64-pc-windows-msvc
+      ASSET: clipsync-x86_64-pc-windows-msvc.zip
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ env.TARGET }}
+      # clipsyncw.exe is the same program without a console window, for the
+      # background service. Only the final link differs, so it builds in seconds.
+      - name: Build binaries
+        env:
+          CLIPSYNC_VERSION: ${{ env.VERSION }}
+        run: |
+          mkdir dist
+          cargo build --release --locked --target "$TARGET"
+          cp "target/$TARGET/release/clipsync.exe" dist/clipsync.exe
+          cargo rustc --release --locked --target "$TARGET" --bin clipsync -- --cfg windowless
+          cp "target/$TARGET/release/clipsync.exe" dist/clipsyncw.exe
+      - name: Test binary
+        run: dist/clipsync.exe --version
+      - name: Package binaries
+        working-directory: dist
+        run: |
+          7z a "$ASSET" clipsync.exe clipsyncw.exe
+          rm clipsync.exe clipsyncw.exe
+          sha256sum "$ASSET" > "$ASSET.sha256"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows
+          path: dist/*
+          if-no-files-found: error
+
   android:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -90,7 +130,7 @@ jobs:
           if-no-files-found: error
 
   publish:
-    needs: [mac, android]
+    needs: [mac, windows, android]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -107,5 +147,5 @@ jobs:
           gh release create "v$VERSION" dist/* \
             --target "$GITHUB_SHA" \
             --title "clipsync v$VERSION" \
-            --notes "Build from ${GITHUB_SHA::7}. Mac: \`curl -fsSL https://raw.githubusercontent.com/$GH_REPO/main/install.sh | sh\`. Phone: open clipsync.apk on the phone and allow installing from this source." \
+            --notes "Build from ${GITHUB_SHA::7}. Mac: \`curl -fsSL https://raw.githubusercontent.com/$GH_REPO/main/install.sh | sh\`. Windows: \`irm https://raw.githubusercontent.com/$GH_REPO/main/install.ps1 | iex\`. Phone: open clipsync.apk on the phone and allow installing from this source." \
             --latest

@@ -1,4 +1,4 @@
-//! What the clipsync relay and its clients (the Mac service and the Android
+//! What the clipsync relay and its clients (the desktop service and the Android
 //! app) agree on. The Android app repeats these values in `Relay.kt`.
 //!
 //! Every request carries `Authorization: Bearer <token>` and the device's id

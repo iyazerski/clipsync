@@ -1,12 +1,23 @@
-//! clipsync: keep the clipboards of your Macs and an Android phone in sync
-//! through a tiny relay.
+//! clipsync: keep the clipboards of your Macs, Windows PCs, and an Android
+//! phone in sync through a tiny relay.
 //!
 //! `setup` saves the relay and the shared secret and starts the background
 //! service ([`agent`]), which runs [`sync`]. `pair` shows how to add the
-//! phone and other Macs, and `update` installs the latest release.
+//! phone and other computers, and `update` installs the latest release.
 
+// clipsyncw.exe, the Windows background service, is this program built with
+// `--cfg windowless`.
+#![cfg_attr(windowless, windows_subsystem = "windows")]
+
+#[cfg(not(any(target_os = "macos", windows)))]
+compile_error!("clipsync runs on macOS and Windows");
+
+#[cfg_attr(target_os = "macos", path = "agent/macos.rs")]
+#[cfg_attr(windows, path = "agent/windows.rs")]
 mod agent;
 mod config;
+#[cfg_attr(target_os = "macos", path = "pasteboard/macos.rs")]
+#[cfg_attr(windows, path = "pasteboard/windows.rs")]
 mod pasteboard;
 mod seal;
 mod sync;
@@ -36,11 +47,11 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Cmd {
-    /// Link this Mac to the relay and sync in the background from now on
+    /// Link this computer to the relay and sync in the background from now on
     ///
-    /// It starts at login, restarts after a crash, and logs to
-    /// ~/Library/Logs/clipsync.log. On the first Mac, leave out --secret to
-    /// make a new one; on the others, pass the one `clipsync pair` shows.
+    /// It starts at login, restarts after a crash, and logs to a file. On
+    /// the first computer, leave out --secret to make a new one; on the
+    /// others, pass the one `clipsync pair` shows.
     Setup {
         /// The relay's address, like https://clip.example.com
         #[arg(long)]
@@ -49,7 +60,7 @@ enum Cmd {
         #[arg(long)]
         secret: Option<String>,
     },
-    /// Show how to add your phone (a QR code) and other Macs
+    /// Show how to add your phone (a QR code) and other computers
     Pair,
     /// Print the relay token, for the relay's CLIPSYNC_TOKEN
     Token,
@@ -59,6 +70,10 @@ enum Cmd {
     Uninstall,
     /// Install the latest release if it's newer, and restart the background service on it
     Update,
+    /// Keep `clipsync run` going (what starts at login)
+    #[cfg(windows)]
+    #[command(hide = true)]
+    Service,
 }
 
 #[tokio::main]
@@ -72,6 +87,8 @@ async fn main() -> Result<()> {
         }
         Cmd::Run => sync::run(saved()?).await,
         Cmd::Update => update::run().await,
+        #[cfg(windows)]
+        Cmd::Service => tokio::task::spawn_blocking(agent::serve).await?,
         Cmd::Uninstall => {
             if agent::uninstall()? {
                 println!("stopped; clipsync no longer runs in the background");
@@ -124,16 +141,16 @@ async fn setup(relay: String, secret: Option<String>) -> Result<()> {
         ),
         Err(e) => println!("couldn't reach the relay ({e:#}); the service keeps trying"),
     }
-    let log = agent::install(&["run"])?;
+    let log = agent::install()?;
     println!(
         "clipsync now runs in the background and starts at login; log: {}",
         config::short_path(&log)
     );
-    println!("run `clipsync pair` to add your phone and other Macs");
+    println!("run `clipsync pair` to add your phone and other computers");
     Ok(())
 }
 
-/// Print a QR code for the phone and the setup command for other Macs.
+/// Print a QR code for the phone and the setup command for other computers.
 fn pair() -> Result<()> {
     let config = saved()?;
     // The secret goes in the fragment, which the browser never sends to
@@ -148,7 +165,7 @@ fn pair() -> Result<()> {
         .build();
     println!("Phone: scan this with the camera and open the link, then tap \"Open clipsync\":\n");
     println!("{qr}\n");
-    println!("Another Mac: install clipsync, then run");
+    println!("Another computer: install clipsync, then run");
     println!(
         "  clipsync setup --relay {} --secret {}\n",
         config.relay, config.secret

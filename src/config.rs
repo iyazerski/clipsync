@@ -1,9 +1,8 @@
 //! Where clipsync keeps the relay address, the shared secret, and this
-//! Mac's device id.
+//! computer's device id.
 
 use std::fmt;
 use std::io::Write;
-use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
@@ -17,7 +16,7 @@ pub struct Config {
     pub relay: String,
     /// The secret all your devices share (see [`crate::seal`]).
     pub secret: String,
-    /// This Mac's id, so the relay doesn't send its own clips back.
+    /// This computer's id, so the relay doesn't send its own clips back.
     pub device: String,
 }
 
@@ -31,29 +30,35 @@ impl fmt::Debug for Config {
     }
 }
 
-/// The home folder: `$HOME`, else `/`.
+/// The home folder, else `/`.
 pub fn home() -> PathBuf {
-    std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| "/".into())
+    dirs::home_dir().unwrap_or_else(|| "/".into())
+}
+
+/// clipsync's folder: `~/Library/Application Support/clipsync` on a Mac,
+/// `%LOCALAPPDATA%\clipsync` on Windows. Not the roaming `%APPDATA%`: a
+/// roaming profile would copy the device id to the user's other PCs.
+pub fn dir() -> PathBuf {
+    dirs::data_local_dir().unwrap_or_else(home).join("clipsync")
 }
 
 /// The config file's usual place.
 pub fn path() -> PathBuf {
-    home().join("Library/Application Support/clipsync/config.json")
+    dir().join("config.json")
 }
 
 /// `path` with the home folder shown as `~`.
 pub fn short_path(path: &Path) -> String {
     match path.strip_prefix(home()) {
-        Ok(rest) => format!("~/{}", rest.display()),
+        Ok(rest) => Path::new("~").join(rest).display().to_string(),
         Err(_) => path.display().to_string(),
     }
 }
 
-/// A new random device id for this Mac.
+/// A new random device id for this computer.
 pub fn new_device_id() -> Result<String> {
-    Ok(format!("mac-{}", B64.encode(crate::seal::random::<9>()?)))
+    let os = if cfg!(windows) { "win" } else { "mac" };
+    Ok(format!("{os}-{}", B64.encode(crate::seal::random::<9>()?)))
 }
 
 impl Config {
@@ -74,12 +79,12 @@ impl Config {
             std::fs::create_dir_all(dir).with_context(|| format!("creating {}", dir.display()))?;
         }
         let write = || -> std::io::Result<()> {
-            let mut file = std::fs::OpenOptions::new()
-                .write(true)
-                .create(true)
-                .truncate(true)
-                .mode(0o600)
-                .open(path)?;
+            let mut options = std::fs::OpenOptions::new();
+            options.write(true).create(true).truncate(true);
+            // On Windows, the folder's permissions already keep it to this user.
+            #[cfg(unix)]
+            std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
+            let mut file = options.open(path)?;
             file.write_all(&serde_json::to_vec_pretty(self)?)
         };
         write().with_context(|| format!("writing {}", path.display()))
@@ -88,8 +93,6 @@ impl Config {
 
 #[cfg(test)]
 mod tests {
-    use std::os::unix::fs::PermissionsExt;
-
     use super::*;
 
     #[test]
@@ -104,8 +107,12 @@ mod tests {
         };
         config.save(&path).unwrap();
         assert_eq!(Config::load(&path).unwrap(), Some(config.clone()));
-        let mode = std::fs::metadata(&path).unwrap().permissions().mode();
-        assert_eq!(mode & 0o777, 0o600);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = std::fs::metadata(&path).unwrap().permissions().mode();
+            assert_eq!(mode & 0o777, 0o600);
+        }
         assert!(!format!("{config:?}").contains("secret"));
     }
 }

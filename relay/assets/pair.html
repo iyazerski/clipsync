@@ -18,7 +18,7 @@
 <body>
 <main>
   <h1>clipsync</h1>
-  <p id="hint">Tap below to pair this phone with your Macs.</p>
+  <p id="hint">Tap below to pair this phone with your computers.</p>
   <a class="button" id="open" href="#">Open clipsync</a>
   <p class="small">No app yet? <a href="https://github.com/iyazerski/clipsync/releases/latest/download/clipsync.apk">Download the APK</a>, install it, then come back to this page.</p>
 </main>
@@ -30,7 +30,7 @@
     open.href = "clipsync://pair?relay=" + encodeURIComponent(location.origin) + "&secret=" + secret;
     history.replaceState(null, "", location.pathname);
   } else {
-    document.getElementById("hint").textContent = "This link has no pairing secret. Run `clipsync pair` on a Mac and scan its QR code.";
+    document.getElementById("hint").textContent = "This link has no pairing secret. Run `clipsync pair` on a computer and scan its QR code.";
     open.remove();
   }
 </script>

@@ -3,6 +3,7 @@
 //! macOS has no "clipboard changed" event: tools poll the pasteboard's
 //! change count, which is cheap, and read the text only when it moves.
 
+use anyhow::Result;
 use objc2::rc::autoreleasepool;
 use objc2_app_kit::{NSPasteboard, NSPasteboardTypeString};
 use objc2_foundation::NSString;
@@ -21,8 +22,8 @@ pub fn change_count() -> isize {
 }
 
 /// The pasteboard's text, unless there is none or the copy is marked private.
-pub fn read() -> Option<String> {
-    autoreleasepool(|_| {
+pub fn read() -> Result<Option<String>> {
+    Ok(autoreleasepool(|_| {
         let pasteboard = NSPasteboard::generalPasteboard();
         let private = pasteboard.types().is_some_and(|types| {
             types
@@ -36,18 +37,18 @@ pub fn read() -> Option<String> {
         // sets up before any code runs.
         let kind = unsafe { NSPasteboardTypeString };
         pasteboard.stringForType(kind).map(|text| text.to_string())
-    })
+    }))
 }
 
 /// Replace the pasteboard's contents with `text`, and return the new
 /// change count.
-pub fn write(text: &str) -> isize {
-    autoreleasepool(|_| {
+pub fn write(text: &str) -> Result<isize> {
+    Ok(autoreleasepool(|_| {
         let pasteboard = NSPasteboard::generalPasteboard();
         pasteboard.clearContents();
         // SAFETY: as in `read`.
         let kind = unsafe { NSPasteboardTypeString };
         pasteboard.setString_forType(&NSString::from_str(text), kind);
         pasteboard.changeCount()
-    })
+    }))
 }

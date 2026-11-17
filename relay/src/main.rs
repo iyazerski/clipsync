@@ -8,7 +8,7 @@
 //! text. Clips are sealed on the devices, so the relay can't read them.
 //!
 //! It serves plain HTTP behind a TLS-terminating proxy, for one token
-//! (`CLIPSYNC_TOKEN`), which `clipsync token` prints on a Mac. `/pair` is
+//! (`CLIPSYNC_TOKEN`), which `clipsync token` prints on a computer. `/pair` is
 //! the page that `clipsync pair`'s QR code opens on the phone.
 
 use std::convert::Infallible;

@@ -24,7 +24,7 @@ import java.util.Date
 import kotlin.concurrent.thread
 
 /**
- * Keeps an event stream to the relay open and puts each clip from the Macs on the clipboard.
+ * Keeps an event stream to the relay open and puts each clip from the computers on the clipboard.
  *
  * A foreground service, so Android keeps it and its network access while the phone sleeps. It
  * reconnects when the stream drops, goes silent, or the phone switches networks. Writing the

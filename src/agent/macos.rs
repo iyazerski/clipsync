@@ -25,16 +25,16 @@ fn domain() -> String {
     format!("gui/{}", unsafe { libc::getuid() })
 }
 
-/// Install the agent to run this binary with `args`, replacing an earlier
-/// one, and start it. Returns the log path.
-pub fn install(args: &[&str]) -> Result<PathBuf> {
+/// Install the agent to run `clipsync run`, replacing an earlier one, and
+/// start it. Returns the log path.
+pub fn install() -> Result<PathBuf> {
     let exe = std::env::current_exe().context("finding the clipsync binary")?;
     let (plist, log) = (plist_path(), log_path());
     for dir in [plist.parent(), log.parent()].into_iter().flatten() {
         std::fs::create_dir_all(dir).with_context(|| format!("creating {}", dir.display()))?;
     }
     let program = std::iter::once(exe.to_string_lossy().into_owned())
-        .chain(args.iter().map(|arg| (*arg).to_owned()))
+        .chain(["run".to_owned()])
         .map(|arg| format!("    <string>{}</string>\n", xml_escape(&arg)))
         .collect::<String>();
     let log = xml_escape(&log.to_string_lossy());
