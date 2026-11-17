@@ -58,6 +58,13 @@ impl Release {
 
 /// Install the latest release over this binary if it's newer than [`VERSION`].
 pub async fn run() -> Result<()> {
+    let exe = std::env::current_exe().context("finding the clipsync binary")?;
+    // Homebrew owns the files under its Cellar, so replacing them would break `brew upgrade`.
+    if std::fs::canonicalize(&exe)
+        .is_ok_and(|path| path.components().any(|part| part.as_os_str() == "Cellar"))
+    {
+        bail!("clipsync was installed with Homebrew: run `brew upgrade clipsync` instead");
+    }
     let http = reqwest::Client::builder()
         // GitHub's API refuses requests without a user agent.
         .user_agent(format!("clipsync/{VERSION}"))
@@ -95,7 +102,6 @@ pub async fn run() -> Result<()> {
         hex(digest(&SHA256, &archive).as_ref()) == expected,
         "the download doesn't match its checksum; try again"
     );
-    let exe = std::env::current_exe().context("finding the clipsync binary")?;
     replace(&exe, &archive)?;
     println!("updated clipsync {VERSION} → {latest}");
     if agent::restart()? {

@@ -10,7 +10,7 @@ Include what you found, how to reproduce it, and the version (`clipsync --versio
 
 ## Supported versions
 
-Only the latest release gets fixes. Update with `clipsync update` on computers, **Check for updates** in the phone app, and `docker compose pull && docker compose up -d` on the relay.
+Only the latest release gets fixes. Update with `clipsync update` (or `brew upgrade clipsync`) on computers, **Check for updates** in the phone app, and `docker compose pull && docker compose up -d` on the relay.
 
 ## How clips are protected
 
@@ -22,6 +22,6 @@ Only the latest release gets fixes. Update with `clipsync update` on computers, 
 ## How releases are protected
 
 - Every release is built by [GitHub Actions](.github/workflows/release.yml) from the public source.
-- Every desktop archive has a SHA-256 checksum next to it. `install.sh`, `install.ps1` and `clipsync update` refuse a download that doesn't match it.
+- Every desktop archive has a SHA-256 checksum next to it. `install.sh`, `install.ps1` and `clipsync update` refuse a download that doesn't match it, and Homebrew checks the checksum in its formula.
 - Every APK is signed with the same key, so Android installs an update only if it comes from the same source.
 - The Mac and Windows binaries aren't code-signed or notarized yet.
