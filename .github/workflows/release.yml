@@ -5,6 +5,7 @@ name: Release
 #   https://github.com/<owner>/<repo>/releases/latest/download/clipsync.apk
 #   https://github.com/<owner>/<repo>/releases/latest/download/clipsync-aarch64-apple-darwin.tar.gz
 #   https://github.com/<owner>/<repo>/releases/latest/download/clipsync-x86_64-pc-windows-msvc.zip
+# It also updates Formula/clipsync.rb in iyazerski/homebrew-tap.
 on:
   push:
     branches: [main]
@@ -147,5 +148,34 @@ jobs:
           gh release create "v$VERSION" dist/* \
             --target "$GITHUB_SHA" \
             --title "clipsync v$VERSION" \
-            --notes "Build from ${GITHUB_SHA::7}. Mac: \`curl -fsSL https://raw.githubusercontent.com/$GH_REPO/main/install.sh | sh\`. Windows: \`irm https://raw.githubusercontent.com/$GH_REPO/main/install.ps1 | iex\`. Phone: open clipsync.apk on the phone and allow installing from this source." \
+            --notes "Build from ${GITHUB_SHA::7}. Mac: \`brew install iyazerski/tap/clipsync\`, or \`curl -fsSL https://raw.githubusercontent.com/$GH_REPO/main/install.sh | sh\`. Windows: \`irm https://raw.githubusercontent.com/$GH_REPO/main/install.ps1 | iex\`. Phone: open clipsync.apk on the phone and allow installing from this source." \
             --latest
+
+  homebrew:
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: mac
+          path: dist
+      - name: Push formula to iyazerski/homebrew-tap
+        env:
+          DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+        run: |
+          export GIT_SSH_COMMAND="ssh -i $RUNNER_TEMP/tap_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+          echo "$DEPLOY_KEY" > "$RUNNER_TEMP/tap_key"
+          chmod 600 "$RUNNER_TEMP/tap_key"
+          git clone --depth 1 git@github.com:iyazerski/homebrew-tap.git "$RUNNER_TEMP/tap"
+          mkdir -p "$RUNNER_TEMP/tap/Formula"
+          scripts/homebrew-formula.sh "$VERSION" dist > "$RUNNER_TEMP/tap/Formula/clipsync.rb"
+          cd "$RUNNER_TEMP/tap"
+          git add Formula/clipsync.rb
+          if git diff --cached --quiet; then
+            echo "Formula is already at $VERSION"
+            exit 0
+          fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -m "Update clipsync to $VERSION"
+          git push

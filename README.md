@@ -57,7 +57,14 @@ You need:
 
 ### 1. Set up your first computer
 
-On a Mac, in Terminal:
+On a Mac, in Terminal, with [Homebrew](https://brew.sh):
+
+```sh
+brew install iyazerski/tap/clipsync
+clipsync setup --relay https://clip.example.com
+```
+
+Or without Homebrew:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/iyazerski/clipsync/main/install.sh | sh
@@ -140,7 +147,7 @@ On a work PC, IT may manage this rule: ask them to allow that folder.
 | `clipsync setup --relay <url>` | Link this computer to the relay and start syncing in the background. Add `--secret` to join devices you already set up. |
 | `clipsync pair` | Show the QR code for your phone and the setup command for other computers. |
 | `clipsync token` | Print the token for the relay's `CLIPSYNC_TOKEN`. |
-| `clipsync update` | Install the latest version and restart the background service. |
+| `clipsync update` | Install the latest version and restart the background service. With Homebrew, run `brew upgrade clipsync` instead. |
 | `clipsync uninstall` | Stop syncing in the background. Your settings stay. |
 
 The service logs to `~/Library/Logs/clipsync.log` on a Mac and to `%LOCALAPPDATA%\clipsync\clipsync.log` on Windows. The phone app updates itself from **Check for updates**.
@@ -186,7 +193,7 @@ Not yet. The desktop service runs on Macs with Apple silicon and on Windows, and
 <details>
 <summary><b>How do I remove it?</b></summary>
 
-Run `clipsync uninstall`. Then delete the binary (`~/.local/bin/clipsync` on a Mac, `%LOCALAPPDATA%\Programs\clipsync` on Windows) and the settings folder (`~/Library/Application Support/clipsync` on a Mac, `%LOCALAPPDATA%\clipsync` on Windows). On the phone, tap **Unpair** and uninstall the app.
+Run `clipsync uninstall`. Then run `brew uninstall clipsync`, or delete the binary (`~/.local/bin/clipsync` on a Mac, `%LOCALAPPDATA%\Programs\clipsync` on Windows) and the settings folder (`~/Library/Application Support/clipsync` on a Mac, `%LOCALAPPDATA%\clipsync` on Windows). On the phone, tap **Unpair** and uninstall the app.
 
 </details>
 
