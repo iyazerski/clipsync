@@ -46,7 +46,13 @@ try {
   Remove-Item -Recurse -Force $installTmp
 }
 
-Write-Host "$(& "$dir\clipsync.exe" --version) is installed to $dir"
+try {
+  $version = & "$dir\clipsync.exe" --version
+} catch {
+  # Defender's ransomware rule blocks unsigned binaries without a reputation yet.
+  throw "Windows didn't let clipsync run ($_). If Microsoft Defender blocked it, see https://github.com/$repo#if-defender-blocks-clipsync"
+}
+Write-Host "$version is installed to $dir"
 
 if ($service) {
   Start-Process "$dir\clipsyncw.exe" -ArgumentList service
