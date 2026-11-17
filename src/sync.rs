@@ -1,10 +1,10 @@
-//! The service: send what you copy on this Mac to the relay, and put what
-//! the other devices copy on this Mac's clipboard.
+//! The service: send what you copy on this computer to the relay, and put
+//! what the other devices copy on this computer's clipboard.
 //!
 //! Three loops run side by side. [`poll`] polls the pasteboard and hands
 //! new text to [`send`], which publishes the latest one and retries for a
 //! while if the relay is out of reach. [`listen`] keeps an event stream to
-//! the relay open, reconnecting when it drops or the Mac wakes from sleep,
+//! the relay open, reconnecting when it drops or the computer wakes from sleep,
 //! and writes each clip to the pasteboard. Both sides remember the last
 //! text by its digest, so a clip that arrives isn't sent back, and the same
 //! text arriving twice (say, from Universal Clipboard too) is ignored.
@@ -26,7 +26,7 @@ use crate::seal::{Keys, Opened, now_ms};
 
 /// How often to look at the pasteboard's change count.
 const POLL: Duration = Duration::from_millis(300);
-/// A longer gap between polls means the Mac slept, and the event stream
+/// A longer gap between polls means the computer slept, and the event stream
 /// is likely dead: reconnect at once rather than wait for the silence limit.
 const WAKE_GAP: Duration = Duration::from_secs(5);
 /// Reconnect if nothing came from the relay for this long. It sends a
@@ -53,13 +53,13 @@ struct Last {
     text: Option<[u8; 32]>,
 }
 
-/// This Mac's pasteboard. Most methods block on AppKit and run on blocking
+/// This computer's clipboard. Most methods block on the OS and run on blocking
 /// threads, so the loops share it in an `Arc`.
 struct Clipboard {
     last: Mutex<Last>,
 }
 
-/// The relay, as this Mac talks to it.
+/// The relay, as this computer talks to it.
 struct Relay {
     config: Config,
     keys: Keys,
@@ -74,7 +74,7 @@ pub enum Check {
     Refused,
 }
 
-/// Sync this Mac's clipboard until something fails for good.
+/// Sync this computer's clipboard until something fails for good.
 pub async fn run(config: Config) -> Result<()> {
     let relay = Relay::new(config)?;
     let clipboard = Arc::new(Clipboard::new());
@@ -103,7 +103,7 @@ pub async fn check(config: Config) -> Result<Check> {
 }
 
 impl Clipboard {
-    /// Start from the pasteboard as it is: only new copies sync. Blocks on AppKit.
+    /// Start from the pasteboard as it is: only new copies sync. Blocks on the OS.
     fn new() -> Self {
         Self {
             last: Mutex::new(Last {
@@ -125,15 +125,22 @@ impl Clipboard {
     }
 
     /// The pasteboard's text, if it was copied since the last look and
-    /// should be sent. Blocks on AppKit.
+    /// should be sent. Blocks on the OS.
     fn copied(&self) -> Option<String> {
         let mut last = self.last();
         let count = pasteboard::change_count();
         if count == last.count {
             return None;
         }
+        let text = match pasteboard::read() {
+            Ok(text) => text.filter(|text| !text.trim().is_empty()),
+            // Another app has the clipboard: try again on the next poll.
+            Err(e) => {
+                eprintln!("{e:#}");
+                return None;
+            }
+        };
         last.count = count;
-        let text = pasteboard::read().filter(|text| !text.trim().is_empty());
         let text = match text {
             Some(text) if text.len() <= MAX_TEXT => text,
             skipped => {
@@ -159,16 +166,16 @@ impl Clipboard {
     }
 
     /// Put `text` from another device on the pasteboard, unless it's there
-    /// already. Returns whether it was written. Blocks on AppKit.
-    fn received(&self, text: &str) -> bool {
+    /// already. Returns whether it was written. Blocks on the OS.
+    fn received(&self, text: &str) -> Result<bool> {
         let mut last = self.last();
         let id = text_id(text);
         if last.text == Some(id) {
-            return false;
+            return Ok(false);
         }
-        last.count = pasteboard::write(text);
+        last.count = pasteboard::write(text)?;
         last.text = Some(id);
-        true
+        Ok(true)
     }
 }
 
@@ -243,7 +250,7 @@ impl Relay {
     }
 
     /// Follow the relay's event stream until it ends, goes silent, or the
-    /// Mac wakes from sleep, and put each clip on `clipboard`. `seen` is
+    /// computer wakes from sleep, and put each clip on `clipboard`. `seen` is
     /// the last clip's id, kept across streams so a reconnect brings only
     /// what was missed; `opened` is kept too, so no clip opens twice.
     async fn stream(
@@ -304,15 +311,17 @@ impl Relay {
         };
         let chars = text.chars().count();
         let clipboard = Arc::clone(clipboard);
-        if tokio::task::spawn_blocking(move || clipboard.received(&text)).await? {
-            eprintln!("received {chars} characters");
+        match tokio::task::spawn_blocking(move || clipboard.received(&text)).await? {
+            Ok(true) => eprintln!("received {chars} characters"),
+            Ok(false) => {}
+            Err(e) => eprintln!("skipped a clip: {e:#}"),
         }
         Ok(())
     }
 }
 
 /// Poll the pasteboard and pass new text to [`send`]; tell [`listen`] when
-/// the Mac woke from sleep.
+/// the computer woke from sleep.
 async fn poll(
     clipboard: &Arc<Clipboard>,
     copied: watch::Sender<Option<String>>,
@@ -320,7 +329,7 @@ async fn poll(
 ) -> Result<()> {
     let mut tick = tokio::time::interval(POLL);
     tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
-    // The wall clock, unlike Instant on macOS, moves while the Mac sleeps.
+    // The wall clock, unlike Instant on macOS, moves while the computer sleeps.
     let mut wall = SystemTime::now();
     loop {
         tick.tick().await;

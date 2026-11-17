@@ -12,8 +12,26 @@ use serde::Deserialize;
 use crate::{VERSION, agent};
 
 const REPO: &str = "iyazerski/clipsync";
-/// The release asset with the binary; `install.sh` downloads the same one.
+/// The release asset with the binaries; `install.sh` downloads the same one.
+#[cfg(target_os = "macos")]
 const ASSET: &str = "clipsync-aarch64-apple-darwin.tar.gz";
+/// The release asset with the binaries; `install.ps1` downloads the same one.
+#[cfg(windows)]
+const ASSET: &str = "clipsync-x86_64-pc-windows-msvc.zip";
+
+/// The binaries in [`ASSET`], installed side by side. The first one is
+/// this program.
+#[cfg(target_os = "macos")]
+const BINARIES: &[&str] = &["clipsync"];
+#[cfg(windows)]
+const BINARIES: &[&str] = &["clipsync.exe", "clipsyncw.exe"];
+
+/// bsdtar, which unpacks both `.tar.gz` and `.zip`. Windows has it since
+/// Windows 10 1803.
+#[cfg(target_os = "macos")]
+const TAR: &str = "/usr/bin/tar";
+#[cfg(windows)]
+const TAR: &str = "tar";
 
 #[derive(Deserialize)]
 struct Release {
@@ -91,8 +109,8 @@ async fn get(http: &reqwest::Client, url: &str) -> Result<reqwest::Response> {
     Ok(http.get(url).send().await?.error_for_status()?)
 }
 
-/// Unpack the `clipsync` binary from `archive` next to `exe`, then move it
-/// over `exe` in one step, so a failure never leaves a broken binary.
+/// Unpack the binaries from `archive` next to `exe`, then move each one
+/// over the old one, so a failure never leaves a broken binary.
 fn replace(exe: &Path, archive: &[u8]) -> Result<()> {
     let dir = exe.parent().context("the binary has no folder")?;
     // Next to the binary, so the rename stays on one file system; removed
@@ -103,19 +121,47 @@ fn replace(exe: &Path, archive: &[u8]) -> Result<()> {
         .with_context(|| format!("creating a folder in {}", dir.display()))?;
     let tarball = staging.path().join(ASSET);
     std::fs::write(&tarball, archive).context("saving the download")?;
-    let out = Command::new("/usr/bin/tar")
-        .arg("-xzf")
+    let out = Command::new(TAR)
+        .arg("-xf")
         .arg(&tarball)
         .arg("-C")
         .arg(staging.path())
-        .arg("clipsync")
+        .args(BINARIES)
         .output()
         .context("running tar")?;
     if !out.status.success() {
         bail!("unpacking: {}", String::from_utf8_lossy(&out.stderr).trim());
     }
-    std::fs::rename(staging.path().join("clipsync"), exe)
-        .with_context(|| format!("replacing {}", exe.display()))
+    for (i, name) in BINARIES.iter().enumerate() {
+        let target = if i == 0 {
+            exe.to_owned()
+        } else {
+            dir.join(name)
+        };
+        swap(&staging.path().join(name), &target)
+            .with_context(|| format!("replacing {}", target.display()))?;
+    }
+    Ok(())
+}
+
+/// Move `new` over `target` in one step.
+#[cfg(target_os = "macos")]
+fn swap(new: &Path, target: &Path) -> std::io::Result<()> {
+    std::fs::rename(new, target)
+}
+
+/// Move `new` over `target`. Windows can't replace a binary that's running,
+/// like this one and the service, but it can rename it: the old one moves
+/// aside to `<name>.old`, and the next update removes it.
+#[cfg(windows)]
+fn swap(new: &Path, target: &Path) -> std::io::Result<()> {
+    let mut old = target.as_os_str().to_owned();
+    old.push(".old");
+    let _ = std::fs::remove_file(&old);
+    std::fs::rename(target, &old)?;
+    std::fs::rename(new, target).inspect_err(|_| {
+        let _ = std::fs::rename(&old, target);
+    })
 }
 
 /// Whether version `a` (like `0.1.12`) is newer than `b`, comparing the

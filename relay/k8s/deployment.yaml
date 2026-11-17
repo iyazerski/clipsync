@@ -32,7 +32,7 @@ spec:
             - name: http
               containerPort: 8080
           env:
-            # `clipsync token` on a Mac; see README.
+            # `clipsync token` on a computer; see README.
             - name: CLIPSYNC_TOKEN
               valueFrom:
                 secretKeyRef:

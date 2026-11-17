@@ -1,11 +1,12 @@
 # clipsync
 
-Copy on one device, paste on another. clipsync keeps the clipboards of your Macs and your Android phone in
-sync through a small relay that you host yourself. Text only.
+Copy on one device, paste on another. clipsync keeps the clipboards of your Macs, Windows PCs, and your Android
+phone in sync through a small relay that you host yourself. Text only.
 
 ## Why
 
-Apple's Universal Clipboard only works between Apple devices that are close to each other. Existing
+Apple's Universal Clipboard only works between Apple devices that are close to each other, and Windows syncs
+its clipboard only between Windows PCs. Existing
 open-source tools for Android work only on the local network, make one device the "host", and lose the
 connection when an IP address changes. Their phone apps also have to stay open, because Android doesn't let
 background apps read the clipboard.
@@ -16,17 +17,17 @@ clipsync works over the internet, from any network, and every device talks to th
 ## How it works
 
 ```
-Mac ──┐                      ┌── Mac
+Mac ──┐                      ┌── Windows PC
       ├────▶  your relay  ◀───┤
 phone ┘   (encrypted text)   └── …
 ```
 
 - **Relay:** a tiny server on your own machine. It passes each copy to your other devices and keeps only
   the latest one for 2 minutes, in memory, like Universal Clipboard.
-- **Macs:** a background service sends what you copy and pastes what the other devices copy. It skips
+- **Computers:** a background service sends what you copy and pastes what the other devices copy. It skips
   passwords that password managers mark as private.
-- **Phone:** the app puts what you copy on your Macs on the phone's clipboard automatically. To send from
-  the phone, it takes one tap: select text and pick **Send to Macs**, share text to clipsync, or tap the
+- **Phone:** the app puts what you copy on your computers on the phone's clipboard automatically. To send from
+  the phone, it takes one tap: select text and pick **Send to computers**, share text to clipsync, or tap the
   **Send clipboard** tile in Quick Settings.
 - **Privacy:** your devices share one secret. Text is encrypted on the device before it leaves, and the
   relay can't read it, or replay old copies. Without the secret, the relay refuses to talk to a device.
@@ -40,17 +41,31 @@ curl -fsSL https://raw.githubusercontent.com/iyazerski/clipsync/main/install.sh 
 clipsync setup --relay https://clip.iyazerski.dev
 ```
 
-On the first Mac, this makes a new secret. On your other Macs, run the command that `clipsync pair` shows
-on the first one. It includes the secret.
+On the first computer, this makes a new secret. On your other computers, run the command that `clipsync pair`
+shows on the first one. It includes the secret.
 
 The service starts at login and logs to `~/Library/Logs/clipsync.log`. `clipsync uninstall` stops it.
 `clipsync update` installs the latest version. If macOS asks whether clipsync may access the pasteboard, choose to
 always allow it.
 
-### 2. Android Phone
+### 2. Windows PCs
+
+In PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/iyazerski/clipsync/main/install.ps1 | iex
+clipsync setup --relay https://clip.iyazerski.dev
+```
+
+The installer puts clipsync in `%LOCALAPPDATA%\Programs\clipsync` and adds it to your PATH. The service starts at
+login without a window and logs to `%LOCALAPPDATA%\clipsync\clipsync.log`. `clipsync uninstall` stops it, and
+`clipsync update` installs the latest version. It skips copies that password managers keep out of Windows' own
+clipboard sync.
+
+### 3. Android Phone
 
 1. Install the app: https://github.com/iyazerski/clipsync/releases/latest/download/clipsync.apk
-2. Run `clipsync pair` on a Mac, scan the QR code with the phone's camera, and tap **Open clipsync**.
+2. Run `clipsync pair` on a computer, scan the QR code with the phone's camera, and tap **Open clipsync**.
 3. In the app, tap **Allow background activity** and **Add the Quick Settings tile**. On ColorOS, also go to
    App info → Battery usage and turn on **Allow background activity** and **Allow auto launch**.
 4. To update, tap **Check for updates** in the app. The first time, Android asks you to allow clipsync to
@@ -63,8 +78,8 @@ always allow it.
 
 ## Development
 
-- `cargo test --workspace` tests the Mac service and the relay.
+- `cargo test --workspace` tests the desktop service and the relay. CI also tests the service on Windows.
 - `cd android && ./gradlew lintRelease testDebugUnitTest assembleRelease` builds the app.
 - `prek run --all-files` runs every check.
-- Every push to `main` runs CI, deploys the relay when it changed, and publishes a new release with the Mac binary and the
-signed APK.
+- Every push to `main` runs CI, deploys the relay when it changed, and publishes a new release with the Mac and Windows
+binaries and the signed APK.

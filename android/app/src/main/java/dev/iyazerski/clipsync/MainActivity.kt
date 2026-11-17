@@ -82,7 +82,7 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 
 /**
- * The only screen: pair with the Macs (from the relay's pairing link, or by typing the relay and
+ * The only screen: pair with the computers (from the relay's pairing link, or by typing the relay and
  * the secret), see whether sync is connected, and set up the ways to send.
  */
 class MainActivity : ComponentActivity() {
@@ -255,7 +255,7 @@ class MainActivity : ComponentActivity() {
         val haptics = LocalHapticFeedback.current
         GlassCard(Modifier.fillMaxWidth()) {
             Column {
-                Text("Send to your Macs", style = MaterialTheme.typography.titleMedium)
+                Text("Send to your computers", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(16.dp))
                 Button(
                     onClick = {
@@ -270,7 +270,7 @@ class MainActivity : ComponentActivity() {
                     Text("Send clipboard")
                 }
                 Spacer(Modifier.height(8.dp))
-                Item(R.drawable.sym_text_select_start, "Select text", "Then pick Send to Macs")
+                Item(R.drawable.sym_text_select_start, "Select text", "Then pick Send to computers")
                 Item(R.drawable.sym_share, "Share", "Share text to clipsync")
                 Item(R.drawable.sym_notifications, "Notification", "Tap Send clipboard")
                 Item(R.drawable.sym_widgets, "Quick Settings tile", "One tap from anywhere") {
@@ -341,7 +341,7 @@ class MainActivity : ComponentActivity() {
                 onDismissRequest = { confirmUnpair = false },
                 icon = { Symbol(R.drawable.sym_link_off) },
                 title = { Text("Unpair this phone?") },
-                text = { Text("Sync stops. To pair again, run clipsync pair on a Mac.") },
+                text = { Text("Sync stops. To pair again, run clipsync pair on a computer.") },
                 confirmButton = {
                     TextButton(onClick = {
                         confirmUnpair = false
@@ -402,7 +402,7 @@ private fun StatusCard(status: String, host: String) {
                 }
             }
             Spacer(Modifier.height(16.dp))
-            Text("What you copy on your Macs lands on this phone's clipboard.", style = MaterialTheme.typography.bodyMedium)
+            Text("What you copy on your computers lands on this phone's clipboard.", style = MaterialTheme.typography.bodyMedium)
         }
     }
 }
@@ -420,10 +420,10 @@ private fun Unpaired(onPair: (relay: String, secret: String) -> Unit) {
                 contentAlignment = Alignment.Center,
             ) { Symbol(R.drawable.sym_qr_code_scanner, tint = MaterialTheme.colorScheme.onPrimaryContainer) }
             Spacer(Modifier.height(16.dp))
-            Text("Pair with your Macs", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Text("Pair with your computers", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(16.dp))
             Step(1) {
-                Text("On a Mac, run ", style = MaterialTheme.typography.bodyLarge)
+                Text("On a computer, run ", style = MaterialTheme.typography.bodyLarge)
                 Text(
                     "clipsync pair",
                     style = MaterialTheme.typography.bodyMedium,

@@ -6,7 +6,7 @@ import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class SealTest {
-    // Shared with the Mac's src/seal.rs tests: change both together.
+    // Shared with the desktop's src/seal.rs tests: change both together.
     private val secret = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8"
     private val token = "eJMfuewcmawfRsgaj7Zutkow2oBVjbx8Thv_-3tJnYE"
     private val sealedAt = 1_700_000_000_000L

@@ -8,9 +8,9 @@ import android.content.Intent
 import android.os.Bundle
 
 /**
- * An invisible screen that sends text to the Macs and closes at once.
+ * An invisible screen that sends text to the computers and closes at once.
  *
- * It takes the text from the selection menu ("Send to Macs") or from Share. Opened from the tile or
+ * It takes the text from the selection menu ("Send to computers") or from Share. Opened from the tile or
  * the notification, it reads the clipboard instead: Android lets only the focused app do that, so
  * it waits until its window has focus.
  */

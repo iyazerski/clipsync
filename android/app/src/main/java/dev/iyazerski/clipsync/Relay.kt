@@ -113,7 +113,7 @@ object Relay {
     }
 }
 
-/** Sends text to the Macs off the main thread and says how it went in a toast. */
+/** Sends text to the computers off the main thread and says how it went in a toast. */
 object Sender {
     private val executor = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
@@ -123,7 +123,7 @@ object Sender {
         val settings = Settings(app)
         when {
             !settings.paired -> {
-                toast(app, "Pair with a Mac first")
+                toast(app, "Pair with a computer first")
                 app.startActivity(Intent(app, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             }
             text.isNullOrBlank() -> toast(app, "Nothing to send: the clipboard has no text")
@@ -131,7 +131,7 @@ object Sender {
             else -> executor.execute {
                 try {
                     Relay.publish(settings, text)
-                    toast(app, "Sent to your Macs")
+                    toast(app, "Sent to your computers")
                 } catch (e: IOException) {
                     toast(app, "Couldn't send: ${e.message}")
                 }

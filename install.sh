@@ -7,7 +7,7 @@ repo="iyazerski/clipsync"
 asset="clipsync-aarch64-apple-darwin.tar.gz"
 
 if [ "$(uname -s)-$(uname -m)" != "Darwin-arm64" ]; then
-  echo "clipsync supports macOS on Apple silicon only." >&2
+  echo "install.sh supports macOS on Apple silicon only. On Windows, use install.ps1." >&2
   exit 1
 fi
 
