@@ -62,6 +62,18 @@ login without a window and logs to `%LOCALAPPDATA%\clipsync\clipsync.log`. `clip
 `clipsync update` installs the latest version. It skips copies that password managers keep out of Windows' own
 clipboard sync.
 
+#### If Defender blocks clipsync
+
+The Windows binaries aren't signed yet, so a new release has no reputation with Microsoft Defender. If the
+attack surface reduction rule **Use advanced protection against ransomware** is on, Defender blocks clipsync
+until enough people run that build. Allow clipsync's folder from an administrator PowerShell, then install again:
+
+```powershell
+Add-MpPreference -AttackSurfaceReductionOnlyExclusions "$env:LOCALAPPDATA\Programs\clipsync"
+```
+
+On a work PC, IT may manage this rule: ask them to allow that folder.
+
 ### 3. Android Phone
 
 1. Install the app: https://github.com/iyazerski/clipsync/releases/latest/download/clipsync.apk
