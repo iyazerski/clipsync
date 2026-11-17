@@ -3,6 +3,8 @@ name = "clipsync-proto"
 version = "0.1.0"
 edition = "2024"
 publish = false
+license = "MIT"
+repository = "https://github.com/iyazerski/clipsync"
 description = "What the clipsync relay and its clients agree on"
 
 [lints]
