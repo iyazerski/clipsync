@@ -3,6 +3,8 @@ name = "clipsync"
 version = "0.1.0"
 edition = "2024"
 publish = false
+license = "MIT"
+repository = "https://github.com/iyazerski/clipsync"
 description = "Keep the clipboards of your computers and an Android phone in sync through a tiny relay"
 
 [dependencies]

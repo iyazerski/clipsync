@@ -1,0 +1,50 @@
+name: Bug report
+description: Something in clipsync doesn't work as expected.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Copy text on the Mac
+        2. Open the app on the phone
+        3. ...
+  - type: dropdown
+    id: devices
+    attributes:
+      label: Devices involved
+      multiple: true
+      options:
+        - Mac
+        - Windows PC
+        - Android phone
+        - Relay
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: clipsync version
+      description: Run `clipsync --version` on a computer. The phone app shows its version at the bottom.
+      placeholder: "0.1.8"
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS versions
+      placeholder: macOS 26.1, Windows 11 24H2, Android 16 on a Pixel 9
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: The end of `~/Library/Logs/clipsync.log` on a Mac or `%LOCALAPPDATA%\clipsync\clipsync.log` on Windows, or `docker compose logs relay` on the relay. Remove anything private first.
+      render: text

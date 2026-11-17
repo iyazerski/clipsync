@@ -50,7 +50,8 @@ jobs:
         with:
           context: .
           file: relay/Dockerfile
-          platforms: linux/amd64
+          # arm64 too, for people who host the relay on a Raspberry Pi or an Arm server.
+          platforms: linux/amd64,linux/arm64
           push: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -78,7 +79,8 @@ jobs:
 
       # The cluster already has ghcr-pull-secret and the letsencrypt-prod
       # ClusterIssuer (shared with the other apps). The relay token secret is
-      # made once by hand; see README.
+      # made once by hand:
+      #   kubectl create secret generic clipsync-relay-secrets --from-literal=CLIPSYNC_TOKEN="$(clipsync token)"
       - name: Record running release
         # Remember the live revisions, so a failed deploy or smoke check can restore them.
         run: scripts/release_guard.sh record deployment/clipsync-relay

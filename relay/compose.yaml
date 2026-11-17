@@ -1,0 +1,23 @@
+# The relay behind Caddy, which gets and renews its HTTPS certificate. Put this file
+# and a .env file next to each other on a server, then run `docker compose up -d`:
+#   RELAY_DOMAIN=clip.example.com
+#   CLIPSYNC_TOKEN=<the output of `clipsync token` on your computer>
+services:
+  relay:
+    image: ghcr.io/iyazerski/clipsync/relay:latest
+    restart: unless-stopped
+    environment:
+      CLIPSYNC_TOKEN: ${CLIPSYNC_TOKEN:?set CLIPSYNC_TOKEN in .env to the output of `clipsync token`}
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    command: caddy reverse-proxy --from ${RELAY_DOMAIN:?set RELAY_DOMAIN in .env, like clip.example.com} --to relay:8080
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy-data:/data
+
+volumes:
+  caddy-data:

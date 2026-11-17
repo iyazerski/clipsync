@@ -41,6 +41,22 @@ jobs:
       - name: Test
         run: cargo test -p clipsync --locked
 
+  licenses:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: taiki-e/install-action@v2.90.5
+        with:
+          tool: cargo-about
+      - name: Third-party licenses are current
+        run: |
+          make licenses
+          git diff --exit-code THIRD_PARTY_LICENSES.md || {
+            echo "::error::THIRD_PARTY_LICENSES.md is stale: run make licenses and commit it"
+            exit 1
+          }
+
   android:
     runs-on: ubuntu-latest
     timeout-minutes: 20
