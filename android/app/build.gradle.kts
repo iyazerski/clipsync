@@ -61,6 +61,8 @@ android {
         targetCompatibility = JavaVersion.VERSION_21
     }
 
+    sourceSets.getByName("test").resources.srcDir("../../internal/syncer/testdata")
+
     // Kotlin reflection metadata; the app doesn't use kotlin-reflect, so it's dead weight in the APK.
     packaging.resources.excludes += "kotlin/**.kotlin_builtins"
 }

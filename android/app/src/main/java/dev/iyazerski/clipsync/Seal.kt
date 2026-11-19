@@ -10,16 +10,7 @@ import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 import kotlin.math.absoluteValue
 
-/**
- * Sealing clips, so the relay passes them on without reading them. The same scheme as the desktop's
- * `src/seal.rs`, which shares its test vectors with SealTest.
- *
- * One secret, shared by your devices, gives the relay token and the sealing key: each is an
- * HMAC-SHA256 of a label, keyed with the secret. A sealed clip is AES-256-GCM,
- * `version || nonce || ciphertext || tag`, in base64url without padding. The sealed text starts with
- * the time it was sealed, so a device refuses clips that are old, or that it opened already: the
- * relay can't replay them.
- */
+/** Unpadded base64url of version || nonce || AES-GCM(timestamp || text) || tag. */
 class Seal(secret: String) {
     /** What the relay checks: it can't work out the key from it. */
     val token: String
@@ -34,7 +25,6 @@ class Seal(secret: String) {
         key = SecretKeySpec(hmac(raw, "clipsync/key"), "AES")
     }
 
-    /** Seal [text] with a fresh random nonce and the current time. */
     fun seal(text: String): String =
         sealWith(ByteArray(NONCE_LEN).also(RANDOM::nextBytes), System.currentTimeMillis(), text)
 
@@ -69,7 +59,6 @@ class Seal(secret: String) {
         return String(text, STAMP_LEN, text.size - STAMP_LEN, Charsets.UTF_8)
     }
 
-    /** The clips opened lately, so that none opens twice. */
     class Opened {
         private val clips = ArrayList<Pair<Long, ByteArray>>()
 
@@ -86,8 +75,7 @@ class Seal(secret: String) {
         const val NONCE_LEN = 12
         const val TAG_BITS = 128
         const val VERSION: Byte = 2
-        /** The sealing time's length: milliseconds since the Unix epoch, big-endian. */
-        const val STAMP_LEN = 8
+        const val STAMP_LEN = 8 // Epoch milliseconds, big-endian.
         /**
          * How far a clip's sealing time may be from this phone's clock. It covers how long the relay
          * keeps a clip (`CLIP_TTL_SECS`, 2 minutes by default) and clocks that drift apart.

@@ -168,6 +168,7 @@ class SyncService : Service() {
             return
         }
         main.post {
+            if (!running) return@post
             getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("clipsync", text))
         }
         setStatus("Connected · last clip at ${DateFormat.getTimeInstance(DateFormat.SHORT).format(Date())}")

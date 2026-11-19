@@ -6,9 +6,10 @@ import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class SealTest {
-    // Shared with the desktop's src/seal.rs tests: change both together.
-    private val secret = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8"
-    private val token = "eJMfuewcmawfRsgaj7Zutkow2oBVjbx8Thv_-3tJnYE"
+    private val pairing = checkNotNull(javaClass.getResourceAsStream("/pairing.txt"))
+        .bufferedReader().use { it.readLines() }
+    private val secret = pairing[0]
+    private val token = pairing[1]
     private val sealedAt = 1_700_000_000_000L
     private val sealed = "AgcHBwcHBwcHBwcHB7vfjbeCOIF7IogOfIGZOG33yZnkFUm3yjqv3ibc0DouywRo"
     private val maxAge = 5 * 60 * 1000L

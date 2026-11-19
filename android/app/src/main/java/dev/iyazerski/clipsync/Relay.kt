@@ -8,6 +8,7 @@ import android.widget.Toast
 import androidx.core.content.edit
 import java.io.IOException
 import java.net.HttpURLConnection
+import java.net.URI
 import java.net.URL
 import java.security.SecureRandom
 import java.util.Base64
@@ -43,7 +44,9 @@ class Settings(context: Context) {
     /** Save a pairing after checking the secret; clips from before now are old news. */
     fun pair(relay: String, secret: String) {
         val url = relay.trim().trimEnd('/')
-        require(url.startsWith("https://")) { "The relay should be an https:// address" }
+        val address = runCatching { URI(url) }.getOrNull()
+        require(address?.scheme == "https" && address.host != null && address.userInfo == null &&
+            address.rawQuery == null && address.rawFragment == null) { "The relay should be an https:// address" }
         Seal(secret)
         prefs.edit {
             putString(RELAY, url)
@@ -65,7 +68,6 @@ class Settings(context: Context) {
     }
 }
 
-/** The relay's HTTP API, as `proto/src/lib.rs` describes it. */
 object Relay {
     const val CLIP_PATH = "/clip"
     const val EVENTS_PATH = "/events"
@@ -83,6 +85,7 @@ object Relay {
         return (URL(relay + path).openConnection() as HttpURLConnection).apply {
             connectTimeout = TIMEOUT_MS
             readTimeout = TIMEOUT_MS
+            instanceFollowRedirects = false
             setRequestProperty("Authorization", "Bearer ${seal.token}")
             setRequestProperty(DEVICE_HEADER, settings.device)
         }

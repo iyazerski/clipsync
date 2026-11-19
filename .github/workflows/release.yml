@@ -1,137 +1,103 @@
 name: Release
 
-# Every push to main that changes the desktop service or the app publishes a
-# release v0.1.<run> with all of them, so these links always get the newest:
-#   https://github.com/<owner>/<repo>/releases/latest/download/clipsync.apk
-#   https://github.com/<owner>/<repo>/releases/latest/download/clipsync-aarch64-apple-darwin.tar.gz
-#   https://github.com/<owner>/<repo>/releases/latest/download/clipsync-x86_64-pc-windows-msvc.zip
-# It also updates Formula/clipsync.rb in iyazerski/homebrew-tap.
+# Ship every asset together so the latest-release download URLs stay valid.
 on:
   push:
     branches: [main]
     paths:
-      - "src/**"
-      - "proto/**"
+      - "cmd/**"
+      - "internal/**"
       - "android/**"
-      - "Cargo.toml"
-      - "Cargo.lock"
+      - "go.mod"
+      - "go.sum"
       - ".github/workflows/release.yml"
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the release (main only)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 concurrency:
-  group: release
-  cancel-in-progress: false
+  group: ${{ (github.event_name == 'push' || (github.ref == 'refs/heads/main' && inputs.publish)) && 'release' || format('release-check-{0}', github.ref) }}
+  cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' && (github.ref != 'refs/heads/main' || !inputs.publish) }}
 
 env:
   VERSION: 0.1.${{ github.run_number }}
+  PUBLISH: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || inputs.publish) }}
 
 jobs:
-  mac:
-    # Apple silicon only, like the Macs it runs on.
-    runs-on: macos-15
-    env:
-      TARGET: aarch64-apple-darwin
-      ASSET: clipsync-aarch64-apple-darwin.tar.gz
-    steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ env.TARGET }}
-      - name: Build binary
-        env:
-          CLIPSYNC_VERSION: ${{ env.VERSION }}
-        run: cargo build --release --locked --target "$TARGET"
-      - name: Test binary
-        run: target/$TARGET/release/clipsync --version
-      - name: Package binary
-        run: |
-          mkdir dist
-          tar -C "target/$TARGET/release" -czf "dist/$ASSET" clipsync
-          cd dist
-          shasum -a 256 "$ASSET" > "$ASSET.sha256"
-      - uses: actions/upload-artifact@v7
-        with:
-          name: mac
-          path: dist/*
-          if-no-files-found: error
-
-  windows:
-    # x86_64 only: Windows on Arm runs it through emulation.
-    runs-on: windows-latest
-    env:
-      TARGET: x86_64-pc-windows-msvc
-      ASSET: clipsync-x86_64-pc-windows-msvc.zip
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ env.TARGET }}
-      # clipsyncw.exe is the same program without a console window, for the
-      # background service. Only the final link differs, so it builds in seconds.
-      - name: Build binaries
-        env:
-          CLIPSYNC_VERSION: ${{ env.VERSION }}
-        run: |
-          mkdir dist
-          cargo build --release --locked --target "$TARGET"
-          cp "target/$TARGET/release/clipsync.exe" dist/clipsync.exe
-          cargo rustc --release --locked --target "$TARGET" --bin clipsync -- --cfg windowless
-          cp "target/$TARGET/release/clipsync.exe" dist/clipsyncw.exe
-      - name: Test binary
-        run: dist/clipsync.exe --version
-      - name: Package binaries
-        working-directory: dist
-        run: |
-          7z a "$ASSET" clipsync.exe clipsyncw.exe
-          rm clipsync.exe clipsyncw.exe
-          sha256sum "$ASSET" > "$ASSET.sha256"
-      - uses: actions/upload-artifact@v7
-        with:
-          name: windows
-          path: dist/*
-          if-no-files-found: error
-
-  android:
+  build:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    defaults:
-      run:
-        working-directory: android
+    env:
+      MAC_ASSET: clipsync-aarch64-apple-darwin.tar.gz
+      WINDOWS_ASSET: clipsync-x86_64-pc-windows-msvc.zip
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Build and package desktop binaries
+        run: |
+          mkdir -p bin/mac bin/windows dist
+          export CGO_ENABLED=0
+          ldflags="-s -w -X main.version=$VERSION"
+          GOOS=darwin GOARCH=arm64 go build -mod=readonly -trimpath -ldflags "$ldflags" -o bin/mac/clipsync ./cmd/clipsync
+          export GOOS=windows GOARCH=amd64
+          go build -mod=readonly -trimpath -ldflags "$ldflags" -o bin/windows/clipsync.exe ./cmd/clipsync
+          # The background service must start without a console window.
+          go build -mod=readonly -trimpath -ldflags "$ldflags -H windowsgui" -o bin/windows/clipsyncw.exe ./cmd/clipsync
+          tar -C bin/mac -czf "dist/$MAC_ASSET" clipsync
+          zip -j "dist/$WINDOWS_ASSET" bin/windows/clipsync.exe bin/windows/clipsyncw.exe
+          cd dist
+          sha256sum "$MAC_ASSET" > "$MAC_ASSET.sha256"
+          sha256sum "$WINDOWS_ASSET" > "$WINDOWS_ASSET.sha256"
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
       - uses: gradle/actions/setup-gradle@v6
       - name: Restore release keystore
+        if: env.PUBLISH == 'true'
         env:
           KEYSTORE_BASE64: ${{ secrets.CLIPSYNC_KEYSTORE_BASE64 }}
         run: |
+          test -n "$KEYSTORE_BASE64"
           echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
           echo "CLIPSYNC_KEYSTORE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
-      - name: Build
+      - name: Build Android APK
+        working-directory: android
         env:
-          CLIPSYNC_KEYSTORE_PASSWORD: ${{ secrets.CLIPSYNC_KEYSTORE_PASSWORD }}
+          CLIPSYNC_KEYSTORE_PASSWORD: ${{ env.PUBLISH == 'true' && secrets.CLIPSYNC_KEYSTORE_PASSWORD || '' }}
           BUILD_NUMBER: ${{ github.run_number }}
         run: |
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           ./gradlew --no-daemon assembleRelease
-          cp app/build/outputs/apk/release/app-release.apk clipsync.apk
+          cp app/build/outputs/apk/release/app-release.apk ../dist/clipsync.apk
       - uses: actions/upload-artifact@v7
         with:
-          name: android
-          path: android/clipsync.apk
+          name: mac
+          path: dist/${{ env.MAC_ASSET }}*
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows-and-android
+          path: |
+            dist/${{ env.WINDOWS_ASSET }}*
+            dist/clipsync.apk
+          compression-level: 0
+          retention-days: 7
           if-no-files-found: error
 
   publish:
-    needs: [mac, windows, android]
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || inputs.publish)
+    needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write

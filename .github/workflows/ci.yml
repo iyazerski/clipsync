@@ -2,76 +2,63 @@ name: CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
 
-# Only PR runs share a group, so a new push cancels the outdated run and frees its macOS runner.
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.run_id }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  rust:
-    # The desktop service builds on macOS and Windows only; the relay builds anywhere.
-    runs-on: macos-15
-
-    steps:
-      - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy, rustfmt
-      - name: Format
-        run: cargo fmt --all --check
-      - name: Clippy
-        run: cargo clippy --workspace --all-targets --locked -- -D warnings
-      - name: Test
-        run: cargo test --workspace --locked
-
-  windows:
-    runs-on: windows-latest
-
-    steps:
-      - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
-      - name: Clippy
-        run: cargo clippy -p clipsync --all-targets --locked -- -D warnings
-      - name: Test
-        run: cargo test -p clipsync --locked
-
-  licenses:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v7
-      - uses: taiki-e/install-action@v2.90.5
-        with:
-          tool: cargo-about
-      - name: Third-party licenses are current
-        run: |
-          make licenses
-          git diff --exit-code THIRD_PARTY_LICENSES.md || {
-            echo "::error::THIRD_PARTY_LICENSES.md is stale: run make licenses and commit it"
-            exit 1
-          }
-
-  android:
+  check:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    defaults:
-      run:
-        working-directory: android
-
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      - name: Check Android inputs
+        id: changes
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          # Compare the PR merge commit with its first parent (the base branch).
+          if [[ "$EVENT_NAME" == pull_request ]] &&
+            git diff --quiet HEAD^1 HEAD -- android/ internal/syncer/testdata/ .github/workflows/ci.yml; then
+            echo 'android=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'android=true' >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Format and licenses
+        run: |
+          test -z "$(gofmt -l cmd internal relay)"
+          make licenses
+          git diff --exit-code THIRD_PARTY_LICENSES.md
+      - name: Vet and test Go
+        run: |
+          go vet -mod=readonly ./...
+          go test -mod=readonly -race ./...
+      - name: Check desktop targets
+        run: |
+          export CGO_ENABLED=0
+          for target in darwin/arm64 windows/amd64; do
+            export GOOS="${target%/*}" GOARCH="${target#*/}"
+            go vet -mod=readonly ./cmd/clipsync
+            go test -mod=readonly -c -o "$RUNNER_TEMP/clipsync-$GOOS.test" ./cmd/clipsync
+          done
       - uses: actions/setup-java@v6
+        if: steps.changes.outputs.android == 'true'
         with:
           distribution: temurin
           java-version: "21"
       - uses: gradle/actions/setup-gradle@v6
-      - name: Lint and test
+        if: steps.changes.outputs.android == 'true'
+      - name: Android lint and tests
+        if: steps.changes.outputs.android == 'true'
+        working-directory: android
         run: |
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           ./gradlew --no-daemon lintRelease testDebugUnitTest
