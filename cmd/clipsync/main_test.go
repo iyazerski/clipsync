@@ -49,6 +49,14 @@ func TestPairingCommands(t *testing.T) {
 			conn.Close()
 		}
 	}()
+	fixture, err := os.ReadFile("../../internal/syncer/testdata/pairing.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixtureSecret, fixtureToken, ok := strings.Cut(strings.TrimSpace(string(fixture)), "\n")
+	if !ok {
+		t.Fatal("pairing fixture needs a secret and token")
+	}
 	address := "https://" + listener.Addr().String()
 	run("setup", "--relay", address+"/", "--secret", fixtureSecret)
 	run("setup", "--relay", address)

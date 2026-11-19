@@ -23,7 +23,7 @@ type winPasteboard struct {
 	private, cloud                                           uint32
 }
 
-func newPasteboard() (pasteboard, error) {
+func newPasteboard() (*winPasteboard, error) {
 	user := windows.NewLazySystemDLL("user32.dll")
 	kernel := windows.NewLazySystemDLL("kernel32.dll")
 	b := &winPasteboard{
@@ -64,7 +64,7 @@ func newPasteboard() (pasteboard, error) {
 	return b, nil
 }
 
-func (b *winPasteboard) changeCount() uint64 {
+func (b *winPasteboard) ChangeCount() uint64 {
 	n, _, _ := b.count.Call()
 	return uint64(n)
 }
@@ -98,7 +98,7 @@ func (b *winPasteboard) withClipboard(writing bool, fn func() error) error {
 	return fmt.Errorf("opening the clipboard: %w", last)
 }
 
-func (b *winPasteboard) read() (string, error) {
+func (b *winPasteboard) Read() (string, error) {
 	var text string
 	err := b.withClipboard(false, func() error {
 		if private, _, _ := b.available.Call(uintptr(b.private)); private != 0 {
@@ -136,7 +136,7 @@ func (b *winPasteboard) read() (string, error) {
 	return text, err
 }
 
-func (b *winPasteboard) write(text string) (uint64, error) {
+func (b *winPasteboard) Write(text string) (uint64, error) {
 	wide := append(utf16.Encode([]rune(text)), 0)
 	var count uint64
 	err := b.withClipboard(true, func() error {
@@ -164,7 +164,7 @@ func (b *winPasteboard) write(text string) (uint64, error) {
 			return fmt.Errorf("writing the clipboard: %w", err)
 		}
 		owned = false
-		count = b.changeCount()
+		count = b.ChangeCount()
 		return nil
 	})
 	return count, err

@@ -1,6 +1,4 @@
-//go:build darwin || windows
-
-package main
+package syncer_test
 
 import (
 	"context"
@@ -17,6 +15,9 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/iyazerski/clipsync/internal/client"
+	"github.com/iyazerski/clipsync/internal/syncer"
 )
 
 //go:embed testdata/pairing.txt
@@ -31,19 +32,19 @@ type memoryBoard struct {
 	written chan string
 }
 
-func (b *memoryBoard) changeCount() uint64 {
+func (b *memoryBoard) ChangeCount() uint64 {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return b.count
 }
 
-func (b *memoryBoard) read() (string, error) {
+func (b *memoryBoard) Read() (string, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return b.text, nil
 }
 
-func (b *memoryBoard) write(text string) (uint64, error) {
+func (b *memoryBoard) Write(text string) (uint64, error) {
 	n := b.copy(text)
 	b.written <- text
 	return n, nil
@@ -136,18 +137,21 @@ func TestSyncWithExistingWireProtocol(t *testing.T) {
 	}))
 	defer server.Close()
 
+	relay, err := client.New(server.URL, fixtureSecret, "go-test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	ctx, stop := context.WithCancel(t.Context())
 	board := &memoryBoard{written: make(chan string, 8)}
 	board.copy("clipboard contents from before startup")
-	stopped := make(chan error, 1)
+	stopped := make(chan struct{})
 	go func() {
-		stopped <- runSync(ctx, config{Relay: server.URL, Secret: fixtureSecret, Device: "go-test"}, board)
+		defer close(stopped)
+		syncer.Run(ctx, relay, board)
 	}()
 	defer func() {
 		stop()
-		if err := receiveWithin(t, stopped); err != nil {
-			t.Error(err)
-		}
+		receiveWithin(t, stopped)
 	}()
 	receiveWithin(t, connected)
 

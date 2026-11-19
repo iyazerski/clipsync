@@ -24,7 +24,7 @@ jobs:
         run: |
           # Compare the PR merge commit with its first parent (the base branch).
           if [[ "$EVENT_NAME" == pull_request ]] &&
-            git diff --quiet HEAD^1 HEAD -- android/ cmd/clipsync/testdata/ .github/workflows/ci.yml; then
+            git diff --quiet HEAD^1 HEAD -- android/ internal/syncer/testdata/ .github/workflows/ci.yml; then
             echo 'android=false' >> "$GITHUB_OUTPUT"
           else
             echo 'android=true' >> "$GITHUB_OUTPUT"

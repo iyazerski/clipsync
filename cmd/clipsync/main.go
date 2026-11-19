@@ -20,6 +20,7 @@ import (
 	"github.com/skip2/go-qrcode"
 
 	"github.com/iyazerski/clipsync/internal/client"
+	"github.com/iyazerski/clipsync/internal/syncer"
 )
 
 var version = "0.1.0"
@@ -161,7 +162,12 @@ func cli(ctx context.Context, args []string, out io.Writer, service agent) error
 		if err != nil {
 			return err
 		}
-		return runSync(ctx, cfg, board)
+		relay, err := client.New(cfg.Relay, cfg.Secret, cfg.Device)
+		if err != nil {
+			return err
+		}
+		log.Printf("syncing through %s", cfg.Relay)
+		syncer.Run(ctx, relay, board)
 	}
 	return nil
 }

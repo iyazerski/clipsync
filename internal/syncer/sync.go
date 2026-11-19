@@ -1,6 +1,5 @@
-//go:build darwin || windows
-
-package main
+// Package syncer coordinates clipboard sync between the desktop and the relay.
+package syncer
 
 import (
 	"context"
@@ -21,15 +20,15 @@ const (
 	sendFor      = 120 * time.Second
 )
 
-type pasteboard interface {
-	changeCount() uint64
-	read() (string, error)
-	write(string) (uint64, error)
+type Board interface {
+	ChangeCount() uint64
+	Read() (string, error)
+	Write(string) (uint64, error)
 }
 
 type clipboard struct {
 	mu      sync.Mutex
-	board   pasteboard
+	board   Board
 	count   uint64
 	text    [sha256.Size]byte
 	hasText bool
@@ -38,11 +37,11 @@ type clipboard struct {
 func (c *clipboard) copied() string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	count := c.board.changeCount()
+	count := c.board.ChangeCount()
 	if count == c.count {
 		return ""
 	}
-	text, err := c.board.read()
+	text, err := c.board.Read()
 	if err != nil {
 		log.Print(err)
 		return ""
@@ -76,7 +75,7 @@ func (c *clipboard) receive(text string) {
 	if c.hasText && c.text == id {
 		return
 	}
-	count, err := c.board.write(text)
+	count, err := c.board.Write(text)
 	if err != nil {
 		log.Printf("skipped a clip: %v", err)
 		return
@@ -85,13 +84,9 @@ func (c *clipboard) receive(text string) {
 	log.Printf("received %d characters", utf8.RuneCountInString(text))
 }
 
-func runSync(ctx context.Context, cfg config, board pasteboard) error {
-	relay, err := client.New(cfg.Relay, cfg.Secret, cfg.Device)
-	if err != nil {
-		return err
-	}
-	log.Printf("syncing through %s", cfg.Relay)
-	c := &clipboard{board: board, count: board.changeCount()}
+// Run syncs the clipboard until ctx is canceled.
+func Run(ctx context.Context, relay *client.Client, board Board) {
+	c := &clipboard{board: board, count: board.ChangeCount()}
 	pending := make(chan string, 1)
 	woke := make(chan struct{}, 1)
 	var workers sync.WaitGroup
@@ -99,7 +94,6 @@ func runSync(ctx context.Context, cfg config, board pasteboard) error {
 	workers.Go(func() { send(ctx, relay, c, pending) })
 	workers.Go(func() { listen(ctx, relay, c, woke) })
 	workers.Wait()
-	return nil
 }
 
 func poll(ctx context.Context, c *clipboard, pending chan string, woke chan<- struct{}) {

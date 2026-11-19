@@ -25,7 +25,7 @@ type macPasteboard struct {
 	general, changes, types, contains, stringForType, utf8, utf8Length, makeString, clear, set objc.SEL
 }
 
-func newPasteboard() (pasteboard, error) {
+func newPasteboard() (*macPasteboard, error) {
 	// Keep AppKit loaded for the lifetime of the process.
 	if _, err := purego.Dlopen("/System/Library/Frameworks/AppKit.framework/AppKit", purego.RTLD_LAZY|purego.RTLD_GLOBAL); err != nil {
 		return nil, err
@@ -80,13 +80,13 @@ func (b *macPasteboard) pool() func() {
 	}
 }
 
-func (b *macPasteboard) changeCount() uint64 {
+func (b *macPasteboard) ChangeCount() uint64 {
 	unlock := b.pool()
 	defer unlock()
 	return b.number(b.board(), b.changes)
 }
 
-func (b *macPasteboard) read() (string, error) {
+func (b *macPasteboard) Read() (string, error) {
 	unlock := b.pool()
 	defer unlock()
 	board := b.board()
@@ -107,7 +107,7 @@ func (b *macPasteboard) read() (string, error) {
 	return "", nil
 }
 
-func (b *macPasteboard) write(text string) (uint64, error) {
+func (b *macPasteboard) Write(text string) (uint64, error) {
 	unlock := b.pool()
 	defer unlock()
 	board := b.board()

@@ -31,4 +31,4 @@ repos:
         entry: sh -c 'cd android && ./gradlew -q lintRelease testDebugUnitTest'
         language: system
         pass_filenames: false
-        files: ^(android/|cmd/clipsync/testdata/)
+        files: ^(android/|internal/syncer/testdata/)
