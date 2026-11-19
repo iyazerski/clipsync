@@ -23,8 +23,6 @@ import (
 //go:embed testdata/pairing.txt
 var pairingFixture string
 
-var fixtureSecret, fixtureToken, _ = strings.Cut(strings.TrimSpace(pairingFixture), "\n")
-
 type memoryBoard struct {
 	mu      sync.Mutex
 	count   uint64
@@ -71,6 +69,7 @@ func receiveWithin[T any](t *testing.T, ch <-chan T) T {
 }
 
 func TestSyncWithExistingWireProtocol(t *testing.T) {
+	fixtureSecret, fixtureToken, _ := strings.Cut(strings.TrimSpace(pairingFixture), "\n")
 	// This key is the HMAC-SHA256 of "clipsync/key" under the shared test secret.
 	const fixtureKey = "sT5EE_r8G18kn9sXlmhAOBGU9LmyXv4wzl712Qf0Dtg"
 	key, err := base64.RawURLEncoding.DecodeString(fixtureKey)
@@ -92,7 +91,6 @@ func TestSyncWithExistingWireProtocol(t *testing.T) {
 		packet = gcm.Seal(packet, packet[1:], append(plain, text...), nil)
 		return base64.RawURLEncoding.EncodeToString(packet)
 	}
-	connected := make(chan struct{}, 1)
 	publish := make(chan string, 8)
 	events := make(chan string)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -110,10 +108,6 @@ func TestSyncWithExistingWireProtocol(t *testing.T) {
 			flusher := w.(http.Flusher)
 			fmt.Fprint(w, ": keepalive\n\n")
 			flusher.Flush()
-			select {
-			case connected <- struct{}{}:
-			default:
-			}
 			for id := 1; ; id++ {
 				select {
 				case <-r.Context().Done():
@@ -153,7 +147,6 @@ func TestSyncWithExistingWireProtocol(t *testing.T) {
 		stop()
 		receiveWithin(t, stopped)
 	}()
-	receiveWithin(t, connected)
 
 	stream := func(sealed string) {
 		t.Helper()

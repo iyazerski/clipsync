@@ -3,7 +3,8 @@
 package main
 
 import (
-	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"runtime"
 	"strings"
@@ -34,21 +35,9 @@ func TestPairingCommands(t *testing.T) {
 	if err := cli(t.Context(), []string{"setup", "--relay", "http://example.test"}, &out, fakeAgent{}); err == nil {
 		t.Fatal("setup accepted an insecure relay")
 	}
-	// A connection closed by the relay must not stop initial setup; users set up a relay after generating its token.
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer listener.Close()
-	go func() {
-		for {
-			conn, err := listener.Accept()
-			if err != nil {
-				return
-			}
-			conn.Close()
-		}
-	}()
+	// Setup can run before the relay accepts the pairing token.
+	relay := httptest.NewTLSServer(http.NotFoundHandler())
+	t.Cleanup(relay.Close)
 	fixture, err := os.ReadFile("../../internal/syncer/testdata/pairing.txt")
 	if err != nil {
 		t.Fatal(err)
@@ -57,7 +46,7 @@ func TestPairingCommands(t *testing.T) {
 	if !ok {
 		t.Fatal("pairing fixture needs a secret and token")
 	}
-	address := "https://" + listener.Addr().String()
+	address := relay.URL
 	run("setup", "--relay", address+"/", "--secret", fixtureSecret)
 	run("setup", "--relay", address)
 	if got := strings.TrimSpace(run("token")); got != fixtureToken {

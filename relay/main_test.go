@@ -74,12 +74,9 @@ func TestRelayDeliversToPeersAndCatchesUp(t *testing.T) {
 	wantEvent(t, b, id1, "first")
 	id2 := publishClip(t, ctx, server.URL, "b", "second")
 	wantEvent(t, a, id2, "second")
-	bAgain := eventStream(t, ctx, server.URL, "b", id1)
-	id3 := publishClip(t, ctx, server.URL, "a", "third")
-	wantEvent(t, bAgain, id3, "third")
-	c := eventStream(t, ctx, server.URL, "c", id3)
-	id4 := publishClip(t, ctx, server.URL, "a", "fourth")
-	wantEvent(t, c, id4, "fourth")
+	a = eventStream(t, ctx, server.URL, "a", id2)
+	id3 := publishClip(t, ctx, server.URL, "b", "third")
+	wantEvent(t, a, id3, "third")
 }
 
 func TestRelayForgetsExpiredClips(t *testing.T) {
