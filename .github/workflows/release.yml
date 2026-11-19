@@ -31,79 +31,42 @@ env:
   VERSION: 0.1.${{ github.run_number }}
 
 jobs:
-  mac:
-    # Apple silicon only, like the Macs it runs on.
-    runs-on: macos-15
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     env:
-      ASSET: clipsync-aarch64-apple-darwin.tar.gz
+      MAC_ASSET: clipsync-aarch64-apple-darwin.tar.gz
+      WINDOWS_ASSET: clipsync-x86_64-pc-windows-msvc.zip
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
-      - name: Build binary
+      - name: Build and package desktop binaries
         run: |
-          mkdir bin
-          CGO_ENABLED=0 go build -mod=readonly -trimpath -ldflags "-s -w -X main.version=$VERSION" -o bin/clipsync ./cmd/clipsync
-      - name: Test binary
-        run: bin/clipsync --version
-      - name: Package binary
-        run: |
-          mkdir dist
-          tar -C bin -czf "dist/$ASSET" clipsync
+          mkdir -p bin/mac bin/windows dist
+          export CGO_ENABLED=0
+          ldflags="-s -w -X main.version=$VERSION"
+          GOOS=darwin GOARCH=arm64 go build -mod=readonly -trimpath -ldflags "$ldflags" -o bin/mac/clipsync ./cmd/clipsync
+          export GOOS=windows GOARCH=amd64
+          go build -mod=readonly -trimpath -ldflags "$ldflags" -o bin/windows/clipsync.exe ./cmd/clipsync
+          # The background service must start without a console window.
+          go build -mod=readonly -trimpath -ldflags "$ldflags -H windowsgui" -o bin/windows/clipsyncw.exe ./cmd/clipsync
+          tar -C bin/mac -czf "dist/$MAC_ASSET" clipsync
+          zip -j "dist/$WINDOWS_ASSET" bin/windows/clipsync.exe bin/windows/clipsyncw.exe
           cd dist
-          shasum -a 256 "$ASSET" > "$ASSET.sha256"
+          sha256sum "$MAC_ASSET" > "$MAC_ASSET.sha256"
+          sha256sum "$WINDOWS_ASSET" > "$WINDOWS_ASSET.sha256"
       - uses: actions/upload-artifact@v7
         with:
           name: mac
-          path: dist/*
+          path: dist/${{ env.MAC_ASSET }}*
           if-no-files-found: error
-
-  windows:
-    # x86_64 only: Windows on Arm runs it through emulation.
-    runs-on: windows-latest
-    env:
-      ASSET: clipsync-x86_64-pc-windows-msvc.zip
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-      # clipsyncw.exe is the same program without a console window.
-      - name: Build binaries
-        run: |
-          mkdir dist
-          export CGO_ENABLED=0 GOARCH=amd64
-          go build -mod=readonly -trimpath -ldflags "-s -w -X main.version=$VERSION" -o dist/clipsync.exe ./cmd/clipsync
-          go build -mod=readonly -trimpath -ldflags "-s -w -H windowsgui -X main.version=$VERSION" -o dist/clipsyncw.exe ./cmd/clipsync
-      - name: Test binary
-        run: dist/clipsync.exe --version
-      - name: Package binaries
-        working-directory: dist
-        run: |
-          7z a "$ASSET" clipsync.exe clipsyncw.exe
-          rm clipsync.exe clipsyncw.exe
-          sha256sum "$ASSET" > "$ASSET.sha256"
       - uses: actions/upload-artifact@v7
         with:
           name: windows
-          path: dist/*
+          path: dist/${{ env.WINDOWS_ASSET }}*
           if-no-files-found: error
-
-  android:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    defaults:
-      run:
-        working-directory: android
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
@@ -117,7 +80,8 @@ jobs:
         run: |
           echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
           echo "CLIPSYNC_KEYSTORE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
-      - name: Build
+      - name: Build Android APK
+        working-directory: android
         env:
           CLIPSYNC_KEYSTORE_PASSWORD: ${{ secrets.CLIPSYNC_KEYSTORE_PASSWORD }}
           BUILD_NUMBER: ${{ github.run_number }}
@@ -132,7 +96,7 @@ jobs:
           if-no-files-found: error
 
   publish:
-    needs: [mac, windows, android]
+    needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write
