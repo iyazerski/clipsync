@@ -84,7 +84,6 @@ func (c *clipboard) receive(text string) {
 	log.Printf("received %d characters", utf8.RuneCountInString(text))
 }
 
-// Run syncs the clipboard until ctx is canceled.
 func Run(ctx context.Context, relay *client.Client, board Board) {
 	c := &clipboard{board: board, count: board.ChangeCount()}
 	pending := make(chan string, 1)

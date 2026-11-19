@@ -44,7 +44,6 @@ func Token(secret string) (string, error) {
 type Client struct {
 	address, device string
 	keys            keys
-	http            *http.Client
 }
 
 var httpClient = func() *http.Client {
@@ -62,7 +61,7 @@ func New(address, secret, device string) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Client{address: address, device: device, keys: k, http: httpClient}, nil
+	return &Client{address: address, device: device, keys: k}, nil
 }
 
 func (c *Client) request(ctx context.Context, method, path, text string, seen uint64) (*http.Response, error) {
@@ -76,7 +75,7 @@ func (c *Client) request(ctx context.Context, method, path, text string, seen ui
 		req.Header.Set("Accept", "text/event-stream")
 		req.Header.Set("Last-Event-ID", strconv.FormatUint(seen, 10))
 	}
-	resp, err := c.http.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}

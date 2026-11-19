@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -97,7 +98,7 @@ func (r *relay) publish(w http.ResponseWriter, req *http.Request, device string)
 		}
 		return
 	}
-	if len(body) == 0 || strings.IndexFunc(string(body), func(c rune) bool {
+	if len(body) == 0 || bytes.IndexFunc(body, func(c rune) bool {
 		return !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-' || c == '_')
 	}) >= 0 {
 		w.WriteHeader(http.StatusBadRequest)

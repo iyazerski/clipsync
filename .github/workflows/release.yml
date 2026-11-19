@@ -1,11 +1,6 @@
 name: Release
 
-# Every push to main that changes the desktop service or the app publishes a
-# release v0.1.<run> with all of them, so these links always get the newest:
-#   https://github.com/<owner>/<repo>/releases/latest/download/clipsync.apk
-#   https://github.com/<owner>/<repo>/releases/latest/download/clipsync-aarch64-apple-darwin.tar.gz
-#   https://github.com/<owner>/<repo>/releases/latest/download/clipsync-x86_64-pc-windows-msvc.zip
-# It also updates Formula/clipsync.rb in iyazerski/homebrew-tap.
+# Ship every asset together so the latest-release download URLs stay valid.
 on:
   push:
     branches: [main]

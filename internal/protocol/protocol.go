@@ -1,4 +1,3 @@
-// Package protocol holds the wire limits and routes shared by all clients and the relay.
 package protocol
 
 const (
