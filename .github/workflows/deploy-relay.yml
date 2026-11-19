@@ -19,7 +19,8 @@ on:
 
 concurrency:
   group: clipsync-relay-deploy
-  cancel-in-progress: true
+  # Let a rollout finish its smoke check or rollback before starting the next one.
+  cancel-in-progress: false
 
 permissions:
   contents: read
