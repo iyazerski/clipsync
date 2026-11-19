@@ -1,4 +1,4 @@
-// Package client implements the encrypted relay client used by desktop and Android.
+// Package client implements the encrypted desktop relay client.
 package client
 
 import (

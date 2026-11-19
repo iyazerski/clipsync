@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
+	_ "embed"
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
@@ -18,10 +19,10 @@ import (
 	"time"
 )
 
-const (
-	fixtureSecret = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8"
-	fixtureToken  = "eJMfuewcmawfRsgaj7Zutkow2oBVjbx8Thv_-3tJnYE"
-)
+//go:embed testdata/pairing.txt
+var pairingFixture string
+
+var fixtureSecret, fixtureToken, _ = strings.Cut(strings.TrimSpace(pairingFixture), "\n")
 
 type memoryBoard struct {
 	mu      sync.Mutex
@@ -69,7 +70,7 @@ func receiveWithin[T any](t *testing.T, ch <-chan T) T {
 }
 
 func TestSyncWithExistingWireProtocol(t *testing.T) {
-	// This key is the HMAC-SHA256 of "clipsync/key" under the shared Rust/Kotlin test secret.
+	// This key is the HMAC-SHA256 of "clipsync/key" under the shared test secret.
 	const fixtureKey = "sT5EE_r8G18kn9sXlmhAOBGU9LmyXv4wzl712Qf0Dtg"
 	key, err := base64.RawURLEncoding.DecodeString(fixtureKey)
 	if err != nil {

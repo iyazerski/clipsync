@@ -199,11 +199,11 @@ Run `clipsync uninstall`. Then run `brew uninstall clipsync`, or delete the bina
 
 ## Build from source
 
-You need [Go](https://go.dev/dl/) 1.27.4 or later. For Android, also install JDK 21, the Android SDK, and NDK `27.2.12479018`. Set `ANDROID_HOME` to the SDK directory.
+The desktop service and relay need [Go](https://go.dev/dl/) 1.27.4 or later. Android needs JDK 21 and the Android SDK. Set `ANDROID_HOME` to the SDK directory.
 
 ```sh
 make install   # build clipsync and put it in ~/.local/bin
-make test      # run Go tests and Android lint
+make test      # run the Go and Android checks
 cd android && ./gradlew assembleRelease   # build the app
 ```
 

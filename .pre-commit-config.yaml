@@ -24,11 +24,11 @@ repos:
         entry: sh -c 'go vet -mod=readonly ./... && go test -mod=readonly ./...'
         language: system
         pass_filenames: false
-        files: ^(cmd/|relay/|internal/|androidbridge/|go\.(mod|sum)$)
+        files: ^(cmd/|relay/|internal/|go\.(mod|sum)$)
 
-      - id: android-lint
-        name: Android lint
-        entry: sh -c 'cd android && ./gradlew -q lintRelease'
+      - id: android-check
+        name: Android lint and tests
+        entry: sh -c 'cd android && ./gradlew -q lintRelease testDebugUnitTest'
         language: system
         pass_filenames: false
-        files: ^(android/|androidbridge/|internal/|go\.(mod|sum)$|scripts/android-aar\.sh$)
+        files: ^(android/|cmd/clipsync/testdata/)

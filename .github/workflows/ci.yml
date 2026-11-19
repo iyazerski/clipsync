@@ -20,7 +20,7 @@ jobs:
           go-version-file: go.mod
       - name: Format and licenses
         run: |
-          test -z "$(gofmt -l cmd internal relay androidbridge)"
+          test -z "$(gofmt -l cmd internal relay)"
           make licenses
           git diff --exit-code THIRD_PARTY_LICENSES.md
       - name: Vet and test Go
@@ -40,10 +40,8 @@ jobs:
           distribution: temurin
           java-version: "21"
       - uses: gradle/actions/setup-gradle@v6
-      - name: Install NDK
-        run: sdkmanager 'ndk;27.2.12479018'
-      - name: Android lint
+      - name: Android lint and tests
         working-directory: android
         run: |
           echo "sdk.dir=$ANDROID_HOME" > local.properties
-          ./gradlew --no-daemon lintRelease
+          ./gradlew --no-daemon lintRelease testDebugUnitTest

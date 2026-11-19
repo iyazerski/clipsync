@@ -13,8 +13,6 @@ on:
       - "cmd/**"
       - "internal/**"
       - "android/**"
-      - "androidbridge/**"
-      - "scripts/android-aar.sh"
       - "go.mod"
       - "go.sum"
       - ".github/workflows/release.yml"
@@ -72,8 +70,6 @@ jobs:
           distribution: temurin
           java-version: "21"
       - uses: gradle/actions/setup-gradle@v6
-      - name: Install NDK
-        run: sdkmanager 'ndk;27.2.12479018'
       - name: Restore release keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.CLIPSYNC_KEYSTORE_BASE64 }}
