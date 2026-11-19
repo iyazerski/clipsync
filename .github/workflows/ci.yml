@@ -2,76 +2,53 @@ name: CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
 
-# Only PR runs share a group, so a new push cancels the outdated run and frees its macOS runner.
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
-  rust:
-    # The desktop service builds on macOS and Windows only; the relay builds anywhere.
-    runs-on: macos-15
-
-    steps:
-      - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy, rustfmt
-      - name: Format
-        run: cargo fmt --all --check
-      - name: Clippy
-        run: cargo clippy --workspace --all-targets --locked -- -D warnings
-      - name: Test
-        run: cargo test --workspace --locked
-
-  windows:
-    runs-on: windows-latest
-
-    steps:
-      - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
-      - name: Clippy
-        run: cargo clippy -p clipsync --all-targets --locked -- -D warnings
-      - name: Test
-        run: cargo test -p clipsync --locked
-
-  licenses:
-    runs-on: ubuntu-latest
-
+  go:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-15, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
-      - uses: taiki-e/install-action@v2.90.5
+      - uses: actions/setup-go@v6
         with:
-          tool: cargo-about
-      - name: Third-party licenses are current
+          go-version-file: go.mod
+      - name: Format and licenses
+        if: runner.os == 'Linux'
         run: |
+          test -z "$(gofmt -l cmd internal relay androidbridge)"
           make licenses
-          git diff --exit-code THIRD_PARTY_LICENSES.md || {
-            echo "::error::THIRD_PARTY_LICENSES.md is stale: run make licenses and commit it"
-            exit 1
-          }
+          git diff --exit-code THIRD_PARTY_LICENSES.md
+      - run: go vet -mod=readonly ./...
+      - if: runner.os != 'Windows'
+        run: go test -mod=readonly -race ./...
+      - if: runner.os == 'Windows'
+        run: go test -mod=readonly ./...
 
   android:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    defaults:
-      run:
-        working-directory: android
-
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
       - uses: gradle/actions/setup-gradle@v6
-      - name: Lint and test
+      - name: Install NDK
+        run: sdkmanager 'ndk;27.2.12479018'
+      - name: Android lint
+        working-directory: android
         run: |
           echo "sdk.dir=$ANDROID_HOME" > local.properties
-          ./gradlew --no-daemon lintRelease testDebugUnitTest
+          ./gradlew --no-daemon lintRelease

@@ -10,11 +10,13 @@ on:
   push:
     branches: [main]
     paths:
-      - "src/**"
-      - "proto/**"
+      - "cmd/**"
+      - "internal/**"
       - "android/**"
-      - "Cargo.toml"
-      - "Cargo.lock"
+      - "androidbridge/**"
+      - "scripts/android-aar.sh"
+      - "go.mod"
+      - "go.sum"
       - ".github/workflows/release.yml"
   workflow_dispatch:
 
@@ -33,23 +35,22 @@ jobs:
     # Apple silicon only, like the Macs it runs on.
     runs-on: macos-15
     env:
-      TARGET: aarch64-apple-darwin
       ASSET: clipsync-aarch64-apple-darwin.tar.gz
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-go@v6
         with:
-          targets: ${{ env.TARGET }}
+          go-version-file: go.mod
       - name: Build binary
-        env:
-          CLIPSYNC_VERSION: ${{ env.VERSION }}
-        run: cargo build --release --locked --target "$TARGET"
+        run: |
+          mkdir bin
+          CGO_ENABLED=0 go build -mod=readonly -trimpath -ldflags "-s -w -X main.version=$VERSION" -o bin/clipsync ./cmd/clipsync
       - name: Test binary
-        run: target/$TARGET/release/clipsync --version
+        run: bin/clipsync --version
       - name: Package binary
         run: |
           mkdir dist
-          tar -C "target/$TARGET/release" -czf "dist/$ASSET" clipsync
+          tar -C bin -czf "dist/$ASSET" clipsync
           cd dist
           shasum -a 256 "$ASSET" > "$ASSET.sha256"
       - uses: actions/upload-artifact@v7
@@ -62,27 +63,22 @@ jobs:
     # x86_64 only: Windows on Arm runs it through emulation.
     runs-on: windows-latest
     env:
-      TARGET: x86_64-pc-windows-msvc
       ASSET: clipsync-x86_64-pc-windows-msvc.zip
     defaults:
       run:
         shell: bash
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-go@v6
         with:
-          targets: ${{ env.TARGET }}
-      # clipsyncw.exe is the same program without a console window, for the
-      # background service. Only the final link differs, so it builds in seconds.
+          go-version-file: go.mod
+      # clipsyncw.exe is the same program without a console window.
       - name: Build binaries
-        env:
-          CLIPSYNC_VERSION: ${{ env.VERSION }}
         run: |
           mkdir dist
-          cargo build --release --locked --target "$TARGET"
-          cp "target/$TARGET/release/clipsync.exe" dist/clipsync.exe
-          cargo rustc --release --locked --target "$TARGET" --bin clipsync -- --cfg windowless
-          cp "target/$TARGET/release/clipsync.exe" dist/clipsyncw.exe
+          export CGO_ENABLED=0 GOARCH=amd64
+          go build -mod=readonly -trimpath -ldflags "-s -w -X main.version=$VERSION" -o dist/clipsync.exe ./cmd/clipsync
+          go build -mod=readonly -trimpath -ldflags "-s -w -H windowsgui -X main.version=$VERSION" -o dist/clipsyncw.exe ./cmd/clipsync
       - name: Test binary
         run: dist/clipsync.exe --version
       - name: Package binaries
@@ -105,11 +101,16 @@ jobs:
         working-directory: android
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
       - uses: gradle/actions/setup-gradle@v6
+      - name: Install NDK
+        run: sdkmanager 'ndk;27.2.12479018'
       - name: Restore release keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.CLIPSYNC_KEYSTORE_BASE64 }}

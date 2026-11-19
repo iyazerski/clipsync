@@ -17,8 +17,9 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.SystemClock
-import java.io.IOException
-import java.net.HttpURLConnection
+import dev.iyazerski.androidbridge.Androidbridge
+import dev.iyazerski.androidbridge.Observer
+import dev.iyazerski.androidbridge.Subscription
 import java.text.DateFormat
 import java.util.Date
 import kotlin.concurrent.thread
@@ -36,12 +37,11 @@ class SyncService : Service() {
     private val main = Handler(Looper.getMainLooper())
     private var listener: Thread? = null
     @Volatile private var running = false
-    @Volatile private var connection: HttpURLConnection? = null
-    /** Set by [kick] to cut a backoff wait short. */
-    private var kicked = false
+    @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
     private val lock = Object()
-    /** Kept across streams, so a reconnect can't bring a clip twice. Listener thread only. */
-    private val opened = Seal.Opened()
+    private var subscription: Subscription? = null
+    private var kicked = false
+    private val receiver by lazy { Androidbridge.newReceiver() }
 
     private val network = object : ConnectivityManager.NetworkCallback() {
         private var current: Network? = null
@@ -92,9 +92,9 @@ class SyncService : Service() {
 
     /** Drop the current stream or the backoff wait, so the listener reconnects at once. */
     private fun kick() {
-        connection?.disconnect()
         synchronized(lock) {
             kicked = true
+            subscription?.stop()
             lock.notifyAll()
         }
     }
@@ -104,13 +104,14 @@ class SyncService : Service() {
         while (running) {
             val started = SystemClock.elapsedRealtime()
             try {
-                stream()
-            } catch (e: Relay.Refused) {
-                setStatus(e.message ?: "Refused")
-                backoff = MAX_BACKOFF_MS
-            } catch (e: IOException) {
-                if (running) setStatus("Offline, retrying")
-            } catch (e: IllegalArgumentException) {
+                when (stream()) {
+                    Androidbridge.Refused -> {
+                        setStatus("The relay refused the secret: pair again")
+                        backoff = MAX_BACKOFF_MS
+                    }
+                    Androidbridge.Offline -> if (running) setStatus("Offline, retrying")
+                }
+            } catch (e: Exception) {
                 setStatus(e.message ?: "Bad pairing")
                 backoff = MAX_BACKOFF_MS
             }
@@ -123,54 +124,38 @@ class SyncService : Service() {
         }
     }
 
-    /** Follow the relay's event stream until it ends or fails. */
-    private fun stream() {
-        val seal = Seal(settings.secret ?: throw IOException("Not paired"))
-        val conn = Relay.connect(settings, seal, Relay.EVENTS_PATH).apply {
-            // The relay sends a comment every 45 s on an idle stream.
-            readTimeout = SILENCE_LIMIT_MS
-            setRequestProperty("Accept", "text/event-stream")
-            setRequestProperty("Last-Event-ID", settings.seen.toString())
-        }
-        connection = conn
-        try {
-            Relay.check(conn)
-            setStatus("Connected")
-            conn.inputStream.bufferedReader(Charsets.UTF_8).use { reader ->
-                var id: Long? = null
-                val data = StringBuilder()
-                while (running) {
-                    val line = reader.readLine() ?: return
-                    when {
-                        line.isEmpty() -> {
-                            if (data.isNotEmpty()) received(seal, id, data.toString())
-                            id = null
-                            data.setLength(0)
-                        }
-                        line.startsWith("id:") -> id = line.substring(3).trim().toLongOrNull()
-                        line.startsWith("data:") -> data.append(line.substring(5).trim())
-                    }
-                }
+    private fun stream(): Long {
+        val relay = settings.relay ?: return 0
+        val secret = settings.secret ?: return 0
+        val active = Androidbridge.subscribe(relay, secret, settings.device)
+        synchronized(lock) {
+            if (!running || kicked) {
+                active.stop()
+                return 0
             }
-        } finally {
-            connection = null
-            conn.disconnect()
+            subscription = active
         }
-    }
+        return try {
+            active.run(receiver, settings.seen, object : Observer {
+                override fun onConnected() = setStatus("Connected")
 
-    /** Open a clip and put it on the clipboard. */
-    private fun received(seal: Seal, id: Long?, sealed: String) {
-        if (id != null && id > settings.seen) settings.seen = id
-        val text = try {
-            seal.open(sealed, opened)
-        } catch (e: IllegalArgumentException) {
-            setStatus(e.message ?: "Couldn't open a clip")
-            return
+                override fun onClip(id: Long, text: String, problem: String) {
+                    if (id > settings.seen) settings.seen = id
+                    if (problem.isNotEmpty()) {
+                        setStatus(problem)
+                        return
+                    }
+                    main.post {
+                        if (!running) return@post
+                        getSystemService(ClipboardManager::class.java)
+                            .setPrimaryClip(ClipData.newPlainText("clipsync", text))
+                    }
+                    setStatus("Connected · last clip at ${DateFormat.getTimeInstance(DateFormat.SHORT).format(Date())}")
+                }
+            })
+        } finally {
+            synchronized(lock) { subscription = null }
         }
-        main.post {
-            getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("clipsync", text))
-        }
-        setStatus("Connected · last clip at ${DateFormat.getTimeInstance(DateFormat.SHORT).format(Date())}")
     }
 
     private fun setStatus(text: String) {
@@ -206,8 +191,6 @@ class SyncService : Service() {
         private const val MAX_BACKOFF_MS = 30_000L
         /** A stream that lasted this long worked, so the next reconnect starts fast again. */
         private const val STABLE_AFTER_MS = 60_000L
-        /** Reconnect if nothing came from the relay for this long. */
-        private const val SILENCE_LIMIT_MS = 100_000
 
         /** The service's state, for the main screen. Main thread only. */
         var status = "Connecting…"

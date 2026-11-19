@@ -47,7 +47,7 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName(if (keystore != null) "release" else "debug")
         }
     }
@@ -65,13 +65,23 @@ android {
     packaging.resources.excludes += "kotlin/**.kotlin_builtins"
 }
 
+val goRoot = rootProject.projectDir.parentFile
+val goBridge = layout.buildDirectory.file("generated/go/clipsync.aar")
+val buildGoBridge = tasks.register<Exec>("buildGoBridge") {
+    inputs.files(fileTree(goRoot) {
+        include("androidbridge/**/*.go", "internal/**/*.go", "go.mod", "go.sum", "scripts/android-aar.sh")
+    })
+    outputs.file(goBridge)
+    workingDir(goRoot)
+    commandLine("sh", "scripts/android-aar.sh", goBridge.get().asFile.absolutePath)
+}
+
 dependencies {
+    implementation(files(goBridge).builtBy(buildGoBridge))
     implementation(platform("androidx.compose:compose-bom:2026.09.00"))
     implementation("androidx.compose.material3:material3")
     implementation("androidx.activity:activity-compose:1.13.0")
     // Liquid glass surfaces (refraction, blur, highlights) over the backdrop.
     implementation("dev.chrisbanes.haze:haze:2.1.0")
     implementation("dev.chrisbanes.haze:haze-glass:2.1.0")
-
-    testImplementation("junit:junit:4.13.2")
 }

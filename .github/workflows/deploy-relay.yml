@@ -5,8 +5,9 @@ on:
     branches: ["main"]
     paths:
       - "relay/**"
-      - "proto/**"
-      - "Cargo.lock"
+      - "internal/protocol/**"
+      - "go.mod"
+      - "go.sum"
       - "scripts/release_guard.sh"
       - ".github/workflows/deploy-relay.yml"
   workflow_dispatch:

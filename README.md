@@ -12,7 +12,7 @@ It's end-to-end encrypted, and it runs through a tiny relay that you host yourse
 [![Latest release](https://img.shields.io/github/v/release/iyazerski/clipsync?color=3b6cf6)](https://github.com/iyazerski/clipsync/releases/latest)
 [![Mac · Windows · Android](https://img.shields.io/badge/Mac%20·%20Windows%20·%20Android-black)](#get-started)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Built with Rust](https://img.shields.io/badge/built%20with-Rust-orange?logo=rust)](https://www.rust-lang.org)
+[![Built with Go](https://img.shields.io/badge/built%20with-Go-00ADD8?logo=go)](https://go.dev)
 [![Buy me a coffee](https://img.shields.io/badge/buy%20me%20a%20coffee-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/iyazerski)
 
 <picture>
@@ -30,9 +30,9 @@ Apple's Universal Clipboard works only between Apple devices that are close to e
 - **Works from anywhere.** Your devices don't need to be on the same Wi-Fi, or near each other. Home, office or mobile data, it keeps working when you switch.
 - **Private by design.** Text is encrypted on the device before it leaves. The relay passes it on, but can't read it. It keeps only the latest copy, in memory, for 2 minutes.
 - **Skips your passwords.** clipsync ignores copies that password managers mark as private.
-- **Yours.** No account, no cloud service, no tracking. The relay is a 1 MB container that uses about 6 MB of memory, so a Raspberry Pi or the smallest server is plenty.
+- **Yours.** No account, no cloud service, no tracking. The relay runs in a small container and supports both x86-64 and ARM64 hosts.
 - **Set up in minutes.** One command per computer. Pair the phone by scanning a QR code.
-- **Free and open source.** MIT licensed and written in Rust.
+- **Free and open source.** MIT licensed.
 
 ## How it works
 
@@ -199,11 +199,11 @@ Run `clipsync uninstall`. Then run `brew uninstall clipsync`, or delete the bina
 
 ## Build from source
 
-You need [Rust](https://rustup.rs) for the desktop service and the relay, and JDK 21 and the Android SDK for the app.
+You need [Go](https://go.dev/dl/) 1.27.4 or later. For Android, also install JDK 21, the Android SDK, and NDK `27.2.12479018`. Set `ANDROID_HOME` to the SDK directory.
 
 ```sh
 make install   # build clipsync and put it in ~/.local/bin
-make test      # test the desktop service, the relay and the app
+make test      # run Go tests and Android lint
 cd android && ./gradlew assembleRelease   # build the app
 ```
 
