@@ -17,16 +17,22 @@ on:
       - "go.sum"
       - ".github/workflows/release.yml"
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the release (main only)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 concurrency:
-  group: release
-  cancel-in-progress: false
+  group: ${{ (github.event_name == 'push' || (github.ref == 'refs/heads/main' && inputs.publish)) && 'release' || format('release-check-{0}', github.ref) }}
+  cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' && (github.ref != 'refs/heads/main' || !inputs.publish) }}
 
 env:
   VERSION: 0.1.${{ github.run_number }}
+  PUBLISH: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || inputs.publish) }}
 
 jobs:
   build:
@@ -55,43 +61,47 @@ jobs:
           cd dist
           sha256sum "$MAC_ASSET" > "$MAC_ASSET.sha256"
           sha256sum "$WINDOWS_ASSET" > "$WINDOWS_ASSET.sha256"
-      - uses: actions/upload-artifact@v7
-        with:
-          name: mac
-          path: dist/${{ env.MAC_ASSET }}*
-          if-no-files-found: error
-      - uses: actions/upload-artifact@v7
-        with:
-          name: windows
-          path: dist/${{ env.WINDOWS_ASSET }}*
-          if-no-files-found: error
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
       - uses: gradle/actions/setup-gradle@v6
       - name: Restore release keystore
+        if: env.PUBLISH == 'true'
         env:
           KEYSTORE_BASE64: ${{ secrets.CLIPSYNC_KEYSTORE_BASE64 }}
         run: |
+          test -n "$KEYSTORE_BASE64"
           echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
           echo "CLIPSYNC_KEYSTORE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
       - name: Build Android APK
         working-directory: android
         env:
-          CLIPSYNC_KEYSTORE_PASSWORD: ${{ secrets.CLIPSYNC_KEYSTORE_PASSWORD }}
+          CLIPSYNC_KEYSTORE_PASSWORD: ${{ env.PUBLISH == 'true' && secrets.CLIPSYNC_KEYSTORE_PASSWORD || '' }}
           BUILD_NUMBER: ${{ github.run_number }}
         run: |
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           ./gradlew --no-daemon assembleRelease
-          cp app/build/outputs/apk/release/app-release.apk clipsync.apk
+          cp app/build/outputs/apk/release/app-release.apk ../dist/clipsync.apk
       - uses: actions/upload-artifact@v7
         with:
-          name: android
-          path: android/clipsync.apk
+          name: mac
+          path: dist/${{ env.MAC_ASSET }}*
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows-and-android
+          path: |
+            dist/${{ env.WINDOWS_ASSET }}*
+            dist/clipsync.apk
+          compression-level: 0
+          retention-days: 7
           if-no-files-found: error
 
   publish:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || inputs.publish)
     needs: build
     runs-on: ubuntu-latest
     permissions:

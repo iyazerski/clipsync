@@ -35,6 +35,6 @@ Before you open a pull request:
 - Follow the code next to your change.
 - Use comments to explain why, not what.
 
-Every merge to `main` that changes the desktop service or the app ships a release to all users, and every change to the relay deploys it, so `main` must always work.
+Every merge to `main` that changes the desktop service or the app ships a release to all users, and every change to the relay deploys it, so `main` must always work. To check release packaging without publishing or deploying, run `gh workflow run release.yml --ref <branch> -f publish=false`. The APK uses the debug signing key for this check.
 
 By contributing, you agree that your work is released under the [MIT License](LICENSE). Please follow the [Code of Conduct](CODE_OF_CONDUCT.md).
