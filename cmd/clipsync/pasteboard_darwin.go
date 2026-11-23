@@ -2,11 +2,14 @@ package main
 
 import (
 	"errors"
+	"log"
 	"runtime"
 	"unsafe"
 
 	"github.com/ebitengine/purego"
 	"github.com/ebitengine/purego/objc"
+
+	"github.com/iyazerski/clipsync/internal/protocol"
 )
 
 type macPasteboard struct {
@@ -22,7 +25,7 @@ type macPasteboard struct {
 	toUTF8             func(objc.ID, objc.SEL) *byte
 	setString          func(objc.ID, objc.SEL, objc.ID, objc.ID) bool
 
-	general, changes, types, contains, stringForType, utf8, utf8Length, makeString, clear, set objc.SEL
+	general, changes, types, contains, stringForType, utf8, utf8Length, alloc, initWithBytes, autorelease, clear, set objc.SEL
 }
 
 func newPasteboard() (*macPasteboard, error) {
@@ -30,7 +33,7 @@ func newPasteboard() (*macPasteboard, error) {
 	if _, err := purego.Dlopen("/System/Library/Frameworks/AppKit.framework/AppKit", purego.RTLD_LAZY|purego.RTLD_GLOBAL); err != nil {
 		return nil, err
 	}
-	runtime, err := purego.Dlopen("/usr/lib/libobjc.A.dylib", purego.RTLD_LAZY|purego.RTLD_LOCAL)
+	libobjc, err := purego.Dlopen("/usr/lib/libobjc.A.dylib", purego.RTLD_LAZY|purego.RTLD_LOCAL)
 	if err != nil {
 		return nil, err
 	}
@@ -44,13 +47,15 @@ func newPasteboard() (*macPasteboard, error) {
 		stringForType: objc.RegisterName("stringForType:"),
 		utf8:          objc.RegisterName("UTF8String"),
 		utf8Length:    objc.RegisterName("lengthOfBytesUsingEncoding:"),
-		makeString:    objc.RegisterName("stringWithBytes:length:encoding:"),
+		alloc:         objc.RegisterName("alloc"),
+		initWithBytes: objc.RegisterName("initWithBytes:length:encoding:"),
+		autorelease:   objc.RegisterName("autorelease"),
 		clear:         objc.RegisterName("clearContents"),
 		set:           objc.RegisterName("setString:forType:"),
 	}
-	purego.RegisterLibFunc(&b.push, runtime, "objc_autoreleasePoolPush")
-	purego.RegisterLibFunc(&b.pop, runtime, "objc_autoreleasePoolPop")
-	msg, err := purego.Dlsym(runtime, "objc_msgSend")
+	purego.RegisterLibFunc(&b.push, libobjc, "objc_autoreleasePoolPush")
+	purego.RegisterLibFunc(&b.pop, libobjc, "objc_autoreleasePoolPop")
+	msg, err := purego.Dlsym(libobjc, "objc_msgSend")
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +72,9 @@ func (b *macPasteboard) board() objc.ID {
 const nsUTF8StringEncoding = 4
 
 func (b *macPasteboard) string(s string) objc.ID {
-	return b.fromUTF8(b.stringClass, b.makeString, []byte(s), len(s), nsUTF8StringEncoding)
+	allocated := b.object(b.stringClass, b.alloc)
+	str := b.fromUTF8(allocated, b.initWithBytes, []byte(s), len(s), nsUTF8StringEncoding)
+	return b.object(str, b.autorelease)
 }
 
 func (b *macPasteboard) pool() func() {
@@ -101,6 +108,13 @@ func (b *macPasteboard) Read() (string, error) {
 		return "", nil
 	}
 	n := b.byteLength(text, b.utf8Length, nsUTF8StringEncoding)
+	if n <= 0 {
+		return "", nil
+	}
+	if n > protocol.MaxText {
+		log.Printf("not sending a copy of %d KB: the limit is %d KB", n/1024, protocol.MaxText/1024)
+		return "", nil
+	}
 	if ptr := b.toUTF8(text, b.utf8); ptr != nil {
 		return string(unsafe.Slice(ptr, n)), nil
 	}

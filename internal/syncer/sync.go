@@ -193,6 +193,7 @@ func listen(ctx context.Context, relay *client.Client, c *clipboard, woke <-chan
 			log.Print("woke from sleep; reconnecting")
 			cancel()
 			<-done
+			backoff = client.MinBackoff
 		case err := <-done:
 			cancel()
 			if err != nil && ctx.Err() == nil {
@@ -205,10 +206,11 @@ func listen(ctx context.Context, relay *client.Client, c *clipboard, woke <-chan
 			select {
 			case <-ctx.Done():
 			case <-woke:
+				backoff = client.MinBackoff
 			case <-wait.C:
+				backoff = min(backoff*2, client.MaxBackoff)
 			}
 			wait.Stop()
 		}
-		backoff = min(backoff*2, client.MaxBackoff)
 	}
 }

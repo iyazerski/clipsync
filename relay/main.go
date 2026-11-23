@@ -90,8 +90,7 @@ func (r *relay) authorize(next func(http.ResponseWriter, *http.Request, string))
 func (r *relay) publish(w http.ResponseWriter, req *http.Request, device string) {
 	body, err := io.ReadAll(http.MaxBytesReader(w, req.Body, protocol.MaxSealed))
 	if err != nil {
-		var limit *http.MaxBytesError
-		if errors.As(err, &limit) {
+		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
 			w.WriteHeader(http.StatusRequestEntityTooLarge)
 		} else {
 			w.WriteHeader(http.StatusBadRequest)
@@ -160,6 +159,7 @@ func (r *relay) events(w http.ResponseWriter, req *http.Request, device string) 
 	}()
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("X-Accel-Buffering", "no")
 	flush := http.NewResponseController(w).Flush
 	if flush() != nil {
 		return
@@ -235,12 +235,24 @@ func serve(ctx context.Context, args []string) error {
 	server := &http.Server{
 		Handler:           newRelay(*token, time.Duration(limit)*time.Second).routes(),
 		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       2 * time.Minute,
 		BaseContext:       func(net.Listener) context.Context { return ctx },
 	}
-	stopped := context.AfterFunc(ctx, func() { server.Close() })
-	defer stopped()
+	shutdownDone := make(chan struct{})
+	stopped := context.AfterFunc(ctx, func() {
+		defer close(shutdownDone)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if server.Shutdown(shutdownCtx) != nil {
+			_ = server.Close()
+		}
+	})
 	log.Printf("listening on %s", listener.Addr())
-	if err := server.Serve(listener); !errors.Is(err, http.ErrServerClosed) {
+	err = server.Serve(listener)
+	if !stopped() {
+		<-shutdownDone
+	}
+	if !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
 	return nil

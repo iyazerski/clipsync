@@ -60,6 +60,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -89,7 +90,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var settings: Settings
     private val snackbar = SnackbarHostState()
     private var setup by mutableStateOf(Setup())
-    private var status by mutableStateOf(SyncService.status)
+    private var syncState by mutableStateOf(SyncService.state)
     /** The update check's progress, or null when idle. */
     private var updating by mutableStateOf<String?>(null)
     private val notifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
@@ -106,26 +107,27 @@ class MainActivity : ComponentActivity() {
             notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
         setContent { ClipsyncTheme { GlassScreen { Screen() } } }
-        handlePairing(intent)
+        if (savedInstanceState == null) handlePairing(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
         handlePairing(intent)
     }
 
     override fun onResume() {
         super.onResume()
-        SyncService.onStatus = { status = it }
+        SyncService.onState = { syncState = it }
         if (settings.paired) SyncService.start(this)
         // The tile, battery, or notification settings may have changed while the app was away.
         setup = readSetup()
-        // Status changes while paused don't reach the screen.
-        status = SyncService.status
+        // State changes while paused don't reach the screen.
+        syncState = SyncService.state
     }
 
     override fun onPause() {
-        SyncService.onStatus = null
+        SyncService.onState = null
         super.onPause()
     }
 
@@ -139,7 +141,9 @@ class MainActivity : ComponentActivity() {
 
     /** Pair from a `clipsync://pair?relay=…&secret=…` link. */
     private fun handlePairing(intent: Intent?) {
-        val link = intent?.data?.takeIf { intent.action == Intent.ACTION_VIEW } ?: return
+        if (intent == null || intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
+        val link = intent.data?.takeIf { intent.action == Intent.ACTION_VIEW } ?: return
+        intent.data = null
         pair(link.getQueryParameter("relay").orEmpty(), link.getQueryParameter("secret").orEmpty())
     }
 
@@ -151,8 +155,7 @@ class MainActivity : ComponentActivity() {
             return
         }
         notify("Paired")
-        SyncService.stop(this)
-        SyncService.start(this)
+        SyncService.reconnect(this)
         setup = readSetup()
     }
 
@@ -245,7 +248,7 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun Paired() {
-        StatusCard(status, setup.relayHost)
+        StatusCard(syncState, setup.relayHost)
         if (!setup.battery || !setup.notifications) SetupCard()
         SendCard()
     }
@@ -330,8 +333,9 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+            val versionName = remember { packageManager.getPackageInfo(packageName, 0).versionName }
             Text(
-                "clipsync ${packageManager.getPackageInfo(packageName, 0).versionName}",
+                "clipsync $versionName",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -363,26 +367,26 @@ private data class Setup(
     val notifications: Boolean = true,
 )
 
-/** How a [SyncService.status] text reads on screen. */
+/** How a [SyncState] reads on screen. */
 private class StatusView(val icon: Int, val title: String, val detail: String, val tint: Color?)
 
 @Composable
-private fun statusView(status: String, host: String): StatusView = when {
-    status.startsWith("Connected") -> StatusView(
+private fun statusView(state: SyncState, host: String): StatusView = when (state) {
+    is SyncState.Connected -> StatusView(
         R.drawable.sym_check_circle,
         "Connected",
-        status.substringAfter(" · ", "").replaceFirstChar(Char::uppercase).ifEmpty { "Waiting for clips from $host" },
+        state.warning ?: state.lastClipAt?.let { "Last clip at ${formatClipTime(it)}" } ?: "Waiting for clips from $host",
         Connected,
     )
-    status == "Connecting…" -> StatusView(R.drawable.sym_sync, "Connecting…", host, null)
-    status.startsWith("Offline") -> StatusView(R.drawable.sym_cloud_off, "Offline", "Retrying soon", null)
-    status == "Stopped" -> StatusView(R.drawable.sym_cloud_off, "Stopped", "Open clipsync to resume", null)
-    else -> StatusView(R.drawable.sym_error, "Not syncing", status, MaterialTheme.colorScheme.error)
+    SyncState.Connecting -> StatusView(R.drawable.sym_sync, "Connecting…", host, null)
+    SyncState.Offline -> StatusView(R.drawable.sym_cloud_off, "Offline", "Retrying soon", null)
+    SyncState.Stopped -> StatusView(R.drawable.sym_cloud_off, "Stopped", "Open clipsync to resume", null)
+    is SyncState.Error -> StatusView(R.drawable.sym_error, "Not syncing", state.message, MaterialTheme.colorScheme.error)
 }
 
 @Composable
-private fun StatusCard(status: String, host: String) {
-    val view = statusView(status, host)
+private fun StatusCard(state: SyncState, host: String) {
+    val view = statusView(state, host)
     val tint by animateColorAsState(view.tint ?: MaterialTheme.colorScheme.onSurfaceVariant, label = "tint")
     GlassCard(Modifier.fillMaxWidth()) {
         Column {
