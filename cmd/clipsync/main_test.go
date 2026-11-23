@@ -3,9 +3,14 @@
 package main
 
 import (
+	"archive/tar"
+	"archive/zip"
+	"bytes"
+	"compress/gzip"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -66,4 +71,71 @@ func TestPairingCommands(t *testing.T) {
 	if runtime.GOOS != "windows" && info.Mode().Perm() != 0600 {
 		t.Fatalf("config is not private: %v", info.Mode())
 	}
+}
+
+func TestUnpackArchive(t *testing.T) {
+	t.Run("tar.gz", func(t *testing.T) {
+		var buf bytes.Buffer
+		gz := gzip.NewWriter(&buf)
+		tw := tar.NewWriter(gz)
+		payload := []byte("mac-binary")
+		if err := tw.WriteHeader(&tar.Header{Name: "./clipsync", Mode: 0755, Size: int64(len(payload))}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := tw.Write(payload); err != nil {
+			t.Fatal(err)
+		}
+		if err := tw.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if err := gz.Close(); err != nil {
+			t.Fatal(err)
+		}
+
+		dir := t.TempDir()
+		if err := unpackArchive(buf.Bytes(), dir, []string{"clipsync"}, false); err != nil {
+			t.Fatal(err)
+		}
+		got, err := os.ReadFile(filepath.Join(dir, "clipsync"))
+		if err != nil || string(got) != string(payload) {
+			t.Fatalf("got %q (%v), want %q", got, err, payload)
+		}
+		if err := unpackArchive(buf.Bytes(), t.TempDir(), []string{"clipsync", "missing"}, false); err == nil {
+			t.Fatal("expected error for missing binary")
+		}
+	})
+
+	t.Run("zip", func(t *testing.T) {
+		var buf bytes.Buffer
+		zw := zip.NewWriter(&buf)
+		for name, content := range map[string]string{
+			"clipsync.exe":  "cli-bin",
+			"clipsyncw.exe": "gui-bin",
+		} {
+			w, err := zw.Create(name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := w.Write([]byte(content)); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := zw.Close(); err != nil {
+			t.Fatal(err)
+		}
+
+		dir := t.TempDir()
+		if err := unpackArchive(buf.Bytes(), dir, []string{"clipsync.exe", "clipsyncw.exe"}, true); err != nil {
+			t.Fatal(err)
+		}
+		for name, want := range map[string]string{
+			"clipsync.exe":  "cli-bin",
+			"clipsyncw.exe": "gui-bin",
+		} {
+			got, err := os.ReadFile(filepath.Join(dir, name))
+			if err != nil || string(got) != want {
+				t.Fatalf("%s = %q (%v), want %q", name, got, err, want)
+			}
+		}
+	})
 }

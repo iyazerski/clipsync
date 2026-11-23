@@ -3,6 +3,10 @@
 package main
 
 import (
+	"archive/tar"
+	"archive/zip"
+	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -11,7 +15,7 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
+	"path"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -20,7 +24,10 @@ import (
 	"time"
 )
 
-const releaseAPI = "https://api.github.com/repos/iyazerski/clipsync/releases/latest"
+const (
+	releaseAPI    = "https://api.github.com/repos/iyazerski/clipsync/releases/latest"
+	maxUpdateSize = 64 << 20
+)
 
 type release struct {
 	Tag    string `json:"tag_name"`
@@ -86,11 +93,9 @@ func update(ctx context.Context, out io.Writer, service agent) error {
 	}
 	fmt.Fprintf(out, "downloading clipsync %s…\n", latest)
 	asset, names := "clipsync-aarch64-apple-darwin.tar.gz", []string{"clipsync"}
-	tar := "/usr/bin/tar"
 	if runtime.GOOS == "windows" {
 		asset = "clipsync-x86_64-pc-windows-msvc.zip"
 		names = []string{"clipsync.exe", "clipsyncw.exe"}
-		tar = "tar"
 	}
 	archiveURL, err := published.asset(asset)
 	if err != nil {
@@ -100,7 +105,7 @@ func update(ctx context.Context, out io.Writer, service agent) error {
 	if err != nil {
 		return err
 	}
-	archive, err := get(archiveURL, 64<<20)
+	archive, err := get(archiveURL, maxUpdateSize)
 	if err != nil {
 		return err
 	}
@@ -109,7 +114,7 @@ func update(ctx context.Context, out io.Writer, service agent) error {
 		return err
 	}
 	fields := strings.Fields(string(checksum))
-	if len(fields) == 0 || fields[0] != fmt.Sprintf("%x", sha256.Sum256(archive)) {
+	if len(fields) == 0 || !strings.EqualFold(fields[0], fmt.Sprintf("%x", sha256.Sum256(archive))) {
 		return errors.New("the download doesn't match its checksum; try again")
 	}
 
@@ -119,13 +124,8 @@ func update(ctx context.Context, out io.Writer, service agent) error {
 		return err
 	}
 	defer os.RemoveAll(staging)
-	packed := filepath.Join(staging, asset)
-	if err := os.WriteFile(packed, archive, 0600); err != nil {
-		return err
-	}
-	args := append([]string{"-xf", packed, "-C", staging}, names...)
-	if data, err := exec.CommandContext(ctx, tar, args...).CombinedOutput(); err != nil {
-		return fmt.Errorf("unpacking update: %w: %s", err, data)
+	if err := unpackArchive(archive, staging, names, strings.HasSuffix(asset, ".zip")); err != nil {
+		return fmt.Errorf("unpacking update: %w", err)
 	}
 	for i, name := range names {
 		target := filepath.Join(dir, name)
@@ -160,10 +160,85 @@ func swapExecutable(from, target string) error {
 	return nil
 }
 
+func unpackArchive(archive []byte, staging string, names []string, isZip bool) error {
+	want := make(map[string]bool, len(names))
+	for _, name := range names {
+		want[name] = true
+	}
+	if isZip {
+		zr, err := zip.NewReader(bytes.NewReader(archive), int64(len(archive)))
+		if err != nil {
+			return err
+		}
+		for _, f := range zr.File {
+			name := path.Clean(f.Name)
+			if f.FileInfo().IsDir() || !want[name] {
+				continue
+			}
+			rc, err := f.Open()
+			if err != nil {
+				return err
+			}
+			err = writeExecutable(filepath.Join(staging, name), rc)
+			rc.Close()
+			if err != nil {
+				return err
+			}
+			delete(want, name)
+		}
+	} else {
+		gz, err := gzip.NewReader(bytes.NewReader(archive))
+		if err != nil {
+			return err
+		}
+		defer gz.Close()
+		tr := tar.NewReader(gz)
+		for {
+			hdr, err := tr.Next()
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			if err != nil {
+				return err
+			}
+			name := path.Clean(hdr.Name)
+			if hdr.Typeflag != tar.TypeReg || !want[name] {
+				continue
+			}
+			if err := writeExecutable(filepath.Join(staging, name), tr); err != nil {
+				return err
+			}
+			delete(want, name)
+		}
+	}
+	for _, name := range names {
+		if want[name] {
+			return fmt.Errorf("archive is missing %s", name)
+		}
+	}
+	return nil
+}
+
+func writeExecutable(dst string, src io.Reader) error {
+	f, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+	if err != nil {
+		return err
+	}
+	n, copyErr := io.Copy(f, io.LimitReader(src, maxUpdateSize+1))
+	closeErr := f.Close()
+	if copyErr != nil || closeErr != nil {
+		return errors.Join(copyErr, closeErr)
+	}
+	if n > maxUpdateSize {
+		return errors.New("the unpacked update is too large")
+	}
+	return nil
+}
+
 func newer(a, b string) bool {
 	parts := func(version string) []uint64 {
 		var result []uint64
-		for _, part := range strings.Split(version, ".") {
+		for part := range strings.SplitSeq(version, ".") {
 			n, _ := strconv.ParseUint(part, 10, 64)
 			result = append(result, n)
 		}
