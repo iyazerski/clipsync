@@ -36,9 +36,10 @@ class SyncService : Service() {
     private val main = Handler(Looper.getMainLooper())
     private var listener: Thread? = null
     @Volatile private var running = false
-    @Volatile private var connection: HttpURLConnection? = null
-    /** Coordinates backoff waits with [wake] and [reconnectNow]. */
+    @Volatile private var lastClipAt: Long? = null
+    /** Coordinates [connection], backoff waits, [wake], and [reconnectNow]. */
     private val lock = Object()
+    private var connection: HttpURLConnection? = null
     private var kicked = false
     private var waiting = false
     /** Kept across streams, so a reconnect can't bring a clip twice. Listener thread only. */
@@ -85,6 +86,7 @@ class SyncService : Service() {
             running = true
             listener = thread(name = "clipsync-listen") { listen() }
         } else if (intent?.action == ACTION_RECONNECT) {
+            lastClipAt = null
             updateState(SyncState.Connecting, notify = true)
             reconnectNow()
         }
@@ -111,11 +113,12 @@ class SyncService : Service() {
 
     /** Drop the current stream or the backoff wait, so the listener reconnects at once. */
     private fun reconnectNow() {
-        synchronized(lock) {
+        val active = synchronized(lock) {
             kicked = true
             lock.notifyAll()
+            connection
         }
-        connection?.disconnect()
+        active?.disconnect()
     }
 
     private fun listen() {
@@ -125,6 +128,10 @@ class SyncService : Service() {
             val started = SystemClock.elapsedRealtime()
             try {
                 stream()
+                if (running) {
+                    val deliberate = synchronized(lock) { kicked }
+                    setState(if (deliberate) SyncState.Connecting else SyncState.Offline)
+                }
             } catch (e: Relay.Refused) {
                 if (running) setState(SyncState.Error(e.message ?: "Refused"))
                 backoff = MAX_BACKOFF_MS
@@ -162,11 +169,18 @@ class SyncService : Service() {
             setRequestProperty("Accept", "text/event-stream")
             setRequestProperty("Last-Event-ID", settings.seen.toString())
         }
-        connection = conn
+        val abort = synchronized(lock) {
+            if (kicked || !running) {
+                true
+            } else {
+                connection = conn
+                false
+            }
+        }
         try {
+            if (abort) return
             Relay.check(conn)
-            var lastClipAt: Long? = null
-            setState(SyncState.Connected())
+            setState(SyncState.Connected(lastClipAt))
             conn.inputStream.bufferedReader(Charsets.UTF_8).use { reader ->
                 var id: Long? = null
                 val data = StringBuilder()
@@ -174,7 +188,7 @@ class SyncService : Service() {
                     val line = reader.readLine() ?: return
                     when {
                         line.isEmpty() -> {
-                            if (data.isNotEmpty()) lastClipAt = received(seal, id, data.toString(), lastClipAt)
+                            if (data.isNotEmpty()) received(seal, id, data.toString())
                             id = null
                             data.setLength(0)
                         }
@@ -184,27 +198,29 @@ class SyncService : Service() {
                 }
             }
         } finally {
-            connection = null
+            synchronized(lock) {
+                if (connection === conn) connection = null
+            }
             conn.disconnect()
         }
     }
 
-    /** Open a clip and put it on the clipboard, returning the latest received timestamp. */
-    private fun received(seal: Seal, id: Long?, sealed: String, lastClipAt: Long?): Long? {
+    /** Open a clip and put it on the clipboard. */
+    private fun received(seal: Seal, id: Long?, sealed: String) {
         if (id != null && id > settings.seen) settings.seen = id
         val text = try {
             seal.open(sealed, opened)
         } catch (e: IllegalArgumentException) {
             setState(SyncState.Connected(lastClipAt, warning = e.message ?: "Couldn't open a clip"))
-            return lastClipAt
+            return
         }
         main.post {
             if (!running) return@post
             getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("clipsync", text))
         }
         val receivedAt = System.currentTimeMillis()
+        lastClipAt = receivedAt
         setState(SyncState.Connected(receivedAt))
-        return receivedAt
     }
 
     private fun setState(next: SyncState) {
@@ -214,10 +230,13 @@ class SyncService : Service() {
     }
 
     private fun updateState(next: SyncState, notify: Boolean) {
-        if (state == next) return
+        val previous = state
+        if (previous == next) return
         state = next
         onState?.invoke(next)
-        if (notify) getSystemService(NotificationManager::class.java).notify(NOTIFICATION, notification(next))
+        if (notify && previous.notificationText() != next.notificationText()) {
+            getSystemService(NotificationManager::class.java).notify(NOTIFICATION, notification(next))
+        }
     }
 
     private fun notification(current: SyncState): Notification {

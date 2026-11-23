@@ -243,7 +243,9 @@ func serve(ctx context.Context, args []string) error {
 		defer close(shutdownDone)
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		_ = server.Shutdown(shutdownCtx)
+		if server.Shutdown(shutdownCtx) != nil {
+			_ = server.Close()
+		}
 	})
 	log.Printf("listening on %s", listener.Addr())
 	err = server.Serve(listener)
