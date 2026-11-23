@@ -47,8 +47,8 @@ func publishClip(t *testing.T, ctx context.Context, address, device, sealed stri
 func eventStream(t *testing.T, ctx context.Context, address, device, seen string) *bufio.Reader {
 	t.Helper()
 	resp := request(t, ctx, address, "GET", "/events", testToken, device, "", seen)
-	if resp.StatusCode != http.StatusOK || resp.Header.Get("Content-Type") != "text/event-stream" {
-		t.Fatalf("events returned %d (%s)", resp.StatusCode, resp.Header.Get("Content-Type"))
+	if resp.StatusCode != http.StatusOK || resp.Header.Get("Content-Type") != "text/event-stream" || resp.Header.Get("X-Accel-Buffering") != "no" {
+		t.Fatalf("events returned %d (%s, buffering=%q)", resp.StatusCode, resp.Header.Get("Content-Type"), resp.Header.Get("X-Accel-Buffering"))
 	}
 	return bufio.NewReader(resp.Body)
 }
