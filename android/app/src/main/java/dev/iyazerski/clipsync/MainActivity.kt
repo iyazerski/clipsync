@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
+
 package dev.iyazerski.clipsync
 
 import android.Manifest
@@ -16,49 +18,73 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextObfuscationMode
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon as M3Icon
+import androidx.compose.material3.DropdownMenuGroup
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenuPopup
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeFlexibleTopAppBar
+import androidx.compose.material3.LinearWavyProgressIndicator
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MediumExtendedFloatingActionButton
+import androidx.compose.material3.MenuDefaults
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedSecureTextField
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -67,18 +93,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import androidx.graphics.shapes.RoundedPolygon
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 
@@ -106,7 +136,7 @@ class MainActivity : ComponentActivity() {
             // Without it the service still runs, but its notification (and the Send action) is hidden.
             notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
-        setContent { ClipsyncTheme { GlassScreen { Screen() } } }
+        setContent { ClipsyncTheme { Screen() } }
         if (savedInstanceState == null) handlePairing(intent)
     }
 
@@ -211,134 +241,78 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun Screen() {
+        // Each screen keeps its own scroll, so pairing from deep in the form, or unpairing, starts the other at its top.
+        val (bar, scroll) = key(setup.paired) { TopAppBarDefaults.exitUntilCollapsedScrollBehavior() to rememberScrollState() }
+        // The menu starts updates from any scroll position, and their progress shows at the top.
+        LaunchedEffect(updating != null) {
+            if (updating != null) scroll.animateScrollTo(0)
+        }
+        val motion = MaterialTheme.motionScheme
+        val haptics = LocalHapticFeedback.current
+        var confirmUnpair by rememberSaveable { mutableStateOf(false) }
+        // Lists and cards in the bright surface color stand out from it, in light and dark alike.
+        val background = MaterialTheme.colorScheme.surfaceContainer
         Scaffold(
-            containerColor = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.nestedScroll(bar.nestedScrollConnection),
+            containerColor = background,
+            topBar = {
+                LargeFlexibleTopAppBar(
+                    title = { Text("clipsync") },
+                    subtitle = if (setup.paired) ({ Text(setup.relayHost) }) else null,
+                    actions = { Menu(onUnpair = { confirmUnpair = true }) },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = background,
+                        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    ),
+                    scrollBehavior = bar,
+                )
+            },
+            floatingActionButton = {
+                AnimatedVisibility(
+                    setup.paired,
+                    enter = scaleIn(motion.defaultSpatialSpec()) + fadeIn(motion.defaultEffectsSpec()),
+                    exit = scaleOut(motion.fastSpatialSpec()) + fadeOut(motion.fastEffectsSpec()),
+                ) {
+                    MediumExtendedFloatingActionButton(onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                        sendClipboard()
+                    }) {
+                        Symbol(R.drawable.sym_content_paste_go, Modifier.size(FloatingActionButtonDefaults.MediumIconSize))
+                        Spacer(Modifier.width(12.dp))
+                        Text("Send clipboard")
+                    }
+                }
+            },
             snackbarHost = { SnackbarHost(snackbar) },
         ) { insets ->
             Column(
                 Modifier
                     .fillMaxSize()
-                    .padding(insets)
+                    .consumeWindowInsets(insets)
                     .imePadding()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                    .verticalScroll(scroll)
+                    // Inside the scroll, so the list scrolls behind the navigation bar.
+                    .padding(insets)
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {
-                Text(
-                    "clipsync",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(start = 4.dp, bottom = 12.dp),
-                )
+                UpdateProgress(updating)
                 AnimatedContent(
                     targetState = setup.paired,
-                    transitionSpec = { (fadeIn() + slideInVertically { it / 8 }) togetherWith fadeOut() },
+                    transitionSpec = {
+                        (fadeIn(motion.defaultEffectsSpec()) + slideInVertically(motion.defaultSpatialSpec()) { it / 8 }) togetherWith
+                            fadeOut(motion.fastEffectsSpec())
+                    },
                     label = "screen",
                 ) { paired ->
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        if (paired) Paired() else Unpaired(::pair)
+                    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                        // The form stays on screen while it fades out, so a late Done mustn't replace a new pairing.
+                        if (paired) Paired() else Unpaired { relay, secret -> if (!setup.paired) pair(relay, secret) }
                     }
                 }
-                Spacer(Modifier.weight(1f))
-                Footer()
+                // Room to scroll the last row out from under the Send button.
+                Spacer(Modifier.height(if (setup.paired) 96.dp else 8.dp))
             }
-        }
-    }
-
-    @Composable
-    private fun Paired() {
-        StatusCard(syncState, setup.relayHost)
-        if (!setup.battery || !setup.notifications) SetupCard()
-        SendCard()
-    }
-
-    @Composable
-    private fun SendCard() {
-        val haptics = LocalHapticFeedback.current
-        GlassCard(Modifier.fillMaxWidth()) {
-            Column {
-                Text("Send to your computers", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(16.dp))
-                Button(
-                    onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-                        sendClipboard()
-                    },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-                ) {
-                    Symbol(R.drawable.sym_content_paste_go, Modifier.size(ButtonDefaults.IconSize))
-                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                    Text("Send clipboard")
-                }
-                Spacer(Modifier.height(8.dp))
-                Item(R.drawable.sym_text_select_start, "Select text", "Then pick Send to computers")
-                Item(R.drawable.sym_share, "Share", "Share text to clipsync")
-                Item(R.drawable.sym_notifications, "Notification", "Tap Send clipboard")
-                Item(R.drawable.sym_widgets, "Quick Settings tile", "One tap from anywhere") {
-                    if (setup.tileAdded) {
-                        Symbol(R.drawable.sym_check, tint = Connected)
-                    } else {
-                        FilledTonalButton(onClick = ::addTile) { Text("Add") }
-                    }
-                }
-            }
-        }
-    }
-
-    @Composable
-    private fun SetupCard() {
-        GlassCard(Modifier.fillMaxWidth()) {
-            Column {
-                Text("Finish setup", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(8.dp))
-                if (!setup.battery) {
-                    Item(
-                        R.drawable.sym_battery_android_full,
-                        "Run in the background",
-                        "So Android doesn't stop sync to save battery. On ColorOS, also allow background activity " +
-                            "in App info → Battery usage.",
-                    ) { FilledTonalButton(onClick = ::allowBackground) { Text("Allow") } }
-                }
-                if (!setup.notifications) {
-                    Item(R.drawable.sym_notifications, "Notifications", "Shows the sync status and a Send button") {
-                        FilledTonalButton(onClick = ::allowNotifications) { Text("Allow") }
-                    }
-                }
-            }
-        }
-    }
-
-    /** The bottom of the screen: updates, unpairing, and the version. */
-    @Composable
-    private fun Footer() {
-        var confirmUnpair by rememberSaveable { mutableStateOf(false) }
-        Column(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            // Wraps so neither button is squeezed out with large text.
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
-                TextButton(onClick = ::checkForUpdates, enabled = updating == null) {
-                    Symbol(R.drawable.sym_system_update, Modifier.size(ButtonDefaults.IconSize))
-                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                    Text(updating ?: "Check for updates")
-                }
-                if (setup.paired) {
-                    TextButton(
-                        onClick = { confirmUnpair = true },
-                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                    ) {
-                        Symbol(R.drawable.sym_link_off, Modifier.size(ButtonDefaults.IconSize))
-                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                        Text("Unpair")
-                    }
-                }
-            }
-            val versionName = remember { packageManager.getPackageInfo(packageName, 0).versionName }
-            Text(
-                "clipsync $versionName",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
         if (confirmUnpair) {
             AlertDialog(
@@ -347,13 +321,116 @@ class MainActivity : ComponentActivity() {
                 title = { Text("Unpair this phone?") },
                 text = { Text("Sync stops. To pair again, run clipsync pair on a computer.") },
                 confirmButton = {
-                    TextButton(onClick = {
-                        confirmUnpair = false
-                        unpair()
-                    }) { Text("Unpair") }
+                    TextButton(
+                        onClick = {
+                            confirmUnpair = false
+                            unpair()
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    ) { Text("Unpair") }
                 },
                 dismissButton = { TextButton(onClick = { confirmUnpair = false }) { Text("Cancel") } },
             )
+        }
+    }
+
+    /** The top bar's overflow menu: updates, the version, and unpairing. */
+    @Composable
+    private fun Menu(onUnpair: () -> Unit) {
+        var open by remember { mutableStateOf(false) }
+        val versionName = remember { packageManager.getPackageInfo(packageName, 0).versionName }
+        val count = if (setup.paired) 2 else 1
+        Box {
+            IconButton(onClick = { open = true }) { Symbol(R.drawable.sym_more_vert, description = "More") }
+            DropdownMenuPopup(expanded = open, onDismissRequest = { open = false }) {
+                DropdownMenuGroup(shapes = MenuDefaults.groupShape(0, 1)) {
+                    DropdownMenuItem(
+                        onClick = {
+                            open = false
+                            checkForUpdates()
+                        },
+                        text = { Text("Check for updates") },
+                        supportingText = { Text("Version $versionName") },
+                        shape = MenuDefaults.itemShape(0, count).shape,
+                        leadingIcon = { Symbol(R.drawable.sym_system_update) },
+                        enabled = updating == null,
+                    )
+                    if (setup.paired) {
+                        val error = MaterialTheme.colorScheme.error
+                        DropdownMenuItem(
+                            onClick = {
+                                open = false
+                                onUnpair()
+                            },
+                            text = { Text("Unpair") },
+                            shape = MenuDefaults.itemShape(1, count).shape,
+                            leadingIcon = { Symbol(R.drawable.sym_link_off) },
+                            colors = MenuDefaults.itemColors(textColor = error, leadingIconColor = error),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun Paired() {
+        StatusHero(syncState)
+        val fixes = buildList {
+            if (!setup.battery) {
+                add(
+                    Fix(
+                        R.drawable.sym_battery_android_full,
+                        "Run in the background",
+                        "So Android doesn't stop sync to save battery. On ColorOS, also allow background activity " +
+                            "in App info → Battery usage.",
+                        ::allowBackground,
+                    ),
+                )
+            }
+            if (!setup.notifications) {
+                add(Fix(R.drawable.sym_notifications, "Allow notifications", "Shows the sync status and a Send button", ::allowNotifications))
+            }
+        }
+        if (fixes.isNotEmpty()) {
+            val colors = MaterialTheme.colorScheme
+            Section("Finish setup") {
+                fixes.forEachIndexed { index, fix ->
+                    SegmentedListItem(
+                        onClick = fix.onClick,
+                        shapes = ListItemDefaults.segmentedShapes(index, fixes.size),
+                        colors = ListItemDefaults.segmentedColors(
+                            containerColor = colors.tertiaryContainer,
+                            contentColor = colors.onTertiaryContainer,
+                            leadingContentColor = colors.onTertiaryContainer,
+                            trailingContentColor = colors.onTertiaryContainer,
+                            supportingContentColor = colors.onTertiaryContainer,
+                        ),
+                        leadingContent = { Symbol(fix.icon) },
+                        trailingContent = { Symbol(R.drawable.sym_chevron_right) },
+                        supportingContent = { Text(fix.detail) },
+                    ) { Text(fix.title) }
+                }
+            }
+        }
+        Section("More ways to send") {
+            InfoRow(0, 4, R.drawable.sym_text_select_start, "Select text", "Then pick Send to computers")
+            InfoRow(1, 4, R.drawable.sym_share, "Share", "Share text to clipsync")
+            InfoRow(2, 4, R.drawable.sym_notifications, "Notification", "Tap Send clipboard")
+            if (setup.tileAdded) {
+                InfoRow(3, 4, R.drawable.sym_widgets, "Quick Settings tile", "One tap from anywhere") {
+                    Symbol(R.drawable.sym_check, tint = MaterialTheme.colorScheme.primary, description = "Added")
+                }
+            } else {
+                SegmentedListItem(
+                    onClick = ::addTile,
+                    shapes = ListItemDefaults.segmentedShapes(3, 4),
+                    colors = rowColors(),
+                    leadingContent = { Symbol(R.drawable.sym_widgets) },
+                    trailingContent = { Symbol(R.drawable.sym_add, description = "Add") },
+                    supportingContent = { Text("Tap to add it") },
+                ) { Text("Quick Settings tile") }
+            }
         }
     }
 }
@@ -367,104 +444,209 @@ private data class Setup(
     val notifications: Boolean = true,
 )
 
+/** A setting that sync needs, and how to open it. */
+private class Fix(val icon: Int, val title: String, val detail: String, val onClick: () -> Unit)
+
 /** How a [SyncState] reads on screen. */
-private class StatusView(val icon: Int, val title: String, val detail: String, val tint: Color?)
+private class StatusView(
+    val title: String,
+    val detail: String,
+    val shape: RoundedPolygon,
+    val icon: Int,
+    val container: Color,
+    val accent: Color,
+    val onAccent: Color,
+)
 
 @Composable
-private fun statusView(state: SyncState, host: String): StatusView = when (state) {
-    is SyncState.Connected -> StatusView(
-        R.drawable.sym_check_circle,
-        "Connected",
-        state.warning ?: state.lastClipAt?.let { "Last clip at ${formatClipTime(it)}" } ?: "Waiting for clips from $host",
-        Connected,
-    )
-    SyncState.Connecting -> StatusView(R.drawable.sym_sync, "Connecting…", host, null)
-    SyncState.Offline -> StatusView(R.drawable.sym_cloud_off, "Offline", "Retrying soon", null)
-    SyncState.Stopped -> StatusView(R.drawable.sym_cloud_off, "Stopped", "Open clipsync to resume", null)
-    is SyncState.Error -> StatusView(R.drawable.sym_error, "Not syncing", state.message, MaterialTheme.colorScheme.error)
+private fun statusView(state: SyncState): StatusView {
+    val colors = MaterialTheme.colorScheme
+    return when (state) {
+        is SyncState.Connected -> StatusView(
+            "Connected",
+            state.warning ?: state.lastClipAt?.let { "Last clip at ${formatClipTime(it)}" } ?: "Waiting for your first copy",
+            MaterialShapes.Cookie9Sided,
+            R.drawable.sym_check,
+            colors.primaryContainer,
+            colors.primary,
+            colors.onPrimary,
+        )
+        // A loading indicator takes the place of the shape and icon.
+        SyncState.Connecting -> StatusView(
+            "Connecting…",
+            "Reaching your relay",
+            MaterialShapes.Cookie9Sided,
+            R.drawable.sym_check,
+            colors.surfaceBright,
+            colors.primary,
+            colors.onPrimary,
+        )
+        SyncState.Offline -> StatusView(
+            "Offline",
+            "Retrying soon",
+            MaterialShapes.Ghostish,
+            R.drawable.sym_cloud_off,
+            colors.surfaceBright,
+            colors.secondary,
+            colors.onSecondary,
+        )
+        SyncState.Stopped -> StatusView(
+            "Stopped",
+            "Open clipsync to resume",
+            MaterialShapes.Ghostish,
+            R.drawable.sym_cloud_off,
+            colors.surfaceBright,
+            colors.secondary,
+            colors.onSecondary,
+        )
+        is SyncState.Error -> StatusView(
+            "Not syncing",
+            state.message,
+            MaterialShapes.SoftBurst,
+            R.drawable.sym_priority_high,
+            colors.errorContainer,
+            colors.error,
+            colors.onError,
+        )
+    }
 }
 
+/** The sync state, big and first: a shape that morphs with it, and what it means. */
 @Composable
-private fun StatusCard(state: SyncState, host: String) {
-    val view = statusView(state, host)
-    val tint by animateColorAsState(view.tint ?: MaterialTheme.colorScheme.onSurfaceVariant, label = "tint")
-    GlassCard(Modifier.fillMaxWidth()) {
-        Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier.size(48.dp).background(tint.copy(alpha = 0.16f), CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) { Symbol(view.icon, tint = tint) }
-                Spacer(Modifier.width(16.dp))
-                Column {
-                    Text(view.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-                    Text(
-                        view.detail,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+private fun StatusHero(state: SyncState) {
+    val view = statusView(state)
+    val motion = MaterialTheme.motionScheme
+    // While Connecting fades the badge out, it keeps the shape and icon it had.
+    var badge by remember { mutableStateOf(view) }
+    SideEffect { if (state != SyncState.Connecting) badge = view }
+    val container by animateColorAsState(view.container, motion.defaultEffectsSpec(), label = "container")
+    val accent by animateColorAsState(view.accent, motion.defaultEffectsSpec(), label = "accent")
+    Surface(
+        color = container,
+        shape = MaterialTheme.shapes.extraLargeIncreased,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(24.dp)) {
+            Crossfade(state == SyncState.Connecting, Modifier.size(96.dp), motion.defaultEffectsSpec(), label = "badge") { connecting ->
+                if (connecting) {
+                    LoadingIndicator(Modifier.fillMaxSize(), color = accent)
+                } else {
+                    val shown = if (state == SyncState.Connecting) badge else view
+                    MorphingShape(shown.shape, accent, Modifier.fillMaxSize()) {
+                        Symbol(shown.icon, Modifier.size(40.dp), tint = shown.onAccent)
+                    }
                 }
             }
+            Spacer(Modifier.height(20.dp))
+            Text(view.title, style = MaterialTheme.typography.headlineLargeEmphasized)
+            Text(view.detail, style = MaterialTheme.typography.bodyLarge)
             Spacer(Modifier.height(16.dp))
-            Text("What you copy on your computers lands on this phone's clipboard.", style = MaterialTheme.typography.bodyMedium)
+            Text(
+                "What you copy on your computers lands on this phone's clipboard.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = LocalContentColor.current.copy(alpha = 0.75f),
+            )
+        }
+    }
+}
+
+/** The update check's progress, shown while there is some. */
+@Composable
+private fun UpdateProgress(progress: String?) {
+    // Keeps the last text on screen while the card collapses.
+    var last by remember { mutableStateOf("") }
+    SideEffect { if (progress != null) last = progress }
+    AnimatedVisibility(progress != null, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+        Surface(
+            color = MaterialTheme.colorScheme.secondaryContainer,
+            shape = MaterialTheme.shapes.large,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    progress ?: last,
+                    style = MaterialTheme.typography.titleMediumEmphasized,
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                )
+                LinearWavyProgressIndicator(Modifier.fillMaxWidth())
+            }
         }
     }
 }
 
 @Composable
 private fun Unpaired(onPair: (relay: String, secret: String) -> Unit) {
-    var relay by rememberSaveable { mutableStateOf("") }
-    var secret by rememberSaveable { mutableStateOf("") }
-    var showSecret by rememberSaveable { mutableStateOf(false) }
-    val ready = relay.isNotBlank() && secret.isNotBlank()
-    GlassCard(Modifier.fillMaxWidth()) {
-        Column {
-            Box(
-                Modifier.size(48.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) { Symbol(R.drawable.sym_qr_code_scanner, tint = MaterialTheme.colorScheme.onPrimaryContainer) }
-            Spacer(Modifier.height(16.dp))
-            Text("Pair with your computers", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(16.dp))
-            Step(1) {
-                Text("On a computer, run ", style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    "clipsync pair",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontFamily = FontFamily.Monospace,
-                    modifier = Modifier
-                        .background(MaterialTheme.colorScheme.surfaceContainerHighest, RoundedCornerShape(6.dp))
-                        .padding(horizontal = 6.dp, vertical = 2.dp),
-                )
+    Column(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        MorphingShape(MaterialShapes.Cookie12Sided, MaterialTheme.colorScheme.primaryContainer, Modifier.size(136.dp)) {
+            Symbol(R.drawable.sym_qr_code_scanner, Modifier.size(56.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+        }
+        Spacer(Modifier.height(24.dp))
+        Text(
+            "Pair with your computers",
+            style = MaterialTheme.typography.headlineMediumEmphasized,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Then what you copy on a computer lands on this phone, and you can send back in one tap.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+    }
+    Section("Pair in two steps") {
+        val command = MaterialTheme.colorScheme.primary
+        Step(
+            1,
+            buildAnnotatedString {
+                append("On a computer, run ")
+                withStyle(SpanStyle(fontFamily = FontFamily.Monospace, color = command)) { append("clipsync pair") }
+            },
+            "It shows a QR code",
+        )
+        Step(2, AnnotatedString("Scan the QR code with this phone's camera"), "clipsync opens and pairs")
+    }
+    ManualPairing(onPair)
+}
+
+/** Typing the relay and the secret, for when the camera can't scan the QR code. */
+@Composable
+private fun ManualPairing(onPair: (relay: String, secret: String) -> Unit) {
+    var open by rememberSaveable { mutableStateOf(false) }
+    val motion = MaterialTheme.motionScheme
+    AnimatedContent(
+        targetState = open,
+        transitionSpec = { fadeIn(motion.defaultEffectsSpec()) togetherWith fadeOut(motion.fastEffectsSpec()) },
+        label = "manual",
+    ) { typing ->
+        if (!typing) {
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                OutlinedButton(onClick = { open = true }, shapes = ButtonDefaults.shapes()) {
+                    Symbol(R.drawable.sym_keyboard, Modifier.size(ButtonDefaults.IconSize))
+                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                    Text("Type it in instead")
+                }
             }
-            Spacer(Modifier.height(12.dp))
-            Step(2) { Text("Scan its QR code with this phone's camera", style = MaterialTheme.typography.bodyLarge) }
-            Row(Modifier.padding(vertical = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-                HorizontalDivider(Modifier.weight(1f))
-                Text(
-                    "or type what it shows",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 12.dp),
-                )
-                HorizontalDivider(Modifier.weight(1f))
-            }
+            return@AnimatedContent
+        }
+        val relay = rememberTextFieldState()
+        val secret = rememberTextFieldState()
+        var showSecret by rememberSaveable { mutableStateOf(false) }
+        val ready = relay.text.isNotBlank() && secret.text.isNotBlank()
+        val pair = { if (ready) onPair(relay.text.toString(), secret.text.toString()) }
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedTextField(
-                value = relay,
-                onValueChange = { relay = it },
+                state = relay,
                 label = { Text("Relay") },
                 placeholder = { Text("https://clip.example.com") },
-                singleLine = true,
+                lineLimits = TextFieldLineLimits.SingleLine,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next, autoCorrectEnabled = false),
                 modifier = Modifier.fillMaxWidth(),
             )
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = secret,
-                onValueChange = { secret = it },
+            OutlinedSecureTextField(
+                state = secret,
                 label = { Text("Secret") },
-                singleLine = true,
-                visualTransformation = if (showSecret) VisualTransformation.None else PasswordVisualTransformation(),
+                textObfuscationMode = if (showSecret) TextObfuscationMode.Visible else TextObfuscationMode.Hidden,
                 trailingIcon = {
                     IconButton(onClick = { showSecret = !showSecret }) {
                         Symbol(
@@ -474,68 +656,64 @@ private fun Unpaired(onPair: (relay: String, secret: String) -> Unit) {
                     }
                 },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { if (ready) onPair(relay, secret) }),
+                onKeyboardAction = { pair() },
                 modifier = Modifier.fillMaxWidth(),
             )
-            Spacer(Modifier.height(20.dp))
+            val height = ButtonDefaults.MediumContainerHeight
             Button(
-                onClick = { onPair(relay, secret) },
+                onClick = pair,
                 enabled = ready,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-            ) { Text("Pair") }
+                shapes = ButtonDefaults.shapesFor(height),
+                contentPadding = ButtonDefaults.contentPaddingFor(height),
+                modifier = Modifier.fillMaxWidth().heightIn(min = height).padding(top = 8.dp),
+            ) { Text("Pair", style = ButtonDefaults.textStyleFor(height)) }
         }
     }
 }
 
-/** A numbered pairing step. */
+/** A titled group of rows that join into one rounded block. */
 @Composable
-private fun Step(number: Int, content: @Composable () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            Modifier.size(28.dp).background(MaterialTheme.colorScheme.secondaryContainer, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                "$number",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-            )
-        }
-        Spacer(Modifier.width(12.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) { content() }
+private fun Section(title: String, content: @Composable ColumnScope.() -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+        Text(
+            title,
+            style = MaterialTheme.typography.titleSmallEmphasized,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 16.dp, bottom = 8.dp),
+        )
+        content()
     }
 }
 
-/** A list row inside a card: icon, title, explanation, and an optional action at the end. */
+/** Colors for the rows of a [Section]. */
 @Composable
-private fun Item(icon: Int, title: String, detail: String, action: (@Composable () -> Unit)? = null) {
-    // With large text a trailing button would squeeze the words, so it goes under them instead.
-    val stacked = LocalDensity.current.fontScale > 1.3f
-    Row(Modifier.fillMaxWidth().padding(PaddingValues(vertical = 10.dp)), verticalAlignment = Alignment.CenterVertically) {
-        Symbol(icon, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.width(16.dp))
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
-            Text(detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (action != null && stacked) {
-                Spacer(Modifier.height(8.dp))
-                action()
-            }
-        }
-        if (action != null && !stacked) {
-            Spacer(Modifier.width(12.dp))
-            action()
-        }
-    }
+private fun rowColors() = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceBright)
+
+/** Row [index] of [count] in a [Section], which only explains. */
+@Composable
+private fun InfoRow(index: Int, count: Int, icon: Int, title: String, detail: String, trailing: (@Composable () -> Unit)? = null) {
+    SegmentedListItem(
+        shapes = ListItemDefaults.segmentedShapes(index, count),
+        colors = rowColors(),
+        leadingContent = { Symbol(icon) },
+        trailingContent = trailing,
+        supportingContent = { Text(detail) },
+    ) { Text(title) }
 }
 
-/** A Material Symbols icon from the drawables. */
+/** A numbered pairing step in a [Section] of two. */
 @Composable
-private fun Symbol(
-    icon: Int,
-    modifier: Modifier = Modifier,
-    tint: Color = LocalContentColor.current,
-    description: String? = null,
-) {
-    M3Icon(painterResource(icon), contentDescription = description, modifier = modifier, tint = tint)
+private fun Step(number: Int, title: AnnotatedString, detail: String) {
+    val colors = MaterialTheme.colorScheme
+    SegmentedListItem(
+        shapes = ListItemDefaults.segmentedShapes(number - 1, 2),
+        colors = rowColors(),
+        leadingContent = {
+            Box(
+                Modifier.size(40.dp).background(colors.primary, MaterialShapes.Cookie4Sided.toShape()),
+                contentAlignment = Alignment.Center,
+            ) { Text("$number", style = MaterialTheme.typography.titleMediumEmphasized, color = colors.onPrimary) }
+        },
+        supportingContent = { Text(detail) },
+    ) { Text(title) }
 }

@@ -16,7 +16,10 @@ android {
     }
 
     namespace = "dev.iyazerski.clipsync"
-    compileSdk = 37
+    // Compose 1.13 needs the 37.1 APIs to compile against.
+    compileSdk {
+        version = release(37) { minorApiLevel = 1 }
+    }
 
     defaultConfig {
         applicationId = "dev.iyazerski.clipsync"
@@ -68,12 +71,9 @@ android {
 }
 
 dependencies {
-    implementation(platform("androidx.compose:compose-bom:2026.09.00"))
+    implementation(platform("androidx.compose:compose-bom:2026.11.01"))
     implementation("androidx.compose.material3:material3")
     implementation("androidx.activity:activity-compose:1.13.0")
-    // Liquid glass surfaces (refraction, blur, highlights) over the backdrop.
-    implementation("dev.chrisbanes.haze:haze:2.1.0")
-    implementation("dev.chrisbanes.haze:haze-glass:2.1.0")
 
     testImplementation("junit:junit:4.13.2")
 }
