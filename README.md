@@ -17,7 +17,7 @@ It's end-to-end encrypted, and it runs through a tiny relay that you host yourse
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/phone-dark.png">
-  <img src="docs/screenshots/phone-light.png" width="270" alt="The clipsync app on an Android phone, connected, right after text copied on a Mac landed on the phone's clipboard">
+  <img src="docs/screenshots/phone-light.png" width="270" alt="The clipsync app on an Android phone, connected to its relay, with the Send clipboard button and the other ways to send">
 </picture>
 
 </div>
@@ -126,7 +126,7 @@ It shows a `clipsync setup --relay … --secret …` command. Install clipsync o
 
 1. [Download the app](https://github.com/iyazerski/clipsync/releases/latest/download/clipsync.apk) on the phone and install it. Android asks you to allow installing apps from your browser the first time.
 2. Run `clipsync pair` on a computer, scan the QR code with the phone's camera, and tap **Open clipsync**.
-3. In the app, tap **Allow** next to **Run in the background**, and **Add** next to **Quick Settings tile**. On ColorOS, also go to App info → Battery usage and turn on **Allow background activity** and **Allow auto launch**.
+3. In the app, tap **Run in the background** under **Finish setup**, and **Quick Settings tile** to add it. On ColorOS, also go to App info → Battery usage and turn on **Allow background activity** and **Allow auto launch**.
 
 That's it. Copy something on one device and paste it on another.
 
@@ -150,7 +150,7 @@ On a work PC, IT may manage this rule: ask them to allow that folder.
 | `clipsync update` | Install the latest version and restart the background service. With Homebrew, run `brew upgrade clipsync` instead. |
 | `clipsync uninstall` | Stop syncing in the background. Your settings stay. |
 
-The service logs to `~/Library/Logs/clipsync.log` on a Mac and to `%LOCALAPPDATA%\clipsync\clipsync.log` on Windows. The phone app updates itself from **Check for updates**.
+The service logs to `~/Library/Logs/clipsync.log` on a Mac and to `%LOCALAPPDATA%\clipsync\clipsync.log` on Windows. The phone app updates itself from **Check for updates** in its ⋮ menu.
 
 ## FAQ
 
@@ -193,7 +193,7 @@ Not yet. The desktop service runs on Macs with Apple silicon and on Windows, and
 <details>
 <summary><b>How do I remove it?</b></summary>
 
-Run `clipsync uninstall`. Then run `brew uninstall clipsync`, or delete the binary (`~/.local/bin/clipsync` on a Mac, `%LOCALAPPDATA%\Programs\clipsync` on Windows) and the settings folder (`~/Library/Application Support/clipsync` on a Mac, `%LOCALAPPDATA%\clipsync` on Windows). On the phone, tap **Unpair** and uninstall the app.
+Run `clipsync uninstall`. Then run `brew uninstall clipsync`, or delete the binary (`~/.local/bin/clipsync` on a Mac, `%LOCALAPPDATA%\Programs\clipsync` on Windows) and the settings folder (`~/Library/Application Support/clipsync` on a Mac, `%LOCALAPPDATA%\clipsync` on Windows). On the phone, tap **Unpair** in the ⋮ menu and uninstall the app.
 
 </details>
 

@@ -5,4 +5,3 @@ full text is above:
 
 - AndroidX Compose and Material 3
 - AndroidX Activity Compose
-- Haze and Haze Glass
