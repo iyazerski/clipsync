@@ -33,8 +33,9 @@ const (
 	queueSize    = 16
 	// Sized for about 1,000 pairings of a few devices each in 256 MiB.
 	maxStreams = 4096
-	// Leaves room for streams that a device dropped but the relay hasn't noticed yet.
-	maxRoomStreams = 32
+	// A few devices per pairing, plus streams that a device dropped but the relay
+	// hasn't noticed yet.
+	maxRoomStreams = 8
 	maxStored      = 32 << 20
 	// Devices send base64url(HMAC-SHA256(secret, "clipsync/token")).
 	tokenSize = 43
