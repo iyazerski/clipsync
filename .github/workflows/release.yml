@@ -77,6 +77,16 @@ jobs:
       - name: Install NSIS, for the Windows installer
         if: matrix.name == 'Windows'
         run: sudo apt-get update && sudo apt-get install -y nsis
+      - name: Leave Hindi out of the Windows installer
+        if: matrix.name == 'Windows'
+        # NSIS has no Hindi, and mygo build stops on a language it lacks. The app
+        # embeds desktop/locales itself, so only the installer falls back to English.
+        run: |
+          mkdir -p desktop/build/installer-locales
+          cp desktop/locales/*.json desktop/build/installer-locales/
+          rm desktop/build/installer-locales/hi.json
+          jq '.i18n.dir = "build/installer-locales"' desktop/mygo.json > "$RUNNER_TEMP/mygo.json"
+          mv "$RUNNER_TEMP/mygo.json" desktop/mygo.json
       - name: Build
         env:
           GH_TOKEN: ${{ github.token }}
