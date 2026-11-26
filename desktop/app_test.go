@@ -15,7 +15,7 @@ type fakeDesktop struct {
 	syncing bool
 	report  syncer.Report
 	devices func(client.Devices)
-	left    string
+	left    config
 	copied  string
 	login   bool
 
@@ -29,7 +29,7 @@ func (f *fakeDesktop) startSync(_ config, report syncer.Report, devices func(cli
 	f.syncing, f.report, f.devices = true, report, devices
 	return func() { f.syncing = false }, nil
 }
-func (f *fakeDesktop) leave(cfg config)             { f.left = cfg.Device }
+func (f *fakeDesktop) leave(cfg config)             { f.left = cfg }
 func (f *fakeDesktop) copySecret(text string)       { f.copied = text }
 func (f *fakeDesktop) openAtLogin() bool            { return f.login }
 func (f *fakeDesktop) setOpenAtLogin(on bool) error { f.login = on; return nil }
@@ -194,7 +194,41 @@ func TestDeviceList(t *testing.T) {
 	click(t, tt, "Settings")
 	click(t, tt, "Unpair…")
 	click(t, tt, "Unpair")
-	if sys.left != "mac-1" || len(loadDevices(a.devicesPath)) != 0 {
-		t.Errorf("left as %q, kept %v", sys.left, loadDevices(a.devicesPath))
+	if sys.left.Device != "mac-1" || len(loadDevices(a.devicesPath)) != 0 {
+		t.Errorf("left as %q, kept %v", sys.left.Device, loadDevices(a.devicesPath))
+	}
+}
+
+func TestRemoveDevice(t *testing.T) {
+	cfg := config{Relay: publicRelay, Secret: client.RandomID(32), Device: "mac-1"}
+	a, sys, tt := start(t, cfg)
+	sys.devices(client.Devices{List: []client.Device{
+		{ID: "phone-1", Profile: client.Profile{Name: "Pixel", Kind: "android"}, Online: true},
+		{ID: "win-1", Profile: client.Profile{Name: "Desk", Kind: "windows"}, Seen: time.Now()},
+	}})
+	tt.Frame()
+	click(t, tt, "More")
+	if err := tt.ChooseMenuItem("Remove…"); err != nil {
+		t.Fatalf("%v; menu %q", err, tt.Menu())
+	}
+	click(t, tt, "Remove")
+
+	saved, err := loadConfig(a.path)
+	if err != nil || saved.Secret == cfg.Secret || !saved.paired() || saved.Device != "mac-1" {
+		t.Fatalf("saved %+v, %v", saved, err)
+	}
+	if sys.left.Secret != cfg.Secret || !sys.syncing || !sys.inviting || sys.login {
+		t.Errorf("left the old pairing %v, syncing %v, inviting %v, opens at login %v", sys.left.Secret == cfg.Secret, sys.syncing, sys.inviting, sys.login)
+	}
+	click(t, tt, "Done")
+	if tt.HasText("Android · Online") || !tt.HasText("Windows · Add it again with a code") {
+		t.Fatalf("texts %q", tt.Texts())
+	}
+
+	// A device that joins the new pairing is back to normal.
+	sys.devices(client.Devices{List: []client.Device{{ID: "win-1", Profile: client.Profile{Name: "Desk", Kind: "windows"}, Online: true}}})
+	tt.Frame()
+	if !tt.HasText("Windows · Online") {
+		t.Errorf("texts %q", tt.Texts())
 	}
 }

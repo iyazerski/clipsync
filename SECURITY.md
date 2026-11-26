@@ -23,7 +23,13 @@ Only the latest release gets fixes. Computers update themselves, or from **Check
 
 - To list your devices on each other, every device gives the relay its name and kind (phone or computer), sealed with a key derived from the secret and bound to the device's random ID. The relay can't read them, or pass one device's off as another's.
 - The relay does see each device's random ID, how many devices a pairing has, and when each one connects and disconnects. It keeps that for up to 7 days after a device was last online, in memory only. A relay could also say a device is online when it isn't.
-- **Unpair** tells the relay, which tells your other devices to drop this one from their list. It doesn't change the secret, so a device that kept it could still join again. Removing a device for good comes in a later release.
+- **Unpair** tells the relay, which tells your other devices to drop this one from their list. It doesn't change the secret, so a device that kept it could still join again.
+
+## How removing a device works
+
+- **Remove** on a computer moves it to a new pairing, with a new random secret. The removed device knows only the old secret, so it can't read or send clips in the new pairing, and old links and codes don't let it in.
+- Your other devices join the new pairing with a new code, as when you first paired them. The new secret never goes through the old pairing, which the removed device could read.
+- Until a device joins the new pairing, it still shares the old secret with the removed device, and they can keep syncing through any relay that lets the old pairing in. Removing can't take back clips that the removed device already got.
 
 ## How pairing codes are protected
 
