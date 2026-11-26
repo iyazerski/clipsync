@@ -18,9 +18,7 @@ class Seal(secret: String) {
 
     init {
         val raw = runCatching { DECODER.decode(secret.trim()) }.getOrNull()
-        require(raw != null && raw.size == SECRET_LEN) {
-            "The secret should be 43 characters, as `clipsync pair` shows it"
-        }
+        if (raw == null || raw.size != SECRET_LEN) throw Invalid(R.string.secret_length)
         token = ENCODER.encodeToString(hmac(raw, "clipsync/token"))
         key = SecretKeySpec(hmac(raw, "clipsync/key"), "AES")
     }
@@ -41,20 +39,20 @@ class Seal(secret: String) {
      * sealed with another secret, changed, sealed too far from [now], or opened already.
      */
     fun open(sealed: String, opened: Opened, now: Long = System.currentTimeMillis()): String {
-        val raw = runCatching { DECODER.decode(sealed) }.getOrNull() ?: throw IllegalArgumentException("Not base64url")
-        require(raw.size > 1 + NONCE_LEN) { "Clip too short" }
-        require(raw[0] == VERSION) { "Clip format ${raw[0]} is unknown: update clipsync" }
+        val raw = runCatching { DECODER.decode(sealed) }.getOrNull() ?: throw Invalid(R.string.clip_not_base64)
+        if (raw.size <= 1 + NONCE_LEN) throw Invalid(R.string.clip_short)
+        if (raw[0] != VERSION) throw Invalid(R.string.clip_format, raw[0])
         val cipher = Cipher.getInstance(CIPHER)
         cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(TAG_BITS, raw, 1, NONCE_LEN))
         val text = try {
             cipher.doFinal(raw, 1 + NONCE_LEN, raw.size - 1 - NONCE_LEN)
         } catch (e: GeneralSecurityException) {
-            throw IllegalArgumentException("Can't open the clip: the devices use different secrets", e)
+            throw Invalid(R.string.clip_other_secret)
         }
-        require(text.size >= STAMP_LEN) { "Clip too short" }
+        if (text.size < STAMP_LEN) throw Invalid(R.string.clip_short)
         val sealedAt = ByteBuffer.wrap(text, 0, STAMP_LEN).long
         val off = (now - sealedAt).absoluteValue
-        require(off <= MAX_AGE_MS) { "A clip was sealed ${off / 1000}s away from now: a replay, or a clock is wrong" }
+        if (off > MAX_AGE_MS) throw Invalid(R.string.clip_clock, off / 1000)
         opened.add(sealedAt, raw.copyOfRange(1, 1 + NONCE_LEN), now)
         return String(text, STAMP_LEN, text.size - STAMP_LEN, Charsets.UTF_8)
     }
@@ -65,7 +63,7 @@ class Seal(secret: String) {
         internal fun add(sealedAt: Long, nonce: ByteArray, now: Long) {
             // Older entries can't match: their clips fail the time check.
             clips.removeAll { (at, _) -> (now - at).absoluteValue > MAX_AGE_MS }
-            require(clips.none { (_, seen) -> seen.contentEquals(nonce) }) { "A clip came twice: a replay" }
+            if (clips.any { (_, seen) -> seen.contentEquals(nonce) }) throw Invalid(R.string.clip_twice)
             clips.add(sealedAt to nonce)
         }
     }

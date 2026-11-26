@@ -95,6 +95,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -180,11 +181,11 @@ class MainActivity : ComponentActivity() {
     private fun pair(relay: String, secret: String) {
         try {
             settings.pair(relay, secret)
-        } catch (e: IllegalArgumentException) {
-            notify(e.message ?: "Couldn't pair")
+        } catch (e: Invalid) {
+            notify(e.reason.read(this))
             return
         }
-        notify("Paired")
+        notify(getString(R.string.paired))
         SyncService.reconnect(this)
         setup = readSetup()
     }
@@ -207,7 +208,7 @@ class MainActivity : ComponentActivity() {
     private fun addTile() {
         getSystemService(StatusBarManager::class.java).requestAddTileService(
             ComponentName(this, SendTile::class.java),
-            "Send clipboard",
+            getString(R.string.send_clipboard),
             Icon.createWithResource(this, R.drawable.ic_tile),
             mainExecutor,
         ) { result ->
@@ -232,7 +233,7 @@ class MainActivity : ComponentActivity() {
     private fun checkForUpdates() {
         if (!packageManager.canRequestPackageInstalls()) {
             // Android asks once per app before it may install anything, updates included.
-            Toast.makeText(this, "Allow clipsync to install updates, then tap again", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, R.string.allow_installs, Toast.LENGTH_LONG).show()
             startActivity(Intent(SystemSettings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, "package:$packageName".toUri()))
             return
         }
@@ -257,7 +258,7 @@ class MainActivity : ComponentActivity() {
             containerColor = background,
             topBar = {
                 LargeFlexibleTopAppBar(
-                    title = { Text("clipsync") },
+                    title = { Text(stringResource(R.string.app_name)) },
                     subtitle = if (setup.paired) ({ Text(setup.relayHost) }) else null,
                     actions = { Menu(onUnpair = { confirmUnpair = true }) },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -279,7 +280,7 @@ class MainActivity : ComponentActivity() {
                     }) {
                         Symbol(R.drawable.sym_content_paste_go, Modifier.size(FloatingActionButtonDefaults.MediumIconSize))
                         Spacer(Modifier.width(12.dp))
-                        Text("Send clipboard")
+                        Text(stringResource(R.string.send_clipboard))
                     }
                 }
             },
@@ -318,8 +319,8 @@ class MainActivity : ComponentActivity() {
             AlertDialog(
                 onDismissRequest = { confirmUnpair = false },
                 icon = { Symbol(R.drawable.sym_link_off) },
-                title = { Text("Unpair this phone?") },
-                text = { Text("Sync stops. To pair again, run clipsync pair on a computer.") },
+                title = { Text(stringResource(R.string.unpair_title)) },
+                text = { Text(stringResource(R.string.unpair_text)) },
                 confirmButton = {
                     TextButton(
                         onClick = {
@@ -327,9 +328,9 @@ class MainActivity : ComponentActivity() {
                             unpair()
                         },
                         colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                    ) { Text("Unpair") }
+                    ) { Text(stringResource(R.string.unpair)) }
                 },
-                dismissButton = { TextButton(onClick = { confirmUnpair = false }) { Text("Cancel") } },
+                dismissButton = { TextButton(onClick = { confirmUnpair = false }) { Text(stringResource(R.string.cancel)) } },
             )
         }
     }
@@ -341,7 +342,7 @@ class MainActivity : ComponentActivity() {
         val versionName = remember { packageManager.getPackageInfo(packageName, 0).versionName }
         val count = if (setup.paired) 2 else 1
         Box {
-            IconButton(onClick = { open = true }) { Symbol(R.drawable.sym_more_vert, description = "More") }
+            IconButton(onClick = { open = true }) { Symbol(R.drawable.sym_more_vert, description = stringResource(R.string.more)) }
             DropdownMenuPopup(expanded = open, onDismissRequest = { open = false }) {
                 DropdownMenuGroup(shapes = MenuDefaults.groupShape(0, 1)) {
                     DropdownMenuItem(
@@ -349,8 +350,8 @@ class MainActivity : ComponentActivity() {
                             open = false
                             checkForUpdates()
                         },
-                        text = { Text("Check for updates") },
-                        supportingText = { Text("Version $versionName") },
+                        text = { Text(stringResource(R.string.check_for_updates)) },
+                        supportingText = { Text(stringResource(R.string.version, versionName.orEmpty())) },
                         shape = MenuDefaults.itemShape(0, count).shape,
                         leadingIcon = { Symbol(R.drawable.sym_system_update) },
                         enabled = updating == null,
@@ -362,7 +363,7 @@ class MainActivity : ComponentActivity() {
                                 open = false
                                 onUnpair()
                             },
-                            text = { Text("Unpair") },
+                            text = { Text(stringResource(R.string.unpair)) },
                             shape = MenuDefaults.itemShape(1, count).shape,
                             leadingIcon = { Symbol(R.drawable.sym_link_off) },
                             colors = MenuDefaults.itemColors(textColor = error, leadingIconColor = error),
@@ -381,20 +382,26 @@ class MainActivity : ComponentActivity() {
                 add(
                     Fix(
                         R.drawable.sym_battery_android_full,
-                        "Run in the background",
-                        "So Android doesn't stop sync to save battery. On ColorOS, also allow background activity " +
-                            "in App info → Battery usage.",
+                        stringResource(R.string.fix_background),
+                        stringResource(R.string.fix_background_detail),
                         ::allowBackground,
                     ),
                 )
             }
             if (!setup.notifications) {
-                add(Fix(R.drawable.sym_notifications, "Allow notifications", "Shows the sync status and a Send button", ::allowNotifications))
+                add(
+                    Fix(
+                        R.drawable.sym_notifications,
+                        stringResource(R.string.fix_notifications),
+                        stringResource(R.string.fix_notifications_detail),
+                        ::allowNotifications,
+                    ),
+                )
             }
         }
         if (fixes.isNotEmpty()) {
             val colors = MaterialTheme.colorScheme
-            Section("Finish setup") {
+            Section(stringResource(R.string.finish_setup)) {
                 fixes.forEachIndexed { index, fix ->
                     SegmentedListItem(
                         onClick = fix.onClick,
@@ -413,13 +420,13 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        Section("More ways to send") {
-            InfoRow(0, 4, R.drawable.sym_text_select_start, "Select text", "Then pick Send to computers")
-            InfoRow(1, 4, R.drawable.sym_share, "Share", "Share text to clipsync")
-            InfoRow(2, 4, R.drawable.sym_notifications, "Notification", "Tap Send clipboard")
+        Section(stringResource(R.string.more_ways)) {
+            InfoRow(0, 4, R.drawable.sym_text_select_start, stringResource(R.string.way_select), stringResource(R.string.way_select_detail))
+            InfoRow(1, 4, R.drawable.sym_share, stringResource(R.string.way_share), stringResource(R.string.way_share_detail))
+            InfoRow(2, 4, R.drawable.sym_notifications, stringResource(R.string.way_notification), stringResource(R.string.way_notification_detail))
             if (setup.tileAdded) {
-                InfoRow(3, 4, R.drawable.sym_widgets, "Quick Settings tile", "One tap from anywhere") {
-                    Symbol(R.drawable.sym_check, tint = MaterialTheme.colorScheme.primary, description = "Added")
+                InfoRow(3, 4, R.drawable.sym_widgets, stringResource(R.string.way_tile), stringResource(R.string.way_tile_detail)) {
+                    Symbol(R.drawable.sym_check, tint = MaterialTheme.colorScheme.primary, description = stringResource(R.string.added))
                 }
             } else {
                 SegmentedListItem(
@@ -427,9 +434,9 @@ class MainActivity : ComponentActivity() {
                     shapes = ListItemDefaults.segmentedShapes(3, 4),
                     colors = rowColors(),
                     leadingContent = { Symbol(R.drawable.sym_widgets) },
-                    trailingContent = { Symbol(R.drawable.sym_add, description = "Add") },
-                    supportingContent = { Text("Tap to add it") },
-                ) { Text("Quick Settings tile") }
+                    trailingContent = { Symbol(R.drawable.sym_add, description = stringResource(R.string.add)) },
+                    supportingContent = { Text(stringResource(R.string.way_tile_add)) },
+                ) { Text(stringResource(R.string.way_tile)) }
             }
         }
     }
@@ -463,8 +470,12 @@ private fun statusView(state: SyncState): StatusView {
     val colors = MaterialTheme.colorScheme
     return when (state) {
         is SyncState.Connected -> StatusView(
-            "Connected",
-            state.warning ?: state.lastClipAt?.let { "Last clip at ${formatClipTime(it)}" } ?: "Waiting for your first copy",
+            stringResource(R.string.status_connected),
+            when {
+                state.warning != null -> state.warning.text()
+                state.lastClipAt != null -> stringResource(R.string.status_last_clip, formatClipTime(state.lastClipAt))
+                else -> stringResource(R.string.status_waiting)
+            },
             MaterialShapes.Cookie9Sided,
             R.drawable.sym_check,
             colors.primaryContainer,
@@ -473,8 +484,8 @@ private fun statusView(state: SyncState): StatusView {
         )
         // A loading indicator takes the place of the shape and icon.
         SyncState.Connecting -> StatusView(
-            "Connecting…",
-            "Reaching your relay",
+            stringResource(R.string.status_connecting),
+            stringResource(R.string.status_reaching),
             MaterialShapes.Cookie9Sided,
             R.drawable.sym_check,
             colors.surfaceBright,
@@ -482,8 +493,8 @@ private fun statusView(state: SyncState): StatusView {
             colors.onPrimary,
         )
         SyncState.Offline -> StatusView(
-            "Offline",
-            "Retrying soon",
+            stringResource(R.string.status_offline),
+            stringResource(R.string.status_retrying),
             MaterialShapes.Ghostish,
             R.drawable.sym_cloud_off,
             colors.surfaceBright,
@@ -491,8 +502,8 @@ private fun statusView(state: SyncState): StatusView {
             colors.onSecondary,
         )
         SyncState.Stopped -> StatusView(
-            "Stopped",
-            "Open clipsync to resume",
+            stringResource(R.string.status_stopped),
+            stringResource(R.string.status_resume),
             MaterialShapes.Ghostish,
             R.drawable.sym_cloud_off,
             colors.surfaceBright,
@@ -500,8 +511,8 @@ private fun statusView(state: SyncState): StatusView {
             colors.onSecondary,
         )
         is SyncState.Error -> StatusView(
-            "Not syncing",
-            state.message,
+            stringResource(R.string.status_not_syncing),
+            state.reason.text(),
             MaterialShapes.SoftBurst,
             R.drawable.sym_priority_high,
             colors.errorContainer,
@@ -542,7 +553,7 @@ private fun StatusHero(state: SyncState) {
             Text(view.detail, style = MaterialTheme.typography.bodyLarge)
             Spacer(Modifier.height(16.dp))
             Text(
-                "What you copy on your computers lands on this phone's clipboard.",
+                stringResource(R.string.status_about),
                 style = MaterialTheme.typography.bodyMedium,
                 color = LocalContentColor.current.copy(alpha = 0.75f),
             )
@@ -582,29 +593,32 @@ private fun Unpaired(onPair: (relay: String, secret: String) -> Unit) {
         }
         Spacer(Modifier.height(24.dp))
         Text(
-            "Pair with your computers",
+            stringResource(R.string.pair_title),
             style = MaterialTheme.typography.headlineMediumEmphasized,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            "Then what you copy on a computer lands on this phone, and you can send back in one tap.",
+            stringResource(R.string.pair_intro),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
     }
-    Section("Pair in two steps") {
+    Section(stringResource(R.string.pair_steps)) {
         val command = MaterialTheme.colorScheme.primary
+        // The command goes where the translation puts it, in its own style.
+        val (before, after) = stringResource(R.string.pair_step_run).split("%1\$s")
         Step(
             1,
             buildAnnotatedString {
-                append("On a computer, run ")
+                append(before)
                 withStyle(SpanStyle(fontFamily = FontFamily.Monospace, color = command)) { append("clipsync pair") }
+                append(after)
             },
-            "It shows a QR code",
+            stringResource(R.string.pair_step_run_detail),
         )
-        Step(2, AnnotatedString("Scan the QR code with this phone's camera"), "clipsync opens and pairs")
+        Step(2, AnnotatedString(stringResource(R.string.pair_step_scan)), stringResource(R.string.pair_step_scan_detail))
     }
     ManualPairing(onPair)
 }
@@ -624,7 +638,7 @@ private fun ManualPairing(onPair: (relay: String, secret: String) -> Unit) {
                 OutlinedButton(onClick = { open = true }, shapes = ButtonDefaults.shapes()) {
                     Symbol(R.drawable.sym_keyboard, Modifier.size(ButtonDefaults.IconSize))
                     Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                    Text("Type it in instead")
+                    Text(stringResource(R.string.pair_manually))
                 }
             }
             return@AnimatedContent
@@ -637,7 +651,7 @@ private fun ManualPairing(onPair: (relay: String, secret: String) -> Unit) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedTextField(
                 state = relay,
-                label = { Text("Relay") },
+                label = { Text(stringResource(R.string.relay)) },
                 placeholder = { Text("https://clip.example.com") },
                 lineLimits = TextFieldLineLimits.SingleLine,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next, autoCorrectEnabled = false),
@@ -645,13 +659,13 @@ private fun ManualPairing(onPair: (relay: String, secret: String) -> Unit) {
             )
             OutlinedSecureTextField(
                 state = secret,
-                label = { Text("Secret") },
+                label = { Text(stringResource(R.string.secret)) },
                 textObfuscationMode = if (showSecret) TextObfuscationMode.Visible else TextObfuscationMode.Hidden,
                 trailingIcon = {
                     IconButton(onClick = { showSecret = !showSecret }) {
                         Symbol(
                             if (showSecret) R.drawable.sym_visibility_off else R.drawable.sym_visibility,
-                            description = if (showSecret) "Hide secret" else "Show secret",
+                            description = stringResource(if (showSecret) R.string.hide_secret else R.string.show_secret),
                         )
                     }
                 },
@@ -666,10 +680,13 @@ private fun ManualPairing(onPair: (relay: String, secret: String) -> Unit) {
                 shapes = ButtonDefaults.shapesFor(height),
                 contentPadding = ButtonDefaults.contentPaddingFor(height),
                 modifier = Modifier.fillMaxWidth().heightIn(min = height).padding(top = 8.dp),
-            ) { Text("Pair", style = ButtonDefaults.textStyleFor(height)) }
+            ) { Text(stringResource(R.string.pair), style = ButtonDefaults.textStyleFor(height)) }
         }
     }
 }
+
+@Composable
+private fun Message.text() = stringResource(id, *args.toTypedArray())
 
 /** A titled group of rows that join into one rounded block. */
 @Composable

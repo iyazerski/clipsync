@@ -45,8 +45,11 @@ class Settings(context: Context) {
     fun pair(relay: String, secret: String) {
         val url = relay.trim().trimEnd('/')
         val address = runCatching { URI(url) }.getOrNull()
-        require(address?.scheme == "https" && address.host != null && address.userInfo == null &&
-            address.rawQuery == null && address.rawFragment == null) { "The relay should be an https:// address" }
+        if (address?.scheme != "https" || address.host == null || address.userInfo != null ||
+            address.rawQuery != null || address.rawFragment != null
+        ) {
+            throw Invalid(R.string.relay_https)
+        }
         Seal(secret)
         prefs.edit {
             putString(RELAY, url)
@@ -77,11 +80,11 @@ object Relay {
     private const val TIMEOUT_MS = 15_000
 
     /** Thrown when the relay doesn't know this pairing's token. */
-    class Refused : IOException("The relay refused the secret: pair again")
+    class Refused : Failed(R.string.relay_refused)
 
     /** A request to [path] with this phone's token and device id. */
     fun connect(settings: Settings, seal: Seal, path: String): HttpURLConnection {
-        val relay = settings.relay ?: throw IOException("Not paired")
+        val relay = settings.relay ?: throw Failed(R.string.pair_first)
         return (URL(relay + path).openConnection() as HttpURLConnection).apply {
             connectTimeout = TIMEOUT_MS
             readTimeout = TIMEOUT_MS
@@ -96,13 +99,13 @@ object Relay {
         when (val code = connection.responseCode) {
             HttpURLConnection.HTTP_OK -> {}
             HttpURLConnection.HTTP_UNAUTHORIZED -> throw Refused()
-            else -> throw IOException("The relay answered $code")
+            else -> throw Failed(R.string.relay_answered, code)
         }
     }
 
     /** Seal [text] and publish it. Blocks on the network. */
     fun publish(settings: Settings, text: String) {
-        val seal = Seal(settings.secret ?: throw IOException("Not paired"))
+        val seal = Seal(settings.secret ?: throw Failed(R.string.pair_first))
         val connection = connect(settings, seal, CLIP_PATH)
         try {
             connection.requestMethod = "POST"
@@ -126,17 +129,17 @@ object Sender {
         val settings = Settings(app)
         when {
             !settings.paired -> {
-                toast(app, "Pair with a computer first")
+                toast(app, app.getString(R.string.pair_first))
                 app.startActivity(Intent(app, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             }
-            text.isNullOrBlank() -> toast(app, "Nothing to send: the clipboard has no text")
-            text.toByteArray(Charsets.UTF_8).size > Relay.MAX_TEXT -> toast(app, "Too long to send")
+            text.isNullOrBlank() -> toast(app, app.getString(R.string.nothing_to_send))
+            text.toByteArray(Charsets.UTF_8).size > Relay.MAX_TEXT -> toast(app, app.getString(R.string.too_long))
             else -> executor.execute {
                 try {
                     Relay.publish(settings, text)
-                    toast(app, "Sent to your computers")
+                    toast(app, app.getString(R.string.sent))
                 } catch (e: IOException) {
-                    toast(app, "Couldn't send: ${e.message}")
+                    toast(app, app.getString(R.string.couldnt_send, app.reason(e)))
                 }
             }
         }
