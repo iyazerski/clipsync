@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="send_clipboard">Enviar portapapeles</string>
-    <string name="send_to_computers">Enviar a los ordenadores</string>
+    <string name="send_to_computer">Enviar al ordenador</string>
     <string name="paired">Vinculado</string>
     <string name="allow_installs">Permite que clipsync instale actualizaciones y vuelve a tocar</string>
     <string name="unpair_title">¿Desvincular este teléfono?</string>
@@ -18,7 +18,7 @@
     <string name="fix_notifications_detail">Muestra el estado de la sincronización y un botón Enviar</string>
     <string name="more_ways">Más formas de enviar</string>
     <string name="way_select">Selecciona texto</string>
-    <string name="way_select_detail">Luego elige Enviar a los ordenadores</string>
+    <string name="way_select_detail">Luego elige Enviar al ordenador</string>
     <string name="way_share">Compartir</string>
     <string name="way_share_detail">Comparte texto con clipsync</string>
     <string name="way_notification">Notificación</string>

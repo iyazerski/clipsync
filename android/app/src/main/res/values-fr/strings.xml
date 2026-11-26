@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="send_clipboard">Envoyer le presse-papiers</string>
-    <string name="send_to_computers">Envoyer aux ordinateurs</string>
+    <string name="send_to_computer">Envoyer sur l\'ordinateur</string>
     <string name="paired">Associé</string>
     <string name="allow_installs">Autorisez clipsync à installer des mises à jour, puis appuyez à nouveau</string>
     <string name="unpair_title">Dissocier ce téléphone\u00a0?</string>
@@ -18,7 +18,7 @@
     <string name="fix_notifications_detail">Affiche l\'état de la synchronisation et un bouton Envoyer</string>
     <string name="more_ways">Autres façons d\'envoyer</string>
     <string name="way_select">Sélectionnez du texte</string>
-    <string name="way_select_detail">Puis choisissez Envoyer aux ordinateurs</string>
+    <string name="way_select_detail">Puis choisissez Envoyer sur l\'ordinateur</string>
     <string name="way_share">Partager</string>
     <string name="way_share_detail">Partagez du texte avec clipsync</string>
     <string name="way_notification">Notification</string>

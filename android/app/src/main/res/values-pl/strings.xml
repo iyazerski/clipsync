@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="send_clipboard">Wyślij schowek</string>
-    <string name="send_to_computers">Wyślij na komputery</string>
+    <string name="send_to_computer">Wyślij na komputer</string>
     <string name="paired">Sparowano</string>
     <string name="allow_installs">Zezwól clipsync na instalowanie aktualizacji i dotknij ponownie</string>
     <string name="unpair_title">Usunąć parowanie tego telefonu?</string>
@@ -18,7 +18,7 @@
     <string name="fix_notifications_detail">Pokazuje stan synchronizacji i przycisk Wyślij</string>
     <string name="more_ways">Inne sposoby wysyłania</string>
     <string name="way_select">Zaznacz tekst</string>
-    <string name="way_select_detail">Potem wybierz „Wyślij na komputery”</string>
+    <string name="way_select_detail">Potem wybierz „Wyślij na komputer”</string>
     <string name="way_share">Udostępnij</string>
     <string name="way_share_detail">Udostępnij tekst do clipsync</string>
     <string name="way_notification">Powiadomienie</string>

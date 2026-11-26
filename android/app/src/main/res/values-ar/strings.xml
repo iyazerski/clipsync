@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="send_clipboard">إرسال الحافظة</string>
-    <string name="send_to_computers">إرسال إلى أجهزة الكمبيوتر</string>
+    <string name="send_to_computer">إرسال إلى الكمبيوتر</string>
     <string name="paired">تم الإقران</string>
     <string name="allow_installs">اسمح لـ clipsync بتثبيت التحديثات، ثم انقر مرة أخرى</string>
     <string name="unpair_title">هل تريد إلغاء إقران هذا الهاتف؟</string>
@@ -18,7 +18,7 @@
     <string name="fix_notifications_detail">يعرض حالة المزامنة وزر الإرسال</string>
     <string name="more_ways">طرق أخرى للإرسال</string>
     <string name="way_select">تحديد النص</string>
-    <string name="way_select_detail">ثم اختر «إرسال إلى أجهزة الكمبيوتر»</string>
+    <string name="way_select_detail">ثم اختر «إرسال إلى الكمبيوتر»</string>
     <string name="way_share">المشاركة</string>
     <string name="way_share_detail">شارك النص مع clipsync</string>
     <string name="way_notification">الإشعار</string>
@@ -60,7 +60,7 @@
     <string name="pair_first">أقرن جهاز كمبيوتر أولًا</string>
     <string name="nothing_to_send">لا شيء لإرساله: لا يوجد نص في الحافظة</string>
     <string name="too_long">النص أطول من أن يُرسل</string>
-    <string name="sent">تم الإرسال إلى أجهزة الكمبيوتر</string>
+    <string name="sent">تم الإرسال إلى الكمبيوتر</string>
     <string name="couldnt_send">تعذّر الإرسال: %1$s</string>
     <string name="relay_https">يجب أن يكون عنوان المرحّل بصيغة \u2066https://\u2069</string>
     <string name="relay_refused">رفض المرحّل المفتاح السري: أعد الإقران</string>

@@ -4,7 +4,7 @@
     <!-- The notification action, the Quick Settings tile, and the main button. -->
     <string name="send_clipboard">Send clipboard</string>
     <!-- In the text selection menu and Share. -->
-    <string name="send_to_computers">Send to computers</string>
+    <string name="send_to_computer">Send to computer</string>
 
     <string name="paired">Paired</string>
     <string name="allow_installs">Allow clipsync to install updates, then tap again</string>
@@ -24,7 +24,7 @@
 
     <string name="more_ways">More ways to send</string>
     <string name="way_select">Select text</string>
-    <string name="way_select_detail">Then pick Send to computers</string>
+    <string name="way_select_detail">Then pick Send to computer</string>
     <string name="way_share">Share</string>
     <string name="way_share_detail">Share text to clipsync</string>
     <string name="way_notification">Notification</string>

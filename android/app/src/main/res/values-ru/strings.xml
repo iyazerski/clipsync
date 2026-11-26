@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="send_clipboard">Отправить буфер обмена</string>
-    <string name="send_to_computers">Отправить на компьютеры</string>
+    <string name="send_to_computer">Отправить на компьютер</string>
     <string name="paired">Телефон привязан</string>
     <string name="allow_installs">Разрешите clipsync устанавливать обновления и нажмите ещё раз</string>
     <string name="unpair_title">Отвязать этот телефон?</string>
@@ -18,7 +18,7 @@
     <string name="fix_notifications_detail">Показывает состояние синхронизации и кнопку отправки</string>
     <string name="more_ways">Другие способы отправки</string>
     <string name="way_select">Выделите текст</string>
-    <string name="way_select_detail">Затем выберите «Отправить на компьютеры»</string>
+    <string name="way_select_detail">Затем выберите «Отправить на компьютер»</string>
     <string name="way_share">Поделиться</string>
     <string name="way_share_detail">Поделитесь текстом с clipsync</string>
     <string name="way_notification">Уведомление</string>

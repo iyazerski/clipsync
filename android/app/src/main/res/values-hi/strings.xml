@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="send_clipboard">क्लिपबोर्ड भेजें</string>
-    <string name="send_to_computers">कंप्यूटर पर भेजें</string>
+    <string name="send_to_computer">कंप्यूटर पर भेजें</string>
     <string name="paired">पेयर हो गया</string>
     <string name="allow_installs">clipsync को अपडेट इंस्टॉल करने की अनुमति दें, फिर दोबारा टैप करें</string>
     <string name="unpair_title">इस फ़ोन को अनपेयर करें?</string>

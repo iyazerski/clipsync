@@ -45,7 +45,7 @@ flowchart LR
 
 - **Relay:** a tiny server that you run. It passes each copy to your other devices. Nobody is the "host", so it doesn't matter which device is on or what its IP address is.
 - **Computers:** a background service sends what you copy and puts what your other devices copy on the clipboard. It starts at login.
-- **Phone:** the app puts what you copy on your computers on the phone's clipboard, automatically. Android doesn't let apps read the clipboard in the background, so sending from the phone takes one tap: select text and pick **Send to computers**, share text to clipsync, or tap the **Send clipboard** tile in Quick Settings.
+- **Phone:** the app puts what you copy on your computers on the phone's clipboard, automatically. Android doesn't let apps read the clipboard in the background, so sending from the phone takes one tap: select text and pick **Send to computer**, share text to clipsync, or tap the **Send clipboard** tile in Quick Settings.
 - **Encryption:** your devices share one secret. Each copy is sealed with AES-256-GCM on the device. The relay only gets a token derived from the secret, so it can let your devices in, but it can't read what they send. Devices also refuse copies that are old or that they already got.
 
 ## Get started
@@ -181,7 +181,7 @@ When it reconnects within 2 minutes, it gets the latest copy. After that, it doe
 <details>
 <summary><b>Why does sending from the phone take a tap?</b></summary>
 
-Since Android 10, apps can't read the clipboard in the background, so no app can send what you copy on the phone by itself. clipsync makes the tap as short as it can: **Send to computers** in the text selection menu, the share sheet, or the Quick Settings tile. Receiving on the phone needs no tap.
+Since Android 10, apps can't read the clipboard in the background, so no app can send what you copy on the phone by itself. clipsync makes the tap as short as it can: **Send to computer** in the text selection menu, the share sheet, or the Quick Settings tile. Receiving on the phone needs no tap.
 
 </details>
 <details>

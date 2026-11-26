@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="send_clipboard">发送剪贴板</string>
-    <string name="send_to_computers">发送到电脑</string>
+    <string name="send_to_computer">发送到电脑</string>
     <string name="paired">已配对</string>
     <string name="allow_installs">请允许 clipsync 安装更新，然后再点按一次</string>
     <string name="unpair_title">要取消此手机的配对吗？</string>

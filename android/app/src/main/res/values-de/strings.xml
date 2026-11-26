@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="send_clipboard">Zwischenablage senden</string>
-    <string name="send_to_computers">An Computer senden</string>
+    <string name="send_to_computer">An den Computer senden</string>
     <string name="paired">Gekoppelt</string>
     <string name="allow_installs">Erlaube clipsync, Updates zu installieren, und tippe dann noch einmal</string>
     <string name="unpair_title">Kopplung dieses Smartphones aufheben?</string>
@@ -18,7 +18,7 @@
     <string name="fix_notifications_detail">Zeigt den Synchronisierungsstatus und eine Schaltfläche zum Senden</string>
     <string name="more_ways">Weitere Wege zum Senden</string>
     <string name="way_select">Text auswählen</string>
-    <string name="way_select_detail">Dann „An Computer senden“ wählen</string>
+    <string name="way_select_detail">Dann „An den Computer senden“ wählen</string>
     <string name="way_share">Teilen</string>
     <string name="way_share_detail">Text mit clipsync teilen</string>
     <string name="way_notification">Benachrichtigung</string>

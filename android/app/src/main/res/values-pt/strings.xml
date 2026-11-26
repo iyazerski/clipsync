@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="send_clipboard">Enviar área de transferência</string>
-    <string name="send_to_computers">Enviar para computadores</string>
+    <string name="send_to_computer">Enviar para o computador</string>
     <string name="paired">Pareado</string>
     <string name="allow_installs">Permita que o clipsync instale atualizações e toque de novo</string>
     <string name="unpair_title">Desparear este celular?</string>
@@ -18,7 +18,7 @@
     <string name="fix_notifications_detail">Mostra o status da sincronização e um botão Enviar</string>
     <string name="more_ways">Mais formas de enviar</string>
     <string name="way_select">Selecione um texto</string>
-    <string name="way_select_detail">Depois escolha Enviar para computadores</string>
+    <string name="way_select_detail">Depois escolha Enviar para o computador</string>
     <string name="way_share">Compartilhar</string>
     <string name="way_share_detail">Compartilhe texto com o clipsync</string>
     <string name="way_notification">Notificação</string>

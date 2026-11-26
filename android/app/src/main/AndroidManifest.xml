@@ -43,7 +43,7 @@
             android:name=".SendActivity"
             android:excludeFromRecents="true"
             android:exported="true"
-            android:label="@string/send_to_computers"
+            android:label="@string/send_to_computer"
             android:noHistory="true"
             android:taskAffinity=""
             android:theme="@style/Theme.Clipsync.Invisible">

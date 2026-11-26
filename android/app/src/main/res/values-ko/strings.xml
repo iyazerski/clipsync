@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="send_clipboard">클립보드 보내기</string>
-    <string name="send_to_computers">컴퓨터로 보내기</string>
+    <string name="send_to_computer">컴퓨터로 보내기</string>
     <string name="paired">페어링됨</string>
     <string name="allow_installs">clipsync가 업데이트를 설치하도록 허용한 다음 다시 탭하세요</string>
     <string name="unpair_title">이 휴대전화의 페어링을 해제할까요?</string>
