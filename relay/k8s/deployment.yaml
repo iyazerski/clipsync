@@ -32,12 +32,11 @@ spec:
             - name: http
               containerPort: 8080
           env:
-            # `clipsync token` on a computer; see README.
-            - name: CLIPSYNC_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: clipsync-relay-secrets
-                  key: CLIPSYNC_TOKEN
+            - name: CLIPSYNC_PUBLIC
+              value: "true"
+            # Collect garbage harder before reaching the memory limit.
+            - name: GOMEMLIMIT
+              value: 200MiB
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -61,7 +60,8 @@ spec:
           resources:
             requests:
               cpu: 10m
-              memory: 8Mi
+              memory: 32Mi
+            # Fits the relay's own caps: 4,096 streams at about 30 KiB each and 32 MiB of clips.
             limits:
-              cpu: 250m
-              memory: 64Mi
+              cpu: 500m
+              memory: 256Mi

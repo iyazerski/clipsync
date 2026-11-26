@@ -28,8 +28,16 @@ import (
 )
 
 const (
-	keepAlive = 45 * time.Second
-	queueSize = 16
+	keepAlive    = 45 * time.Second
+	writeTimeout = 30 * time.Second
+	queueSize    = 16
+	// Sized for about 1,000 pairings of a few devices each in 256 MiB.
+	maxStreams = 4096
+	// Leaves room for streams that a device dropped but the relay hasn't noticed yet.
+	maxRoomStreams = 32
+	maxStored      = 32 << 20
+	// Devices send base64url(HMAC-SHA256(secret, "clipsync/token")).
+	tokenSize = 43
 )
 
 var version = "0.1.0"
@@ -42,19 +50,67 @@ type clip struct {
 	device, sealed string
 }
 
-type relay struct {
-	token [sha256.Size]byte
-	ttl   time.Duration
-
-	mu        sync.Mutex
-	id        uint64
+// A room holds the devices of one pairing, found by the hash of their shared token.
+type room struct {
 	latest    *clip
 	expiry    *time.Timer
 	listeners map[chan *clip]struct{}
 }
 
+type roomKey = [sha256.Size]byte
+
+type relay struct {
+	// private, when set, is the only token's key that the relay lets in.
+	private *roomKey
+	ttl     time.Duration
+
+	maxStreams, maxRoomStreams, maxStored int
+
+	mu      sync.Mutex
+	id      uint64
+	streams int
+	stored  int
+	rooms   map[roomKey]*room
+}
+
 func newRelay(token string, ttl time.Duration) *relay {
-	return &relay{token: sha256.Sum256([]byte(token)), ttl: ttl, listeners: make(map[chan *clip]struct{})}
+	r := &relay{
+		ttl:            ttl,
+		maxStreams:     maxStreams,
+		maxRoomStreams: maxRoomStreams,
+		maxStored:      maxStored,
+		rooms:          make(map[roomKey]*room),
+	}
+	if token != "" {
+		key := roomKey(sha256.Sum256([]byte(token)))
+		r.private = &key
+	}
+	return r
+}
+
+func notBase64URL(c rune) bool {
+	return !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-' || c == '_')
+}
+
+func validToken(token string) bool {
+	return len(token) == tokenSize && strings.IndexFunc(token, notBase64URL) < 0
+}
+
+// room returns the room for key, making it if needed. The caller holds r.mu.
+func (r *relay) room(key roomKey) *room {
+	rm := r.rooms[key]
+	if rm == nil {
+		rm = &room{listeners: make(map[chan *clip]struct{})}
+		r.rooms[key] = rm
+	}
+	return rm
+}
+
+// prune forgets a room with no devices and no clip. The caller holds r.mu.
+func (r *relay) prune(key roomKey, rm *room) {
+	if rm.latest == nil && len(rm.listeners) == 0 && r.rooms[key] == rm {
+		delete(r.rooms, key)
+	}
 }
 
 func (r *relay) routes() http.Handler {
@@ -70,11 +126,11 @@ func (r *relay) routes() http.Handler {
 	return mux
 }
 
-func (r *relay) authorize(next func(http.ResponseWriter, *http.Request, string)) http.HandlerFunc {
+func (r *relay) authorize(next func(http.ResponseWriter, *http.Request, roomKey, string)) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		token, ok := strings.CutPrefix(req.Header.Get("Authorization"), "Bearer ")
-		got := sha256.Sum256([]byte(token))
-		if !ok || subtle.ConstantTimeCompare(got[:], r.token[:]) != 1 {
+		key := roomKey(sha256.Sum256([]byte(token)))
+		if !ok || !validToken(token) || r.private != nil && subtle.ConstantTimeCompare(key[:], r.private[:]) != 1 {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
@@ -83,11 +139,11 @@ func (r *relay) authorize(next func(http.ResponseWriter, *http.Request, string))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		next(w, req, device)
+		next(w, req, key, device)
 	}
 }
 
-func (r *relay) publish(w http.ResponseWriter, req *http.Request, device string) {
+func (r *relay) publish(w http.ResponseWriter, req *http.Request, key roomKey, device string) {
 	body, err := io.ReadAll(http.MaxBytesReader(w, req.Body, protocol.MaxSealed))
 	if err != nil {
 		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
@@ -97,28 +153,36 @@ func (r *relay) publish(w http.ResponseWriter, req *http.Request, device string)
 		}
 		return
 	}
-	if len(body) == 0 || bytes.IndexFunc(body, func(c rune) bool {
-		return !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-' || c == '_')
-	}) >= 0 {
+	if len(body) == 0 || bytes.IndexFunc(body, notBase64URL) >= 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	r.mu.Lock()
+	rm := r.room(key)
 	r.id = max(r.id+1, uint64(time.Now().UnixMilli()))
 	item := &clip{id: r.id, device: device, sealed: string(body)}
-	r.latest = item
-	if r.expiry != nil {
-		r.expiry.Stop()
+	if rm.latest != nil {
+		r.stored -= len(rm.latest.sealed)
+		rm.expiry.Stop()
+		rm.latest, rm.expiry = nil, nil
 	}
-	r.expiry = time.AfterFunc(r.ttl, func() {
-		r.mu.Lock()
-		defer r.mu.Unlock()
-		if r.latest == item {
-			r.latest = nil
-		}
-	})
-	for listener := range r.listeners {
+	// When the relay holds all the clips it can, it still passes this one on, but
+	// devices that connect later won't get it.
+	if r.stored+len(body) <= r.maxStored {
+		r.stored += len(body)
+		rm.latest = item
+		rm.expiry = time.AfterFunc(r.ttl, func() {
+			r.mu.Lock()
+			defer r.mu.Unlock()
+			if rm.latest == item {
+				r.stored -= len(item.sealed)
+				rm.latest, rm.expiry = nil, nil
+				r.prune(key, rm)
+			}
+		})
+	}
+	for listener := range rm.listeners {
 		select {
 		case listener <- item:
 		default:
@@ -132,6 +196,7 @@ func (r *relay) publish(w http.ResponseWriter, req *http.Request, device string)
 			listener <- item
 		}
 	}
+	r.prune(key, rm)
 	r.mu.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
@@ -140,28 +205,52 @@ func (r *relay) publish(w http.ResponseWriter, req *http.Request, device string)
 	}{ID: item.id})
 }
 
-func (r *relay) events(w http.ResponseWriter, req *http.Request, device string) {
+func (r *relay) events(w http.ResponseWriter, req *http.Request, key roomKey, device string) {
 	var seen uint64
 	if id, err := strconv.ParseUint(req.Header.Get("Last-Event-ID"), 10, 64); err == nil {
 		seen = id
 	}
 	listener := make(chan *clip, queueSize)
 	r.mu.Lock()
-	r.listeners[listener] = struct{}{}
-	if r.latest != nil {
-		listener <- r.latest
+	if r.streams >= r.maxStreams {
+		r.mu.Unlock()
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
+	rm := r.room(key)
+	if len(rm.listeners) >= r.maxRoomStreams {
+		r.mu.Unlock()
+		w.WriteHeader(http.StatusTooManyRequests)
+		return
+	}
+	r.streams++
+	rm.listeners[listener] = struct{}{}
+	if rm.latest != nil {
+		listener <- rm.latest
 	}
 	r.mu.Unlock()
 	defer func() {
 		r.mu.Lock()
-		delete(r.listeners, listener)
+		r.streams--
+		delete(rm.listeners, listener)
+		r.prune(key, rm)
 		r.mu.Unlock()
 	}()
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("X-Accel-Buffering", "no")
-	flush := http.NewResponseController(w).Flush
-	if flush() != nil {
+	// A device that stops reading would otherwise hold its stream and clips forever.
+	controller := http.NewResponseController(w)
+	send := func(parts ...string) bool {
+		_ = controller.SetWriteDeadline(time.Now().Add(writeTimeout))
+		for _, part := range parts {
+			if _, err := io.WriteString(w, part); err != nil {
+				return false
+			}
+		}
+		return controller.Flush() == nil
+	}
+	if !send() {
 		return
 	}
 
@@ -172,7 +261,7 @@ func (r *relay) events(w http.ResponseWriter, req *http.Request, device string) 
 		case <-req.Context().Done():
 			return
 		case <-ticker.C:
-			if _, err := io.WriteString(w, ":\n\n"); err != nil || flush() != nil {
+			if !send(":\n\n") {
 				return
 			}
 		case item := <-listener:
@@ -180,7 +269,7 @@ func (r *relay) events(w http.ResponseWriter, req *http.Request, device string) 
 				continue
 			}
 			seen = item.id
-			if _, err := fmt.Fprintf(w, "id: %d\ndata: %s\n\n", item.id, item.sealed); err != nil || flush() != nil {
+			if !send("id: ", strconv.FormatUint(item.id, 10), "\ndata: ", item.sealed, "\n\n") {
 				return
 			}
 		}
@@ -197,7 +286,8 @@ func env(name, fallback string) string {
 func serve(ctx context.Context, args []string) error {
 	flags := flag.NewFlagSet("clipsync-relay", flag.ContinueOnError)
 	bind := flags.String("bind", env("BIND_ADDR", "0.0.0.0:8080"), "address to bind (BIND_ADDR)")
-	token := flags.String("token", "", "token every device sends (CLIPSYNC_TOKEN)")
+	token := flags.String("token", "", "the only token to let in, for a private relay (CLIPSYNC_TOKEN)")
+	public := flags.Bool("public", os.Getenv("CLIPSYNC_PUBLIC") == "true", "let every pairing in, instead of only CLIPSYNC_TOKEN (CLIPSYNC_PUBLIC=true)")
 	ttl := flags.String("clip-ttl-secs", env("CLIP_TTL_SECS", "120"), "seconds to retain the latest clip (CLIP_TTL_SECS)")
 	showVersion := flags.Bool("version", false, "print version")
 	flags.BoolVar(showVersion, "V", false, "print version")
@@ -218,8 +308,13 @@ func serve(ctx context.Context, args []string) error {
 	if *token == "" {
 		*token = os.Getenv("CLIPSYNC_TOKEN")
 	}
-	if *token == "" {
-		return errors.New("set CLIPSYNC_TOKEN to the output of clipsync token")
+	switch {
+	case *public && *token != "":
+		return errors.New("set either CLIPSYNC_TOKEN or CLIPSYNC_PUBLIC=true, not both")
+	case !*public && *token == "":
+		return errors.New("set CLIPSYNC_TOKEN to the output of clipsync token, or CLIPSYNC_PUBLIC=true to let every pairing in")
+	case !*public && !validToken(*token):
+		return errors.New("CLIPSYNC_TOKEN should be the output of clipsync token")
 	}
 	limit, err := strconv.ParseUint(*ttl, 10, 64)
 	if err != nil || limit > uint64(math.MaxInt64/int64(time.Second)) {
@@ -235,6 +330,7 @@ func serve(ctx context.Context, args []string) error {
 	server := &http.Server{
 		Handler:           newRelay(*token, time.Duration(limit)*time.Second).routes(),
 		ReadHeaderTimeout: 10 * time.Second,
+		MaxHeaderBytes:    8 << 10,
 		IdleTimeout:       2 * time.Minute,
 		BaseContext:       func(net.Listener) context.Context { return ctx },
 	}
@@ -247,7 +343,11 @@ func serve(ctx context.Context, args []string) error {
 			_ = server.Close()
 		}
 	})
-	log.Printf("listening on %s", listener.Addr())
+	if *public {
+		log.Printf("listening on %s, open to every pairing", listener.Addr())
+	} else {
+		log.Printf("listening on %s, letting in only CLIPSYNC_TOKEN", listener.Addr())
+	}
 	err = server.Serve(listener)
 	if !stopped() {
 		<-shutdownDone

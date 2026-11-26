@@ -38,3 +38,19 @@ spec:
   rateLimit:
     average: 10
     burst: 30
+---
+# Per client IP, so one address can't take the relay's 4,096 streams. Leaves room
+# for a shared office or carrier address, and streams a device dropped recently.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: clipsync-relay-in-flight
+  labels:
+    app.kubernetes.io/part-of: clipsync
+    app: clipsync-relay
+spec:
+  inFlightReq:
+    amount: 64
+    # Without it, Traefik counts every request to the host as one source.
+    sourceCriterion:
+      ipStrategy: {}

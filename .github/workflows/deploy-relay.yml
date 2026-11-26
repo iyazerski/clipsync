@@ -80,9 +80,7 @@ jobs:
           chmod 600 ~/.kube/config
 
       # The cluster already has ghcr-pull-secret and the letsencrypt-prod
-      # ClusterIssuer (shared with the other apps). The relay token secret is
-      # made once by hand:
-      #   kubectl create secret generic clipsync-relay-secrets --from-literal=CLIPSYNC_TOKEN="$(clipsync token)"
+      # ClusterIssuer (shared with the other apps).
       - name: Record running release
         run: scripts/release_guard.sh record deployment/clipsync-relay
 

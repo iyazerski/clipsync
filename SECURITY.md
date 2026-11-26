@@ -1,6 +1,6 @@
 # Security
 
-clipsync moves what you copy between your devices, so it handles text you may not want anyone else to see. Please report anything that could let someone read, change or replay clips, or get into a relay without the token.
+clipsync moves what you copy between your devices, so it handles text you may not want anyone else to see. Please report anything that could let someone read, change or replay clips, get clips meant for another user's devices, or get into a private relay without its token.
 
 ## Report a vulnerability
 
@@ -15,7 +15,7 @@ Only the latest release gets fixes. Update with `clipsync update` (or `brew upgr
 ## How clips are protected
 
 - Your devices share a 256-bit secret. Each clip is sealed with AES-256-GCM, with a key derived from the secret, before it leaves the device.
-- The relay gets only a token derived from the secret, which can't be turned back into the key. It can't read clips.
+- The relay gets only a token derived from the secret, which can't be turned back into the key. It can't read clips. It passes each clip only to devices that send the same token.
 - Each sealed clip carries the time it was sealed. Devices refuse clips sealed more than 5 minutes away from their clock, and clips they opened already since they started, which limits what a relay could replay.
 - Devices talk to the relay only over HTTPS.
 

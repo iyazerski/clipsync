@@ -7,7 +7,7 @@
 **Copy on one device, paste on another.**
 
 clipsync keeps the clipboards of your Macs, Windows PCs and Android phone in sync, over any network.<br>
-It's end-to-end encrypted, and it runs through a tiny relay that you host yourself.
+It's end-to-end encrypted, and it runs through a tiny relay: use the public one, or host your own.
 
 [![Latest release](https://img.shields.io/github/v/release/iyazerski/clipsync?color=3b6cf6)](https://github.com/iyazerski/clipsync/releases/latest)
 [![Mac · Windows · Android](https://img.shields.io/badge/Mac%20·%20Windows%20·%20Android-black)](#get-started)
@@ -30,30 +30,29 @@ Apple's Universal Clipboard works only between Apple devices that are close to e
 - **Works from anywhere.** Your devices don't need to be on the same Wi-Fi, or near each other. Home, office or mobile data, it keeps working when you switch.
 - **Private by design.** Text is encrypted on the device before it leaves. The relay passes it on, but can't read it. It keeps only the latest copy, in memory, for 2 minutes.
 - **Skips your passwords.** clipsync ignores copies that password managers mark as private.
-- **Yours.** No account, no cloud service, no tracking. The relay runs in a small container and supports both x86-64 and ARM64 hosts.
-- **Set up in minutes.** One command per computer. Pair the phone by scanning a QR code.
+- **No account.** No sign-up and no tracking. Use the public relay, or run your own in a small container on an x86-64 or ARM64 host.
+- **Set up in minutes.** One command per computer, and no server needed. Pair the phone by scanning a QR code.
 - **Free and open source.** MIT licensed.
 
 ## How it works
 
 ```mermaid
 flowchart LR
-    mac["Mac"] <--> relay(("Your relay"))
+    mac["Mac"] <--> relay(("Relay"))
     pc["Windows PC"] <--> relay
     phone["Android phone"] <--> relay
 ```
 
-- **Relay:** a tiny server that you run. It passes each copy to your other devices. Nobody is the "host", so it doesn't matter which device is on or what its IP address is.
+- **Relay:** a tiny server that passes each copy to your other devices. The public relay at `clip.iyazerski.dev` serves everyone, and keeps each user's devices apart. You can also [host your own](#host-your-own-relay). Nobody is the "host", so it doesn't matter which device is on or what its IP address is.
 - **Computers:** a background service sends what you copy and puts what your other devices copy on the clipboard. It starts at login.
 - **Phone:** the app puts what you copy on your computers on the phone's clipboard, automatically. Android doesn't let apps read the clipboard in the background, so sending from the phone takes one tap: select text and pick **Send to computer**, share text to clipsync, or tap the **Send clipboard** tile in Quick Settings.
-- **Encryption:** your devices share one secret. Each copy is sealed with AES-256-GCM on the device. The relay only gets a token derived from the secret, so it can let your devices in, but it can't read what they send. Devices also refuse copies that are old or that they already got.
+- **Encryption:** your devices share one secret. Each copy is sealed with AES-256-GCM on the device. The relay only gets a token derived from the secret, so it can tell which devices belong together, but it can't read what they send. Devices also refuse copies that are old or that they already got.
 
 ## Get started
 
 You need:
 
-- Macs with Apple silicon, Windows PCs, or both. An Android phone with Android 14 or later is optional.
-- A server for the relay with Docker, ports 80 and 443 open, and a domain name pointing to it, like `clip.example.com`. A small cloud server or a home server works.
+Macs with Apple silicon, Windows PCs, or both. An Android phone with Android 14 or later is optional.
 
 ### 1. Set up your first computer
 
@@ -61,58 +60,26 @@ On a Mac, in Terminal, with [Homebrew](https://brew.sh):
 
 ```sh
 brew install iyazerski/tap/clipsync
-clipsync setup --relay https://clip.example.com
+clipsync setup
 ```
 
 Or without Homebrew:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/iyazerski/clipsync/main/install.sh | sh
-clipsync setup --relay https://clip.example.com
+clipsync setup
 ```
 
 On Windows, in PowerShell:
 
 ```powershell
 irm https://raw.githubusercontent.com/iyazerski/clipsync/main/install.ps1 | iex
-clipsync setup --relay https://clip.example.com
+clipsync setup
 ```
 
-If the installer asks you to open a new terminal or to add a folder to your PATH, do that first. Use your relay's address. `setup` makes a new secret and starts clipsync in the background. It says the relay isn't reachable yet. That's expected: you start the relay next. If macOS asks whether clipsync may access the pasteboard, choose to always allow it.
+If the installer asks you to open a new terminal or to add a folder to your PATH, do that first. `setup` makes a new secret, links this computer to the public relay, and starts clipsync in the background. To use your own relay, add `--relay https://clip.example.com`: see [Host your own relay](#host-your-own-relay). If macOS asks whether clipsync may access the pasteboard, choose to always allow it.
 
-### 2. Start your relay
-
-Print the token that the relay will accept:
-
-```sh
-clipsync token
-```
-
-On your server, download [`relay/compose.yaml`](relay/compose.yaml), and create a `.env` file next to it with your domain and that token:
-
-```sh
-curl -fsSLO https://raw.githubusercontent.com/iyazerski/clipsync/main/relay/compose.yaml
-printf 'RELAY_DOMAIN=clip.example.com\nCLIPSYNC_TOKEN=<your token>\n' > .env
-docker compose up -d
-```
-
-This starts the relay behind [Caddy](https://caddyserver.com), which gets a free HTTPS certificate for your domain and renews it. Within a minute, your computer connects by itself.
-
-<details>
-<summary><b>Already have a reverse proxy?</b></summary>
-
-Run only the relay, and point your proxy at port 8080:
-
-```sh
-docker run -d --restart unless-stopped -p 127.0.0.1:8080:8080 \
-  -e CLIPSYNC_TOKEN=<your token> ghcr.io/iyazerski/clipsync/relay
-```
-
-The proxy must serve HTTPS and pass streamed responses through as they come. Caddy and Traefik do that as they are. For nginx, turn off `proxy_buffering`. Cloudflare's quick tunnels (`trycloudflare.com`) don't work, because they buffer streams.
-
-</details>
-
-### 3. Add your other computers
+### 2. Add your other computers
 
 On your first computer, run:
 
@@ -122,7 +89,7 @@ clipsync pair
 
 It shows a `clipsync setup --relay … --secret …` command. Install clipsync on each other computer as in step 1, then run that command there.
 
-### 4. Add your phone
+### 3. Add your phone
 
 1. [Download the app](https://github.com/iyazerski/clipsync/releases/latest/download/clipsync.apk) on the phone and install it. Android asks you to allow installing apps from your browser the first time.
 2. Run `clipsync pair` on a computer, scan the QR code with the phone's camera, and tap **Open clipsync**.
@@ -140,13 +107,50 @@ Add-MpPreference -AttackSurfaceReductionOnlyExclusions "$env:LOCALAPPDATA\Progra
 
 On a work PC, IT may manage this rule: ask them to allow that folder.
 
+## Host your own relay
+
+The public relay is a free service with no uptime promise. Host your own if you'd rather nobody else saw when your devices connect, or you want a relay that nobody can turn off. You need a server with Docker, ports 80 and 443 open, and a domain name pointing to it, like `clip.example.com`. A small cloud server or a home server works.
+
+On your first computer, link clipsync to your relay's address and print the token that your relay will accept:
+
+```sh
+clipsync setup --relay https://clip.example.com
+clipsync token
+```
+
+`setup` says the relay isn't reachable yet. That's expected: you start it next. On your server, download [`relay/compose.yaml`](relay/compose.yaml), and create a `.env` file next to it with your domain and that token:
+
+```sh
+curl -fsSLO https://raw.githubusercontent.com/iyazerski/clipsync/main/relay/compose.yaml
+printf 'RELAY_DOMAIN=clip.example.com\nCLIPSYNC_TOKEN=<your token>\n' > .env
+docker compose up -d
+```
+
+This starts the relay behind [Caddy](https://caddyserver.com), which gets a free HTTPS certificate for your domain and renews it. Within a minute, your computer connects by itself. The relay refuses every device that isn't paired with yours. To let anyone use it, like the public relay, set `CLIPSYNC_PUBLIC=true` instead of `CLIPSYNC_TOKEN`.
+
+Then add your other computers and your phone with `clipsync pair`, as in [Get started](#2-add-your-other-computers). Devices you already paired with the public relay keep their secret: run `clipsync setup --relay https://clip.example.com` on each computer, and pair the phone again.
+
+<details>
+<summary><b>Already have a reverse proxy?</b></summary>
+
+Run only the relay, and point your proxy at port 8080:
+
+```sh
+docker run -d --restart unless-stopped -p 127.0.0.1:8080:8080 \
+  -e CLIPSYNC_TOKEN=<your token> ghcr.io/iyazerski/clipsync/relay
+```
+
+The proxy must serve HTTPS and pass streamed responses through as they come. Caddy and Traefik do that as they are. For nginx, turn off `proxy_buffering`. Cloudflare's quick tunnels (`trycloudflare.com`) don't work, because they buffer streams.
+
+</details>
+
 ## Commands
 
 | Command | What it does |
 | --- | --- |
-| `clipsync setup --relay <url>` | Link this computer to the relay and start syncing in the background. Add `--secret` to join devices you already set up. |
+| `clipsync setup` | Link this computer to the relay and start syncing in the background. Add `--secret` to join devices you already set up, and `--relay <url>` to use your own relay. |
 | `clipsync pair` | Show the QR code for your phone and the setup command for other computers. |
-| `clipsync token` | Print the token for the relay's `CLIPSYNC_TOKEN`. |
+| `clipsync token` | Print the token for your own relay's `CLIPSYNC_TOKEN`. |
 | `clipsync update` | Install the latest version and restart the background service. With Homebrew, run `brew upgrade clipsync` instead. |
 | `clipsync uninstall` | Stop syncing in the background. Your settings stay. |
 
@@ -155,15 +159,15 @@ The service logs to `~/Library/Logs/clipsync.log` on a Mac and to `%LOCALAPPDATA
 ## FAQ
 
 <details>
-<summary><b>Why do I need my own relay?</b></summary>
+<summary><b>Why is there a relay at all?</b></summary>
 
-Your devices are often on different networks, behind routers that don't accept incoming connections. A relay that every device can reach solves that, without making any device the "host". Hosting it yourself means nobody else is in the middle, and nobody can turn it off or start charging for it. The relay never sees your text, but it's still your server.
+Your devices are often on different networks, behind routers that don't accept incoming connections. A relay that every device can reach solves that, without making any device the "host". The public relay is fine for most people, because it can't read your text. Hosting your own means nobody else sees your devices' metadata, and nobody can turn it off or start charging for it.
 
 </details>
 <details>
 <summary><b>What can the relay see?</b></summary>
 
-It sees when your devices connect, their IP addresses, and the size of each copy. It can't read the text: that's sealed with a key that only your devices have. It keeps only the latest sealed copy, in memory, for 2 minutes. Without your token, it refuses to talk to a device.
+It sees when your devices connect, their IP addresses, and the size of each copy. It can't read the text: that's sealed with a key that only your devices have. It keeps only the latest sealed copy, in memory, for 2 minutes. It keeps users apart by their token: a device gets only copies from devices with the same secret. A relay that you host with `CLIPSYNC_TOKEN` refuses every other device.
 
 </details>
 <details>

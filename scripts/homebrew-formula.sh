@@ -14,7 +14,7 @@ sha256="$(cut -d' ' -f1 "$2/$asset.sha256")"
 
 cat <<EOF
 class Clipsync < Formula
-  desc "Sync the clipboard between Mac, Windows and Android through your own relay"
+  desc "Sync the clipboard between Mac, Windows and Android, end-to-end encrypted"
   homepage "https://github.com/iyazerski/clipsync"
   url "https://github.com/iyazerski/clipsync/releases/download/v$version/$asset"
   sha256 "$sha256"
@@ -37,9 +37,9 @@ class Clipsync < Formula
   def caveats
     <<~EOS
       To start syncing, run:
-        clipsync setup --relay https://clip.example.com
-      with your relay's address. To host a relay, see
-        https://github.com/iyazerski/clipsync#get-started
+        clipsync setup
+      It uses the public relay. To host your own, see
+        https://github.com/iyazerski/clipsync#host-your-own-relay
     EOS
   end
 

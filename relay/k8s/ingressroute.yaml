@@ -33,6 +33,7 @@ spec:
       middlewares:
         - name: clipsync-relay-security-headers
         - name: clipsync-relay-rate-limit
+        - name: clipsync-relay-in-flight
       services:
         - name: clipsync-relay
           port: 8080
