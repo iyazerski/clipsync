@@ -62,6 +62,11 @@ var (
 )
 
 func (a *app) view(c *ui.Context) {
+	a.keepInvite()
+	if a.toast != "" {
+		c.Toast(a.toast)
+		a.toast = ""
+	}
 	switch a.page {
 	case pageWelcome:
 		a.welcome(c)
@@ -199,37 +204,52 @@ func (a *app) joinPage(c *ui.Context) {
 	onboarding(c, func() {
 		ui.Row(c).Children(func() {
 			if backButton(c) {
-				a.page, a.link, a.linkFailed = pageWelcome, "", false
+				a.cancelJoin()
+				a.page, a.link, a.joinErr = pageWelcome, "", joinNoError
 			}
 		})
 		badge(c, iconLink, c.Theme().Accent)
 		ui.Text(c, locales.JoinTitle()).FontSize(26).Bold()
 		ui.Text(c, locales.JoinIntro()).FontSize(14).TextColor(c.Theme().TextMuted).LineHeight(1.35)
-		var failed string
-		if a.linkFailed {
-			failed = locales.JoinInvalid()
-		}
 		ui.Field(c, locales.JoinLink(), func() {
 			ui.Row(c).Gap(8).Children(func() {
-				in := ui.TextInput(c.Key("link"), &a.link).Placeholder(publicRelay + "/pair#…").AutoFocus().Grow(1).Shrink(1).Direction(ui.LeftToRight)
+				in := ui.TextInput(c.Key("link"), &a.link).Placeholder("42 183 059").AutoFocus().Grow(1).Shrink(1).
+					Direction(ui.LeftToRight).Disabled(a.joining)
 				if in.Changed() {
-					a.linkFailed = false
+					a.joinErr = joinNoError
 				}
 				submitted = in.Submitted()
-				if ui.Button(c, locales.Paste()).Clicked() {
-					a.link, a.linkFailed = strings.TrimSpace(c.ReadClipboard()), false
+				if ui.Button(c, locales.Paste()).Disabled(a.joining).Clicked() {
+					a.link, a.joinErr = strings.TrimSpace(c.ReadClipboard()), joinNoError
 				}
 			})
-		}).Error(failed)
+		}).Error(a.joinError())
 	}, func() {
+		if a.joining {
+			ui.PrimaryButton(c, "").Label(locales.Joining()).Disabled(true).Children(func() {
+				ui.Spinner(c).Size(14, 14)
+				ui.Text(c, locales.Joining()).SingleLine()
+			})
+			return
+		}
 		if ui.PrimaryButton(c, locales.JoinButton()).Disabled(strings.TrimSpace(a.link) == "").Clicked() || submitted {
-			if err := a.join(); err != nil {
-				c.Toast(locales.SaveFailed())
-			} else if a.page == pageDevices {
-				c.Toast(locales.Joined())
-			}
+			a.toastIf(c, a.join())
 		}
 	})
+}
+
+func (a *app) joinError() string {
+	switch a.joinErr {
+	case joinInvalid:
+		return locales.JoinInvalid()
+	case joinWrongCode:
+		return locales.JoinWrongCode()
+	case joinCodeGone:
+		return locales.JoinCodeGone()
+	case joinOffline:
+		return locales.JoinOffline(relayHost(a.cfg.Relay))
+	}
+	return ""
 }
 
 func (a *app) readyPage(c *ui.Context) {
@@ -275,6 +295,8 @@ func (a *app) addDevice(c *ui.Context) {
 					ui.Text(c, locales.PhoneNote()).FontSize(12).TextColor(t.TextMuted)
 				})
 			})
+			ui.Text(c, locales.PhoneCode()).FontSize(13).TextColor(t.TextMuted)
+			a.codeBox(c)
 		} else {
 			ui.Column(c).Gap(14).Children(func() {
 				step(c, 1, locales.ComputerStep1())
@@ -286,10 +308,49 @@ func (a *app) addDevice(c *ui.Context) {
 				})
 				step(c, 2, locales.ComputerStep2())
 				step(c, 3, locales.ComputerStep3())
+				ui.Column(c).MarginStart(34).Children(func() { a.codeBox(c) })
+				ui.Text(c, locales.OrLink()).FontSize(13).TextColor(t.TextMuted).Margin(6, 0, 0, 0).MarginStart(34)
 				a.linkBox(c)
 			})
 		}
 		note(c, iconLock, locales.SecretWarning())
+	})
+}
+
+// codeBox shows the code that another device can join with, and what became
+// of the last one.
+func (a *app) codeBox(c *ui.Context) {
+	t := c.Theme()
+	ui.Column(c).Gap(6).Children(func() {
+		ui.Row(c).Gap(10).AlignItems(ui.Center).MinHeight(44).Children(func() {
+			switch {
+			case a.codeNotice == codeFailed || a.codeNotice == codeWrong:
+				text, color := locales.CodeFailed(), t.Danger
+				if a.codeNotice == codeWrong {
+					text, color = locales.CodeWrong(), t.Warning
+				}
+				ui.Icon(c, iconError).FontSize(18).TextColor(color)
+				ui.Text(c, text).FontSize(13.5).Grow(1).Shrink(1)
+				if ui.Button(c, locales.CodeNew()).Clicked() {
+					a.openInvite()
+				}
+			case a.code == "":
+				ui.Spinner(c).Size(18, 18).Label(locales.CodeOpening())
+				ui.Text(c, locales.CodeOpening()).FontSize(13.5).TextColor(t.TextMuted)
+			default:
+				ui.Text(c, client.FormatCode(a.code)).Direction(ui.LeftToRight).
+					Font("ui-monospace").FontSize(30).Bold().Selectable().Grow(1)
+				if ui.Button(c, locales.CodeNew()).Clicked() {
+					a.openInvite()
+				}
+			}
+		})
+		switch {
+		case a.codeNotice == codeJoined:
+			ui.Text(c, locales.CodeJoined()).FontSize(12.5).TextColor(t.Success)
+		case a.code != "":
+			ui.Text(c, locales.CodeOnce()).FontSize(12.5).TextColor(t.TextMuted)
+		}
 	})
 }
 

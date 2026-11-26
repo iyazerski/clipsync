@@ -41,7 +41,7 @@ const (
 	tokenSize = 43
 )
 
-var version = "0.1.0"
+var version = "0.2.0"
 
 //go:embed assets/pair.html
 var pairPage []byte
@@ -65,13 +65,14 @@ type relay struct {
 	private *roomKey
 	ttl     time.Duration
 
-	maxStreams, maxRoomStreams, maxStored int
+	maxStreams, maxRoomStreams, maxStored, maxPairings int
 
-	mu      sync.Mutex
-	id      uint64
-	streams int
-	stored  int
-	rooms   map[roomKey]*room
+	mu       sync.Mutex
+	id       uint64
+	streams  int
+	stored   int
+	rooms    map[roomKey]*room
+	pairings map[string]*pairing
 }
 
 func newRelay(token string, ttl time.Duration) *relay {
@@ -80,7 +81,9 @@ func newRelay(token string, ttl time.Duration) *relay {
 		maxStreams:     maxStreams,
 		maxRoomStreams: maxRoomStreams,
 		maxStored:      maxStored,
+		maxPairings:    maxPairings,
 		rooms:          make(map[roomKey]*room),
+		pairings:       make(map[string]*pairing),
 	}
 	if token != "" {
 		key := roomKey(sha256.Sum256([]byte(token)))
@@ -124,6 +127,7 @@ func (r *relay) routes() http.Handler {
 	})
 	mux.HandleFunc("POST "+protocol.ClipPath, r.authorize(r.publish))
 	mux.HandleFunc("GET "+protocol.EventsPath, r.authorize(r.events))
+	r.pairingRoutes(mux)
 	return mux
 }
 

@@ -1,8 +1,10 @@
 package protocol
 
 const (
-	ClipPath     = "/clip"
-	EventsPath   = "/events"
+	ClipPath   = "/clip"
+	EventsPath = "/events"
+	// PairingPath holds the short-lived mailboxes that pair a device by code.
+	PairingPath  = "/pairing"
 	DeviceHeader = "X-Clipsync-Device"
 	MaxDeviceID  = 64
 	MaxText      = 256 * 1024

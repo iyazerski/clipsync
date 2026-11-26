@@ -5,7 +5,7 @@
     <string name="paired">페어링됨</string>
     <string name="allow_installs">clipsync가 업데이트를 설치하도록 허용한 다음 다시 탭하세요</string>
     <string name="unpair_title">이 휴대전화의 페어링을 해제할까요?</string>
-    <string name="unpair_text">동기화가 중지됩니다. 다시 페어링하려면 컴퓨터의 clipsync에 표시된 QR 코드를 스캔하세요.</string>
+    <string name="unpair_text">동기화가 중지됩니다. 다시 페어링하려면 컴퓨터의 clipsync에서 기기 추가를 사용하세요.</string>
     <string name="unpair">페어링 해제</string>
     <string name="cancel">취소</string>
     <string name="more">더보기</string>
@@ -44,15 +44,19 @@
     <string name="pair_steps">두 단계로 페어링</string>
     <string name="pair_step_open" formatted="false">컴퓨터의 clipsync에서 %1$s 클릭</string>
     <string name="pair_add_device">기기 추가</string>
-    <string name="pair_step_run_detail">QR 코드가 표시됩니다</string>
+    <string name="pair_step_run_detail">QR 코드와 코드가 표시됩니다</string>
     <string name="pair_step_scan">이 휴대전화의 카메라로 QR 코드 스캔</string>
     <string name="pair_step_scan_detail">clipsync가 열리고 페어링됩니다</string>
-    <string name="pair_manually">직접 입력</string>
+    <string name="pair_manually">코드 입력</string>
+    <string name="code">코드</string>
     <string name="relay">릴레이</string>
-    <string name="secret">비밀 키</string>
-    <string name="hide_secret">비밀 키 숨기기</string>
-    <string name="show_secret">비밀 키 표시</string>
+    <string name="relay_detail">컴퓨터가 자체 릴레이를 사용할 때만 변경하세요</string>
     <string name="pair">페어링</string>
+    <string name="joining">페어링하는 중…</string>
+    <string name="code_invalid">컴퓨터에 표시된 코드(예: 42 183 059)를 입력하세요</string>
+    <string name="code_wrong">코드가 맞지 않습니다. 확인하거나 컴퓨터에서 새 코드를 받으세요.</string>
+    <string name="code_gone">코드가 만료되었거나 이미 사용되었습니다. 컴퓨터에서 새 코드를 받으세요.</string>
+    <string name="code_offline">%1$s에 연결할 수 없습니다. 연결을 확인하고 다시 시도하세요.</string>
     <string name="channel_sync">동기화</string>
     <string name="channel_sync_detail">clipsync가 연결되어 있음을 표시합니다</string>
     <string name="notification_warning">연결됨 · %1$s</string>

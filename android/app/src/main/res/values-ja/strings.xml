@@ -5,7 +5,7 @@
     <string name="paired">ペアリングしました</string>
     <string name="allow_installs">clipsync にアップデートのインストールを許可してから、もう一度タップしてください</string>
     <string name="unpair_title">このスマートフォンのペアリングを解除しますか？</string>
-    <string name="unpair_text">同期が停止します。もう一度ペアリングするには、コンピューターの clipsync に表示される QR コードをスキャンしてください。</string>
+    <string name="unpair_text">同期が停止します。もう一度ペアリングするには、コンピュータの clipsync で「デバイスを追加」を使ってください。</string>
     <string name="unpair">ペアリングを解除</string>
     <string name="cancel">キャンセル</string>
     <string name="more">その他</string>
@@ -44,15 +44,19 @@
     <string name="pair_steps">2 ステップでペアリング</string>
     <string name="pair_step_open" formatted="false">コンピューターの clipsync で %1$s をクリック</string>
     <string name="pair_add_device">デバイスを追加</string>
-    <string name="pair_step_run_detail">QR コードが表示されます</string>
+    <string name="pair_step_run_detail">QR コードとコードが表示されます</string>
     <string name="pair_step_scan">このスマートフォンのカメラで QR コードをスキャン</string>
     <string name="pair_step_scan_detail">clipsync が開いてペアリングします</string>
-    <string name="pair_manually">手動で入力</string>
+    <string name="pair_manually">コードを入力</string>
+    <string name="code">コード</string>
     <string name="relay">リレー</string>
-    <string name="secret">シークレット</string>
-    <string name="hide_secret">シークレットを隠す</string>
-    <string name="show_secret">シークレットを表示</string>
+    <string name="relay_detail">コンピュータが独自のリレーを使う場合にだけ変更してください</string>
     <string name="pair">ペアリング</string>
+    <string name="joining">ペアリングしています…</string>
+    <string name="code_invalid">コンピュータに表示されたコード（例: 42 183 059）を入力してください</string>
+    <string name="code_wrong">このコードは使えませんでした。確認するか、コンピュータで新しいコードを表示してください。</string>
+    <string name="code_gone">このコードは期限切れか、使用済みです。コンピュータで新しいコードを表示してください。</string>
+    <string name="code_offline">%1$s に接続できません。接続を確認して、もう一度お試しください。</string>
     <string name="channel_sync">同期</string>
     <string name="channel_sync_detail">clipsync が接続されていることを表示します</string>
     <string name="notification_warning">接続済み · %1$s</string>

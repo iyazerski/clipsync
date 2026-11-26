@@ -1,7 +1,7 @@
 {
   "name": "clipsync",
   "identifier": "dev.iyazerski.clipsync",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "copyright": "© 2026 Ihar Yazerski",
   "license": "MIT",
   "out": "build",

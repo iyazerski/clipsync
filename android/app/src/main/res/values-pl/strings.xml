@@ -5,7 +5,7 @@
     <string name="paired">Sparowano</string>
     <string name="allow_installs">Zezwól clipsync na instalowanie aktualizacji i dotknij ponownie</string>
     <string name="unpair_title">Usunąć parowanie tego telefonu?</string>
-    <string name="unpair_text">Synchronizacja się zatrzyma. Aby sparować ponownie, zeskanuj kod QR w clipsync na komputerze.</string>
+    <string name="unpair_text">Synchronizacja się zatrzyma. Aby sparować ponownie, użyj Dodaj urządzenie w clipsync na komputerze.</string>
     <string name="unpair">Usuń parowanie</string>
     <string name="cancel">Anuluj</string>
     <string name="more">Więcej</string>
@@ -44,15 +44,19 @@
     <string name="pair_steps">Parowanie w dwóch krokach</string>
     <string name="pair_step_open" formatted="false">W clipsync na komputerze kliknij %1$s</string>
     <string name="pair_add_device">Dodaj urządzenie</string>
-    <string name="pair_step_run_detail">Pokaże kod QR</string>
+    <string name="pair_step_run_detail">Pokaże kod QR i kod</string>
     <string name="pair_step_scan">Zeskanuj kod QR aparatem tego telefonu</string>
     <string name="pair_step_scan_detail">clipsync otworzy się i sparuje</string>
-    <string name="pair_manually">Wpisz ręcznie</string>
+    <string name="pair_manually">Wpisz kod</string>
+    <string name="code">Kod</string>
     <string name="relay">Przekaźnik</string>
-    <string name="secret">Klucz tajny</string>
-    <string name="hide_secret">Ukryj klucz tajny</string>
-    <string name="show_secret">Pokaż klucz tajny</string>
+    <string name="relay_detail">Zmień tylko, jeśli Twoje komputery używają własnego przekaźnika</string>
     <string name="pair">Sparuj</string>
+    <string name="joining">Parowanie…</string>
+    <string name="code_invalid">Wpisz kod, który pokazuje komputer, np. 42 183 059</string>
+    <string name="code_wrong">Ten kod nie zadziałał. Sprawdź go albo weź nowy z komputera.</string>
+    <string name="code_gone">Ten kod wygasł albo został już użyty. Weź nowy z komputera.</string>
+    <string name="code_offline">Nie można połączyć się z %1$s. Sprawdź połączenie i spróbuj ponownie.</string>
     <string name="channel_sync">Synchronizacja</string>
     <string name="channel_sync_detail">Pokazuje, że clipsync jest połączony</string>
     <string name="notification_warning">Połączono · %1$s</string>

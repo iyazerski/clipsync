@@ -5,7 +5,7 @@
     <string name="paired">Vinculado</string>
     <string name="allow_installs">Permite que clipsync instale actualizaciones y vuelve a tocar</string>
     <string name="unpair_title">¿Desvincular este teléfono?</string>
-    <string name="unpair_text">La sincronización se detiene. Para volver a vincularlo, escanea el código QR de clipsync en un ordenador.</string>
+    <string name="unpair_text">La sincronización se detiene. Para volver a vincularlo, usa Añadir dispositivo en clipsync en un ordenador.</string>
     <string name="unpair">Desvincular</string>
     <string name="cancel">Cancelar</string>
     <string name="more">Más</string>
@@ -44,15 +44,19 @@
     <string name="pair_steps">Vincula en dos pasos</string>
     <string name="pair_step_open" formatted="false">En clipsync en un ordenador, haz clic en %1$s</string>
     <string name="pair_add_device">Añadir dispositivo</string>
-    <string name="pair_step_run_detail">Muestra un código QR</string>
+    <string name="pair_step_run_detail">Muestra un código QR y un código</string>
     <string name="pair_step_scan">Escanea el código QR con la cámara de este teléfono</string>
     <string name="pair_step_scan_detail">clipsync se abre y se vincula</string>
-    <string name="pair_manually">Escribirlo a mano</string>
+    <string name="pair_manually">Introducir un código</string>
+    <string name="code">Código</string>
     <string name="relay">Relé</string>
-    <string name="secret">Clave secreta</string>
-    <string name="hide_secret">Ocultar clave secreta</string>
-    <string name="show_secret">Mostrar clave secreta</string>
+    <string name="relay_detail">Cámbialo solo si tus ordenadores usan tu propio relé</string>
     <string name="pair">Vincular</string>
+    <string name="joining">Vinculando…</string>
+    <string name="code_invalid">Introduce el código que muestra tu ordenador, como 42 183 059</string>
+    <string name="code_wrong">Ese código no ha funcionado. Revísalo o pide uno nuevo en tu ordenador.</string>
+    <string name="code_gone">Ese código ha caducado o ya se usó. Pide uno nuevo en tu ordenador.</string>
+    <string name="code_offline">No se puede conectar con %1$s. Revisa tu conexión y vuelve a intentarlo.</string>
     <string name="channel_sync">Sincronización</string>
     <string name="channel_sync_detail">Muestra que clipsync está conectado</string>
     <string name="notification_warning">Conectado · %1$s</string>

@@ -86,11 +86,11 @@ func (msgs Messages) WelcomeJoin() string {
 	return Catalog.Format(msgs.locale, "welcomeJoin", nil)
 }
 
-// WelcomeJoinDetail says "Use the pairing link from a computer that runs clipsync"
+// WelcomeJoinDetail says "Enter a code from a device that runs clipsync"
 // in the language the app shows.
 func WelcomeJoinDetail() string { return In(i18n.Locale()).WelcomeJoinDetail() }
 
-// WelcomeJoinDetail says "Use the pairing link from a computer that runs clipsync"
+// WelcomeJoinDetail says "Enter a code from a device that runs clipsync"
 // in the language of msgs.
 func (msgs Messages) WelcomeJoinDetail() string {
 	return Catalog.Format(msgs.locale, "welcomeJoinDetail", nil)
@@ -130,34 +130,64 @@ func (msgs Messages) JoinTitle() string {
 	return Catalog.Format(msgs.locale, "joinTitle", nil)
 }
 
-// JoinIntro says "On a computer that already runs clipsync, open Devices, click Add device, pick Computer and copy the pairing link. Th…"
+// JoinIntro says "On a device that already runs clipsync, choose Add device. Then enter the code it shows here, or paste its pairing link."
 // in the language the app shows.
 func JoinIntro() string { return In(i18n.Locale()).JoinIntro() }
 
-// JoinIntro says "On a computer that already runs clipsync, open Devices, click Add device, pick Computer and copy the pairing link. Th…"
+// JoinIntro says "On a device that already runs clipsync, choose Add device. Then enter the code it shows here, or paste its pairing link."
 // in the language of msgs.
 func (msgs Messages) JoinIntro() string {
 	return Catalog.Format(msgs.locale, "joinIntro", nil)
 }
 
-// JoinLink says "Pairing link"
+// JoinLink says "Code or pairing link"
 // in the language the app shows.
 func JoinLink() string { return In(i18n.Locale()).JoinLink() }
 
-// JoinLink says "Pairing link"
+// JoinLink says "Code or pairing link"
 // in the language of msgs.
 func (msgs Messages) JoinLink() string {
 	return Catalog.Format(msgs.locale, "joinLink", nil)
 }
 
-// JoinInvalid says "That isn't a pairing link. Copy it again from clipsync on your other computer."
+// JoinInvalid says "Enter the code from your other device, such as 42 183 059, or paste its pairing link."
 // in the language the app shows.
 func JoinInvalid() string { return In(i18n.Locale()).JoinInvalid() }
 
-// JoinInvalid says "That isn't a pairing link. Copy it again from clipsync on your other computer."
+// JoinInvalid says "Enter the code from your other device, such as 42 183 059, or paste its pairing link."
 // in the language of msgs.
 func (msgs Messages) JoinInvalid() string {
 	return Catalog.Format(msgs.locale, "joinInvalid", nil)
+}
+
+// JoinWrongCode says "That code didn't work. Check it, or get a new code on your other device."
+// in the language the app shows.
+func JoinWrongCode() string { return In(i18n.Locale()).JoinWrongCode() }
+
+// JoinWrongCode says "That code didn't work. Check it, or get a new code on your other device."
+// in the language of msgs.
+func (msgs Messages) JoinWrongCode() string {
+	return Catalog.Format(msgs.locale, "joinWrongCode", nil)
+}
+
+// JoinCodeGone says "That code has expired or was already used. Get a new code on your other device."
+// in the language the app shows.
+func JoinCodeGone() string { return In(i18n.Locale()).JoinCodeGone() }
+
+// JoinCodeGone says "That code has expired or was already used. Get a new code on your other device."
+// in the language of msgs.
+func (msgs Messages) JoinCodeGone() string {
+	return Catalog.Format(msgs.locale, "joinCodeGone", nil)
+}
+
+// JoinOffline says "Can't reach {host}. Check your connection and try again."
+// in the language the app shows.
+func JoinOffline(host string) string { return In(i18n.Locale()).JoinOffline(host) }
+
+// JoinOffline says "Can't reach {host}. Check your connection and try again."
+// in the language of msgs.
+func (msgs Messages) JoinOffline(host string) string {
+	return Catalog.Format(msgs.locale, "joinOffline", map[string]any{"host": host})
 }
 
 // JoinButton says "Join"
@@ -168,6 +198,16 @@ func JoinButton() string { return In(i18n.Locale()).JoinButton() }
 // in the language of msgs.
 func (msgs Messages) JoinButton() string {
 	return Catalog.Format(msgs.locale, "joinButton", nil)
+}
+
+// Joining says "Joining…"
+// in the language the app shows.
+func Joining() string { return In(i18n.Locale()).Joining() }
+
+// Joining says "Joining…"
+// in the language of msgs.
+func (msgs Messages) Joining() string {
+	return Catalog.Format(msgs.locale, "joining", nil)
 }
 
 // Joined says "Paired. Copy something to try it."
@@ -310,6 +350,20 @@ func (msgs Messages) PhoneNote() string {
 	return Catalog.Format(msgs.locale, "phoneNote", nil)
 }
 
+// PhoneCode says "No camera? In the app, tap Enter a code and type this one:"
+// in the language the app shows.
+//
+// Enter a code is the button in the Android app, as there.
+func PhoneCode() string { return In(i18n.Locale()).PhoneCode() }
+
+// PhoneCode says "No camera? In the app, tap Enter a code and type this one:"
+// in the language of msgs.
+//
+// Enter a code is the button in the Android app, as there.
+func (msgs Messages) PhoneCode() string {
+	return Catalog.Format(msgs.locale, "phoneCode", nil)
+}
+
 // QrLabel says "QR code of the pairing link"
 // in the language the app shows.
 func QrLabel() string { return In(i18n.Locale()).QrLabel() }
@@ -340,14 +394,90 @@ func (msgs Messages) ComputerStep2() string {
 	return Catalog.Format(msgs.locale, "computerStep2", nil)
 }
 
-// ComputerStep3 says "Paste this pairing link there"
+// ComputerStep3 says "Enter this code there"
 // in the language the app shows.
 func ComputerStep3() string { return In(i18n.Locale()).ComputerStep3() }
 
-// ComputerStep3 says "Paste this pairing link there"
+// ComputerStep3 says "Enter this code there"
 // in the language of msgs.
 func (msgs Messages) ComputerStep3() string {
 	return Catalog.Format(msgs.locale, "computerStep3", nil)
+}
+
+// OrLink says "Can't use a code? Paste this pairing link instead."
+// in the language the app shows.
+func OrLink() string { return In(i18n.Locale()).OrLink() }
+
+// OrLink says "Can't use a code? Paste this pairing link instead."
+// in the language of msgs.
+func (msgs Messages) OrLink() string {
+	return Catalog.Format(msgs.locale, "orLink", nil)
+}
+
+// CodeOpening says "Making a code…"
+// in the language the app shows.
+func CodeOpening() string { return In(i18n.Locale()).CodeOpening() }
+
+// CodeOpening says "Making a code…"
+// in the language of msgs.
+func (msgs Messages) CodeOpening() string {
+	return Catalog.Format(msgs.locale, "codeOpening", nil)
+}
+
+// CodeFailed says "Can't make a code. Check your connection."
+// in the language the app shows.
+func CodeFailed() string { return In(i18n.Locale()).CodeFailed() }
+
+// CodeFailed says "Can't make a code. Check your connection."
+// in the language of msgs.
+func (msgs Messages) CodeFailed() string {
+	return Catalog.Format(msgs.locale, "codeFailed", nil)
+}
+
+// CodeNew says "New code"
+// in the language the app shows.
+func CodeNew() string { return In(i18n.Locale()).CodeNew() }
+
+// CodeNew says "New code"
+// in the language of msgs.
+func (msgs Messages) CodeNew() string {
+	return Catalog.Format(msgs.locale, "codeNew", nil)
+}
+
+// CodeOnce says "Works once, for 10 minutes."
+// in the language the app shows.
+//
+// About the pairing code: it pairs one device, and expires after 10
+// minutes.
+func CodeOnce() string { return In(i18n.Locale()).CodeOnce() }
+
+// CodeOnce says "Works once, for 10 minutes."
+// in the language of msgs.
+//
+// About the pairing code: it pairs one device, and expires after 10
+// minutes.
+func (msgs Messages) CodeOnce() string {
+	return Catalog.Format(msgs.locale, "codeOnce", nil)
+}
+
+// CodeJoined says "A device joined. This new code is for the next one."
+// in the language the app shows.
+func CodeJoined() string { return In(i18n.Locale()).CodeJoined() }
+
+// CodeJoined says "A device joined. This new code is for the next one."
+// in the language of msgs.
+func (msgs Messages) CodeJoined() string {
+	return Catalog.Format(msgs.locale, "codeJoined", nil)
+}
+
+// CodeWrong says "Someone entered a wrong code, so it stopped working."
+// in the language the app shows.
+func CodeWrong() string { return In(i18n.Locale()).CodeWrong() }
+
+// CodeWrong says "Someone entered a wrong code, so it stopped working."
+// in the language of msgs.
+func (msgs Messages) CodeWrong() string {
+	return Catalog.Format(msgs.locale, "codeWrong", nil)
 }
 
 // CopyDownloadLink says "Copy download link"
@@ -400,11 +530,11 @@ func (msgs Messages) Copied() string {
 	return Catalog.Format(msgs.locale, "copied", nil)
 }
 
-// SecretWarning says "Anyone with this link can read your clipboard. Share it only with your own devices."
+// SecretWarning says "Anyone with this code or link can join your devices. Share them only with your own devices."
 // in the language the app shows.
 func SecretWarning() string { return In(i18n.Locale()).SecretWarning() }
 
-// SecretWarning says "Anyone with this link can read your clipboard. Share it only with your own devices."
+// SecretWarning says "Anyone with this code or link can join your devices. Share them only with your own devices."
 // in the language of msgs.
 func (msgs Messages) SecretWarning() string {
 	return Catalog.Format(msgs.locale, "secretWarning", nil)
@@ -1008,11 +1138,11 @@ func (msgs Messages) UnpairTitle() string {
 	return Catalog.Format(msgs.locale, "unpairTitle", nil)
 }
 
-// UnpairText says "Sync stops here. To pair again, use a pairing link from another device."
+// UnpairText says "Sync stops here. To pair again, enter a code from another device."
 // in the language the app shows.
 func UnpairText() string { return In(i18n.Locale()).UnpairText() }
 
-// UnpairText says "Sync stops here. To pair again, use a pairing link from another device."
+// UnpairText says "Sync stops here. To pair again, enter a code from another device."
 // in the language of msgs.
 func (msgs Messages) UnpairText() string {
 	return Catalog.Format(msgs.locale, "unpairText", nil)
@@ -1088,11 +1218,11 @@ func (msgs Messages) RelayInvalid() string {
 	return Catalog.Format(msgs.locale, "relayInvalid", nil)
 }
 
-// RelayRepair says "Your other devices keep using the old relay. Pair them again with the new link."
+// RelayRepair says "Your other devices keep using the old relay. Pair them again afterwards."
 // in the language the app shows.
 func RelayRepair() string { return In(i18n.Locale()).RelayRepair() }
 
-// RelayRepair says "Your other devices keep using the old relay. Pair them again with the new link."
+// RelayRepair says "Your other devices keep using the old relay. Pair them again afterwards."
 // in the language of msgs.
 func (msgs Messages) RelayRepair() string {
 	return Catalog.Format(msgs.locale, "relayRepair", nil)

@@ -31,7 +31,7 @@ Apple's Universal Clipboard works only between Apple devices that are close to e
 - **Private by design.** Text is encrypted on the device before it leaves. The relay passes it on, but can't read it. It keeps only the latest copy, in memory, for 2 minutes.
 - **Skips your passwords.** clipsync ignores copies that password managers mark as private.
 - **No account.** No sign-up and no tracking. Use the public relay, or run your own in a small container on an x86-64 or ARM64 host.
-- **Set up in minutes.** One small app per computer, and no server or terminal needed. Pair the phone by scanning a QR code.
+- **Set up in minutes.** One small app per computer, and no server or terminal needed. Pair the others with a short code, or the phone by scanning a QR code.
 - **Free and open source.** MIT licensed.
 
 ## How it works
@@ -78,8 +78,8 @@ Or download the Mac disk image or the Windows setup from the [latest release](ht
 ### 2. Pair your devices
 
 1. On your first computer, open clipsync and choose **Set up my first device**.
-2. On each other computer, open clipsync and choose **Join my other devices**. On the first computer, click **Add device**, pick **Computer**, and copy the pairing link. Paste it on the other computer.
-3. For your phone, click **Add device** and scan the QR code with the phone's camera. The page that opens has the app: download it and install it. Android asks you to allow installing apps from your browser the first time. Then scan again, and tap **Open clipsync**.
+2. On each other computer, open clipsync and choose **Join my other devices**. On the first computer, click **Add device** and pick **Computer**. Enter the code that it shows, such as `42 183 059`, on the other computer. A code works once and for 10 minutes.
+3. For your phone, click **Add device** and scan the QR code with the phone's camera. The page that opens has the app: download it and install it. Android asks you to allow installing apps from your browser the first time. Then scan again, and tap **Open clipsync**. No camera? Tap **Enter a code** in the app and type the code instead.
 4. In the phone app, tap **Run in the background** under **Finish setup**, and **Quick Settings tile** to add it. On ColorOS, also go to App info → Battery usage and turn on **Allow background activity** and **Allow auto launch**.
 
 That's it. Copy something on one device and paste it on another. If macOS asks whether clipsync may paste, click **Allow**.
@@ -114,7 +114,7 @@ docker compose up -d
 
 This starts the relay behind [Caddy](https://caddyserver.com), which gets a free HTTPS certificate for your domain and renews it. Within a minute, your computer connects by itself. The relay refuses every device that isn't paired with yours. To let anyone use it, like the public relay, set `CLIPSYNC_PUBLIC=true` instead of `CLIPSYNC_TOKEN`.
 
-Then add your other computers and your phone, as in [Get started](#2-pair-your-devices). Devices that you already paired with the public relay keep their secret: on each computer, open **Settings**, click **Change** under **Relay**, and enter the new address. Unpair the phone, and pair it again.
+Then add your other computers and your phone, as in [Get started](#2-pair-your-devices). Devices that you already paired with the public relay keep their secret: on each computer, open **Settings**, click **Change** under **Relay**, and enter the new address. Unpair the phone, and pair it again: under **Enter a code**, enter your relay's address too.
 
 <details>
 <summary><b>Already have a reverse proxy?</b></summary>

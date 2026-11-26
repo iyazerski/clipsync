@@ -5,7 +5,7 @@
     <string name="paired">पेयर हो गया</string>
     <string name="allow_installs">clipsync को अपडेट इंस्टॉल करने की अनुमति दें, फिर दोबारा टैप करें</string>
     <string name="unpair_title">इस फ़ोन को अनपेयर करें?</string>
-    <string name="unpair_text">सिंक रुक जाएगा। फिर से पेयर करने के लिए किसी कंप्यूटर पर clipsync का QR कोड स्कैन करें।</string>
+    <string name="unpair_text">सिंक रुक जाएगा। फिर से पेयर करने के लिए कंप्यूटर पर clipsync में डिवाइस जोड़ें इस्तेमाल करें।</string>
     <string name="unpair">अनपेयर करें</string>
     <string name="cancel">रद्द करें</string>
     <string name="more">और</string>
@@ -44,15 +44,19 @@
     <string name="pair_steps">दो चरणों में पेयर करें</string>
     <string name="pair_step_open" formatted="false">किसी कंप्यूटर पर clipsync में %1$s पर क्लिक करें</string>
     <string name="pair_add_device">डिवाइस जोड़ें</string>
-    <string name="pair_step_run_detail">यह एक QR कोड दिखाता है</string>
+    <string name="pair_step_run_detail">यह एक QR कोड और एक कोड दिखाता है</string>
     <string name="pair_step_scan">इस फ़ोन के कैमरे से QR कोड स्कैन करें</string>
     <string name="pair_step_scan_detail">clipsync खुलकर पेयर हो जाता है</string>
-    <string name="pair_manually">इसके बजाय टाइप करें</string>
+    <string name="pair_manually">कोड डालें</string>
+    <string name="code">कोड</string>
     <string name="relay">रिले</string>
-    <string name="secret">सीक्रेट</string>
-    <string name="hide_secret">सीक्रेट छिपाएँ</string>
-    <string name="show_secret">सीक्रेट दिखाएँ</string>
+    <string name="relay_detail">इसे तभी बदलें जब आपके कंप्यूटर अपना रिले इस्तेमाल करते हों</string>
     <string name="pair">पेयर करें</string>
+    <string name="joining">पेयर कर रहे हैं…</string>
+    <string name="code_invalid">अपने कंप्यूटर पर दिख रहा कोड डालें, जैसे 42 183 059</string>
+    <string name="code_wrong">यह कोड काम नहीं किया। इसे जाँचें या अपने कंप्यूटर पर नया कोड लें।</string>
+    <string name="code_gone">इस कोड की समय-सीमा खत्म हो गई है या यह इस्तेमाल हो चुका है। अपने कंप्यूटर पर नया कोड लें।</string>
+    <string name="code_offline">%1$s तक नहीं पहुँच पा रहे। अपना कनेक्शन जाँचें और फिर से कोशिश करें।</string>
     <string name="channel_sync">सिंक</string>
     <string name="channel_sync_detail">दिखाता है कि clipsync कनेक्ट है</string>
     <string name="notification_warning">कनेक्ट है · %1$s</string>

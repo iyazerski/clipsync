@@ -5,7 +5,7 @@
     <string name="paired">تم الإقران</string>
     <string name="allow_installs">اسمح لـ clipsync بتثبيت التحديثات، ثم انقر مرة أخرى</string>
     <string name="unpair_title">هل تريد إلغاء إقران هذا الهاتف؟</string>
-    <string name="unpair_text">ستتوقف المزامنة. للإقران مرة أخرى، امسح رمز QR في clipsync على جهاز كمبيوتر.</string>
+    <string name="unpair_text">ستتوقف المزامنة. للإقران مرة أخرى، استخدم إضافة جهاز في clipsync على كمبيوتر.</string>
     <string name="unpair">إلغاء الإقران</string>
     <string name="cancel">إلغاء</string>
     <string name="more">المزيد</string>
@@ -44,15 +44,19 @@
     <string name="pair_steps">الإقران في خطوتين</string>
     <string name="pair_step_open" formatted="false">في clipsync على جهاز كمبيوتر، انقر على %1$s</string>
     <string name="pair_add_device">إضافة جهاز</string>
-    <string name="pair_step_run_detail">يعرض رمز QR</string>
+    <string name="pair_step_run_detail">سيعرض رمز QR ورمزًا</string>
     <string name="pair_step_scan">امسح رمز QR بكاميرا هذا الهاتف</string>
     <string name="pair_step_scan_detail">يفتح clipsync ويُكمل الإقران</string>
-    <string name="pair_manually">الكتابة يدويًا بدلًا من ذلك</string>
+    <string name="pair_manually">إدخال رمز</string>
+    <string name="code">الرمز</string>
     <string name="relay">المرحّل</string>
-    <string name="secret">المفتاح السري</string>
-    <string name="hide_secret">إخفاء المفتاح السري</string>
-    <string name="show_secret">إظهار المفتاح السري</string>
+    <string name="relay_detail">غيّره فقط إذا كانت أجهزة الكمبيوتر تستخدم مرحّلك الخاص</string>
     <string name="pair">إقران</string>
+    <string name="joining">جارٍ الإقران…</string>
+    <string name="code_invalid">أدخِل الرمز الذي يعرضه الكمبيوتر، مثل 42 183 059</string>
+    <string name="code_wrong">لم ينجح هذا الرمز. تحقّق منه، أو احصل على رمز جديد من الكمبيوتر.</string>
+    <string name="code_gone">انتهت صلاحية هذا الرمز أو استُخدم من قبل. احصل على رمز جديد من الكمبيوتر.</string>
+    <string name="code_offline">تعذّر الوصول إلى %1$s. تحقّق من اتصالك وحاول مرة أخرى.</string>
     <string name="channel_sync">المزامنة</string>
     <string name="channel_sync_detail">يُظهر أن clipsync متصل</string>
     <string name="notification_warning">متصل · %1$s</string>
