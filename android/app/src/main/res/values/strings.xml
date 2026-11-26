@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">clipsync</string>
+    <!-- The notification action, the Quick Settings tile, and the main button. -->
+    <string name="send_clipboard">Send clipboard</string>
+    <!-- In the text selection menu and Share. -->
+    <string name="send_to_computer">Send to computer</string>
+
+    <string name="paired">Paired</string>
+    <string name="allow_installs">Allow clipsync to install updates, then tap again</string>
+    <string name="unpair_title">Unpair this phone?</string>
+    <string name="unpair_text">Sync stops. To pair again, run clipsync pair on a computer.</string>
+    <string name="unpair">Unpair</string>
+    <string name="cancel">Cancel</string>
+    <string name="more">More</string>
+    <string name="check_for_updates">Check for updates</string>
+    <string name="version">Version %1$s</string>
+
+    <string name="finish_setup">Finish setup</string>
+    <string name="fix_background">Run in the background</string>
+    <string name="fix_background_detail">So Android doesn\'t stop sync to save battery. On ColorOS, also allow background activity in App info → Battery usage.</string>
+    <string name="fix_notifications">Allow notifications</string>
+    <string name="fix_notifications_detail">Shows the sync status and a Send button</string>
+
+    <string name="more_ways">More ways to send</string>
+    <string name="way_select">Select text</string>
+    <string name="way_select_detail">Then pick Send to computer</string>
+    <string name="way_share">Share</string>
+    <string name="way_share_detail">Share text to clipsync</string>
+    <string name="way_notification">Notification</string>
+    <string name="way_notification_detail">Tap Send clipboard</string>
+    <string name="way_tile">Quick Settings tile</string>
+    <string name="way_tile_detail">One tap from anywhere</string>
+    <string name="way_tile_add">Tap to add it</string>
+    <string name="added">Added</string>
+    <string name="add">Add</string>
+
+    <string name="status_connected">Connected</string>
+    <string name="status_last_clip">Last clip at %1$s</string>
+    <string name="status_waiting">Waiting for your first copy</string>
+    <string name="status_connecting">Connecting…</string>
+    <string name="status_reaching">Reaching your relay</string>
+    <string name="status_offline">Offline</string>
+    <string name="status_retrying">Retrying soon</string>
+    <string name="status_stopped">Stopped</string>
+    <string name="status_resume">Open clipsync to resume</string>
+    <string name="status_not_syncing">Not syncing</string>
+    <string name="status_about">What you copy on your computers lands on this phone\'s clipboard.</string>
+
+    <string name="pair_title">Pair with your computers</string>
+    <string name="pair_intro">Then what you copy on a computer lands on this phone, and you can send back in one tap.</string>
+    <string name="pair_steps">Pair in two steps</string>
+    <!-- %1$s is the command, clipsync pair. -->
+    <string name="pair_step_run" formatted="false">On a computer, run %1$s</string>
+    <string name="pair_step_run_detail">It shows a QR code</string>
+    <string name="pair_step_scan">Scan the QR code with this phone\'s camera</string>
+    <string name="pair_step_scan_detail">clipsync opens and pairs</string>
+    <string name="pair_manually">Type it in instead</string>
+    <string name="relay">Relay</string>
+    <string name="secret">Secret</string>
+    <string name="hide_secret">Hide secret</string>
+    <string name="show_secret">Show secret</string>
+    <string name="pair">Pair</string>
+
+    <string name="channel_sync">Sync</string>
+    <string name="channel_sync_detail">Shows that clipsync is connected</string>
+    <string name="notification_warning">Connected · %1$s</string>
+    <string name="notification_last_clip">Connected · last clip at %1$s</string>
+    <string name="notification_offline">Offline, retrying</string>
+
+    <string name="pair_first">Pair with a computer first</string>
+    <string name="nothing_to_send">Nothing to send: the clipboard has no text</string>
+    <string name="too_long">Too long to send</string>
+    <string name="sent">Sent to your computers</string>
+    <string name="couldnt_send">Couldn\'t send: %1$s</string>
+    <string name="relay_https">The relay should be an https:// address</string>
+    <string name="relay_refused">The relay refused the secret: pair again</string>
+    <string name="relay_answered">The relay answered %1$d</string>
+    <string name="secret_length">The secret should be 43 characters, as `clipsync pair` shows it</string>
+    <string name="clip_not_base64">Not base64url</string>
+    <string name="clip_short">Clip too short</string>
+    <string name="clip_format">Clip format %1$d is unknown: update clipsync</string>
+    <string name="clip_other_secret">Can\'t open the clip: the devices use different secrets</string>
+    <string name="clip_clock">A clip was sealed %1$ds away from now: a replay, or a clock is wrong</string>
+    <string name="clip_twice">A clip came twice: a replay</string>
+
+    <string name="update_checking">Checking…</string>
+    <string name="update_downloading">Downloading %1$s…</string>
+    <string name="update_current">clipsync is up to date</string>
+    <string name="couldnt_update">Couldn\'t update: %1$s</string>
+    <string name="update_bad_answer">Couldn\'t update: unexpected answer from GitHub</string>
+    <string name="github_answered">GitHub answered %1$d</string>
+    <string name="release_unexpected">Unexpected release %1$s</string>
+    <string name="release_no_apk">Release %1$s has no %2$s</string>
+    <string name="download_answered">The download answered %1$d</string>
+    <string name="install_failed">Update failed: %1$s</string>
+    <string name="install_unknown_error">unknown error</string>
+</resources>

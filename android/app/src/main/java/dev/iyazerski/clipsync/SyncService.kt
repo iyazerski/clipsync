@@ -10,6 +10,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.content.res.Configuration
 import android.graphics.drawable.Icon
 import android.net.ConnectivityManager
 import android.net.Network
@@ -67,11 +68,7 @@ class SyncService : Service() {
     override fun onCreate() {
         super.onCreate()
         settings = Settings(this)
-        val channel = NotificationChannel(CHANNEL, "Sync", NotificationManager.IMPORTANCE_MIN).apply {
-            description = "Shows that clipsync is connected"
-            setShowBadge(false)
-        }
-        getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        createChannel()
         updateState(SyncState.Connecting, notify = false)
         startForeground(NOTIFICATION, notification(state), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(network)
@@ -91,6 +88,13 @@ class SyncService : Service() {
             reconnectNow()
         }
         return START_STICKY
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        // The system language may have changed: redo the channel's and the notification's words.
+        createChannel()
+        getSystemService(NotificationManager::class.java).notify(NOTIFICATION, notification(state))
     }
 
     override fun onDestroy() {
@@ -133,13 +137,13 @@ class SyncService : Service() {
                     setState(if (deliberate) SyncState.Connecting else SyncState.Offline)
                 }
             } catch (e: Relay.Refused) {
-                if (running) setState(SyncState.Error(e.message ?: "Refused"))
+                if (running) setState(SyncState.Error(e.reason))
                 backoff = MAX_BACKOFF_MS
             } catch (e: IOException) {
                 val deliberate = synchronized(lock) { kicked }
                 if (running) setState(if (deliberate) SyncState.Connecting else SyncState.Offline)
-            } catch (e: IllegalArgumentException) {
-                if (running) setState(SyncState.Error(e.message ?: "Bad pairing"))
+            } catch (e: Invalid) {
+                if (running) setState(SyncState.Error(e.reason))
                 backoff = MAX_BACKOFF_MS
             }
             if (SystemClock.elapsedRealtime() - started > STABLE_AFTER_MS) backoff = MIN_BACKOFF_MS
@@ -162,7 +166,7 @@ class SyncService : Service() {
 
     /** Follow the relay's event stream until it ends or fails. */
     private fun stream() {
-        val seal = Seal(settings.secret ?: throw IOException("Not paired"))
+        val seal = Seal(settings.secret ?: throw Failed(R.string.pair_first))
         val conn = Relay.connect(settings, seal, Relay.EVENTS_PATH).apply {
             // The relay sends a comment every 45 s on an idle stream.
             readTimeout = SILENCE_LIMIT_MS
@@ -210,8 +214,8 @@ class SyncService : Service() {
         if (id != null && id > settings.seen) settings.seen = id
         val text = try {
             seal.open(sealed, opened)
-        } catch (e: IllegalArgumentException) {
-            setState(SyncState.Connected(lastClipAt, warning = e.message ?: "Couldn't open a clip"))
+        } catch (e: Invalid) {
+            setState(SyncState.Connected(lastClipAt, warning = e.reason))
             return
         }
         main.post {
@@ -234,9 +238,18 @@ class SyncService : Service() {
         if (previous == next) return
         state = next
         onState?.invoke(next)
-        if (notify && previous.notificationText() != next.notificationText()) {
+        if (notify && previous.notificationText(this) != next.notificationText(this)) {
             getSystemService(NotificationManager::class.java).notify(NOTIFICATION, notification(next))
         }
+    }
+
+    /** Creating it again updates its name and description. */
+    private fun createChannel() {
+        val channel = NotificationChannel(CHANNEL, getString(R.string.channel_sync), NotificationManager.IMPORTANCE_MIN).apply {
+            description = getString(R.string.channel_sync_detail)
+            setShowBadge(false)
+        }
+        getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
     private fun notification(current: SyncState): Notification {
@@ -244,12 +257,12 @@ class SyncService : Service() {
             this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE,
         )
         val send = Notification.Action.Builder(
-            Icon.createWithResource(this, R.drawable.ic_tile), "Send clipboard", SendActivity.clipboardIntent(this),
+            Icon.createWithResource(this, R.drawable.ic_tile), getString(R.string.send_clipboard), SendActivity.clipboardIntent(this),
         ).build()
         return Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_tile)
-            .setContentTitle("clipsync")
-            .setContentText(current.notificationText())
+            .setContentTitle(getString(R.string.app_name))
+            .setContentText(current.notificationText(this))
             .setContentIntent(open)
             .addAction(send)
             .setOngoing(true)
@@ -289,21 +302,21 @@ class SyncService : Service() {
 
 sealed interface SyncState {
     data object Connecting : SyncState
-    data class Connected(val lastClipAt: Long? = null, val warning: String? = null) : SyncState
+    data class Connected(val lastClipAt: Long? = null, val warning: Message? = null) : SyncState
     data object Offline : SyncState
     data object Stopped : SyncState
-    data class Error(val message: String) : SyncState
+    data class Error(val reason: Message) : SyncState
 
-    fun notificationText(): String = when (this) {
-        Connecting -> "Connecting…"
+    fun notificationText(context: Context): String = when (this) {
+        Connecting -> context.getString(R.string.status_connecting)
         is Connected -> when {
-            warning != null -> "Connected · $warning"
-            lastClipAt != null -> "Connected · last clip at ${formatClipTime(lastClipAt)}"
-            else -> "Connected"
+            warning != null -> context.getString(R.string.notification_warning, warning.read(context))
+            lastClipAt != null -> context.getString(R.string.notification_last_clip, formatClipTime(lastClipAt))
+            else -> context.getString(R.string.status_connected)
         }
-        Offline -> "Offline, retrying"
-        Stopped -> "Stopped"
-        is Error -> message
+        Offline -> context.getString(R.string.notification_offline)
+        Stopped -> context.getString(R.string.status_stopped)
+        is Error -> reason.read(context)
     }
 }
 

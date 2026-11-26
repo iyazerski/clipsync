@@ -10,7 +10,7 @@ import android.os.Bundle
 /**
  * An invisible screen that sends text to the computers and closes at once.
  *
- * It takes the text from the selection menu ("Send to computers") or from Share. Opened from the tile or
+ * It takes the text from the selection menu ("Send to computer") or from Share. Opened from the tile or
  * the notification, it reads the clipboard instead: Android lets only the focused app do that, so
  * it waits until its window has focus.
  */

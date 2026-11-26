@@ -39,21 +39,21 @@ object Updater {
     fun update(context: Context, onState: (String?) -> Unit) {
         val app = context.applicationContext
         val installed = app.packageManager.getPackageInfo(app.packageName, 0).longVersionCode
-        onState("Checking…")
+        onState(app.getString(R.string.update_checking))
         executor.execute {
             try {
                 val release = latest()
                 if (release.build <= installed) {
-                    done(onState) { toast(app, "clipsync is up to date") }
+                    done(onState) { toast(app, app.getString(R.string.update_current)) }
                     return@execute
                 }
-                main.post { onState("Downloading ${release.name}…") }
+                main.post { onState(app.getString(R.string.update_downloading, release.name)) }
                 install(app, release)
                 done(onState) {}
             } catch (e: IOException) {
-                done(onState) { toast(app, "Couldn't update: ${e.message}") }
+                done(onState) { toast(app, app.getString(R.string.couldnt_update, app.reason(e))) }
             } catch (e: JSONException) {
-                done(onState) { toast(app, "Couldn't update: unexpected answer from GitHub") }
+                done(onState) { toast(app, app.getString(R.string.update_bad_answer)) }
             }
         }
     }
@@ -69,14 +69,14 @@ object Updater {
         val connection = open(LATEST).apply { setRequestProperty("Accept", "application/vnd.github+json") }
         val json = try {
             if (connection.responseCode != HttpURLConnection.HTTP_OK) {
-                throw IOException("GitHub answered ${connection.responseCode}")
+                throw Failed(R.string.github_answered, connection.responseCode)
             }
             JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
         } finally {
             connection.disconnect()
         }
         val tag = json.getString("tag_name")
-        val build = tag.substringAfterLast('.').toLongOrNull() ?: throw IOException("Unexpected release $tag")
+        val build = tag.substringAfterLast('.').toLongOrNull() ?: throw Failed(R.string.release_unexpected, tag)
         val assets = json.getJSONArray("assets")
         for (i in 0 until assets.length()) {
             val asset = assets.getJSONObject(i)
@@ -84,7 +84,7 @@ object Updater {
                 return Release(build, tag.removePrefix("v"), asset.getString("browser_download_url"))
             }
         }
-        throw IOException("Release $tag has no $APK")
+        throw Failed(R.string.release_no_apk, tag, APK)
     }
 
     /** Stream the APK into an install session and commit it; [InstallResult] takes it from there. */
@@ -100,7 +100,7 @@ object Updater {
                 val connection = open(release.apk)
                 try {
                     if (connection.responseCode != HttpURLConnection.HTTP_OK) {
-                        throw IOException("The download answered ${connection.responseCode}")
+                        throw Failed(R.string.download_answered, connection.responseCode)
                     }
                     session.openWrite(APK, 0, connection.contentLengthLong).use { out ->
                         connection.inputStream.use { it.copyTo(out) }
@@ -143,7 +143,10 @@ class InstallResult : BroadcastReceiver() {
             PackageInstaller.STATUS_SUCCESS -> {}
             else -> Updater.toast(
                 context,
-                "Update failed: ${intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: "unknown error"}",
+                context.getString(
+                    R.string.install_failed,
+                    intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: context.getString(R.string.install_unknown_error),
+                ),
             )
         }
     }
