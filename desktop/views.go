@@ -44,6 +44,7 @@ var (
 	iconInfo     = icon("info")
 	iconLink     = icon("link")
 	iconLock     = icon("lock")
+	iconMore     = icon("more_horiz")
 	iconOffline  = icon("cloud_off")
 	iconPause    = icon("pause")
 	iconPhone    = icon("phone_android")
@@ -95,6 +96,13 @@ func (a *app) view(c *ui.Context) {
 	})
 	if ui.AlertDialog(c, &a.unpairing, locales.UnpairTitle(), locales.UnpairText(), locales.Cancel(), locales.Unpair()) == 1 {
 		a.toastIf(c, a.unpair())
+	}
+	removeText := locales.RemoveText(a.removing.Name)
+	if a.cfg.Relay != publicRelay {
+		removeText += " " + locales.RemoveTextRelay()
+	}
+	if ui.AlertDialog(c, &a.askingRemove, locales.RemoveTitle(a.removing.Name), removeText, locales.Cancel(), locales.Remove()) == 1 {
+		a.toastIf(c, a.removeDevice(a.removing.id))
 	}
 }
 
@@ -665,10 +673,15 @@ func (a *app) devices(c *ui.Context) {
 			ui.Divider(c).MarginStart(68)
 			svg, kind := kindLook(d.Kind)
 			color, status := t.TextMuted, locales.DeviceSeen(since(c, d.Seen))
-			if d.online {
+			switch {
+			case d.online:
 				color, status = t.Success, locales.DeviceOnline()
+			case d.Pending:
+				color, status = t.Warning, locales.DevicePending()
 			}
-			deviceRow(c, svg, color, d.Name, kind+" · "+status, nil)
+			ui.Column(c.Key(d.id)).Children(func() {
+				deviceRow(c, svg, color, d.Name, kind+" · "+status, func() { a.deviceMenu(c, d) })
+			})
 		}
 	})
 	if len(others) == 0 {
@@ -701,6 +714,33 @@ func deviceRow(c *ui.Context, svg *ui.SVG, color ui.Color, name, detail string, 
 		})
 		if end != nil {
 			end()
+		}
+	})
+}
+
+// deviceMenu is what the user can do with another device: remove it, and
+// after a new pairing, add it again or take it off this computer's list.
+func (a *app) deviceMenu(c *ui.Context, d listedDevice) {
+	t := c.Theme()
+	more := ui.ButtonBase(c).Label(locales.More()).Padding(6).Radius(8)
+	if more.Hovered() {
+		more.Background(t.SurfaceHover)
+	}
+	more.Children(func() {
+		ui.Icon(c, iconMore).FontSize(18).TextColor(t.TextMuted)
+	}).PopoverMenuButton(func(m *ui.Menu) {
+		if d.Pending {
+			if m.Item(locales.AddDevice()).Chosen() {
+				a.adding = true
+			}
+			if m.Item(locales.ForgetDevice()).Chosen() {
+				a.forgetDevice(d.id)
+			}
+			// It may have joined the new pairing without connecting yet.
+			m.Separator()
+		}
+		if m.Item(locales.RemoveDevice()).Chosen() {
+			a.removing, a.askingRemove = d, true
 		}
 	})
 }

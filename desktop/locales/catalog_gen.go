@@ -624,6 +624,96 @@ func (msgs Messages) NoOtherDevices() string {
 	return Catalog.Format(msgs.locale, "noOtherDevices", nil)
 }
 
+// More says "More"
+// in the language the app shows.
+func More() string { return In(i18n.Locale()).More() }
+
+// More says "More"
+// in the language of msgs.
+func (msgs Messages) More() string {
+	return Catalog.Format(msgs.locale, "more", nil)
+}
+
+// RemoveDevice says "Remove…"
+// in the language the app shows.
+func RemoveDevice() string { return In(i18n.Locale()).RemoveDevice() }
+
+// RemoveDevice says "Remove…"
+// in the language of msgs.
+func (msgs Messages) RemoveDevice() string {
+	return Catalog.Format(msgs.locale, "removeDevice", nil)
+}
+
+// ForgetDevice says "Hide from list"
+// in the language the app shows.
+func ForgetDevice() string { return In(i18n.Locale()).ForgetDevice() }
+
+// ForgetDevice says "Hide from list"
+// in the language of msgs.
+func (msgs Messages) ForgetDevice() string {
+	return Catalog.Format(msgs.locale, "forgetDevice", nil)
+}
+
+// RemoveTitle says "Remove {name}?"
+// in the language the app shows.
+func RemoveTitle(name string) string { return In(i18n.Locale()).RemoveTitle(name) }
+
+// RemoveTitle says "Remove {name}?"
+// in the language of msgs.
+func (msgs Messages) RemoveTitle(name string) string {
+	return Catalog.Format(msgs.locale, "removeTitle", map[string]any{"name": name})
+}
+
+// RemoveText says "This computer moves to a new pairing that {name} can't join. Then add your other devices again: on each one, unpair i…"
+// in the language the app shows.
+func RemoveText(name string) string { return In(i18n.Locale()).RemoveText(name) }
+
+// RemoveText says "This computer moves to a new pairing that {name} can't join. Then add your other devices again: on each one, unpair i…"
+// in the language of msgs.
+func (msgs Messages) RemoveText(name string) string {
+	return Catalog.Format(msgs.locale, "removeText", map[string]any{"name": name})
+}
+
+// RemoveTextRelay says "If your relay lets in only one pairing, first put the new Relay token from Settings on it, then click New code."
+// in the language the app shows.
+func RemoveTextRelay() string { return In(i18n.Locale()).RemoveTextRelay() }
+
+// RemoveTextRelay says "If your relay lets in only one pairing, first put the new Relay token from Settings on it, then click New code."
+// in the language of msgs.
+func (msgs Messages) RemoveTextRelay() string {
+	return Catalog.Format(msgs.locale, "removeTextRelay", nil)
+}
+
+// Remove says "Remove"
+// in the language the app shows.
+func Remove() string { return In(i18n.Locale()).Remove() }
+
+// Remove says "Remove"
+// in the language of msgs.
+func (msgs Messages) Remove() string {
+	return Catalog.Format(msgs.locale, "remove", nil)
+}
+
+// Removed says "Removed {name}. Now add your other devices again."
+// in the language the app shows.
+func Removed(name string) string { return In(i18n.Locale()).Removed(name) }
+
+// Removed says "Removed {name}. Now add your other devices again."
+// in the language of msgs.
+func (msgs Messages) Removed(name string) string {
+	return Catalog.Format(msgs.locale, "removed", map[string]any{"name": name})
+}
+
+// DevicePending says "Add it again with a code"
+// in the language the app shows.
+func DevicePending() string { return In(i18n.Locale()).DevicePending() }
+
+// DevicePending says "Add it again with a code"
+// in the language of msgs.
+func (msgs Messages) DevicePending() string {
+	return Catalog.Format(msgs.locale, "devicePending", nil)
+}
+
 // AddMore says "Add another device"
 // in the language the app shows.
 func AddMore() string { return In(i18n.Locale()).AddMore() }

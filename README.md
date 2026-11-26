@@ -173,6 +173,12 @@ Not yet. The desktop app runs on Macs, with Apple silicon or Intel, and on Windo
 
 </details>
 <details>
+<summary><b>How do I remove a lost or old device?</b></summary>
+
+On a computer, open **Devices**, click **⋯** next to the device, and choose **Remove…**. All your devices share one secret, and the removed device still has it. So the computer moves to a new pairing with a new secret, and shows a code. If you host a relay with `CLIPSYNC_TOKEN`, first put the new **Relay token** from **Settings** on it and restart it, then click **New code**. Add your other devices to the new pairing: on each one, unpair it and enter the code. On the phone, enter your relay's address too if you host one. Until you do, they keep syncing with the removed device, and the list shows them as **Add it again with a code**. **Hide from list** only takes a row off this computer's list.
+
+</details>
+<details>
 <summary><b>How do I remove it?</b></summary>
 
 On a computer, open clipsync's **Settings** and click **Unpair**. Then quit clipsync from its menu. On a Mac, drag it from Applications to the Trash, or run `curl -fsSL https://github.com/iyazerski/clipsync/releases/latest/download/install.sh | sh -s -- --uninstall`. On Windows, uninstall it from **Settings → Apps**. On the phone, tap **Unpair** in the ⋮ menu and uninstall the app.

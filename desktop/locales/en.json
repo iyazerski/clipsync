@@ -73,6 +73,18 @@
     "placeholders": { "ago": { "type": "String", "example": "5 minutes ago" } }
   },
   "noOtherDevices": "Your other devices show up here once they connect. Update them if they don't.",
+  "more": "More",
+  "removeDevice": "Remove…",
+  "forgetDevice": "Hide from list",
+  "removeTitle": "Remove {name}?",
+  "@removeTitle": { "placeholders": { "name": { "type": "String", "example": "Pixel 9" } } },
+  "removeText": "This computer moves to a new pairing that {name} can't join. Then add your other devices again: on each one, unpair it and enter the code that this computer shows. Until then, they keep syncing with {name}.",
+  "@removeText": { "placeholders": { "name": { "type": "String", "example": "Pixel 9" } } },
+  "removeTextRelay": "If your relay lets in only one pairing, first put the new Relay token from Settings on it, then click New code.",
+  "remove": "Remove",
+  "removed": "Removed {name}. Now add your other devices again.",
+  "@removed": { "placeholders": { "name": { "type": "String", "example": "Pixel 9" } } },
+  "devicePending": "Add it again with a code",
   "addMore": "Add another device",
   "addMoreDetail": "Pair a phone or a computer",
 

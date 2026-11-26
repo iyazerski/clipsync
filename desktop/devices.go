@@ -24,6 +24,9 @@ type knownDevice struct {
 	Name string    `json:"name"`
 	Kind string    `json:"kind"`
 	Seen time.Time `json:"seen"`
+	// Pending marks a device of the pairing that this computer left for a
+	// new one, until it joins the new one too.
+	Pending bool `json:"pending,omitempty"`
 }
 
 // listedDevice is a row of the device list.
@@ -80,7 +83,7 @@ func (a *app) devicesNews(news client.Devices) {
 		}
 		a.known[d.ID] = knownDevice{Name: d.Name, Kind: d.Kind, Seen: seen}
 	}
-	maps.DeleteFunc(a.known, func(_ string, d knownDevice) bool { return now.Sub(d.Seen) > forgetAfter })
+	maps.DeleteFunc(a.known, func(_ string, d knownDevice) bool { return !d.Pending && now.Sub(d.Seen) > forgetAfter })
 	saveDevices(a.devicesPath, a.known)
 }
 
@@ -97,6 +100,11 @@ func (a *app) lostTouch() {
 		a.known[id] = d
 	}
 	a.online = nil
+	saveDevices(a.devicesPath, a.known)
+}
+
+func (a *app) forgetDevice(id string) {
+	delete(a.known, id)
 	saveDevices(a.devicesPath, a.known)
 }
 

@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"log"
+	"maps"
 	"runtime"
 	"time"
 
@@ -162,7 +163,10 @@ type app struct {
 	qr       [][]bool
 
 	unpairing bool
-	updates   updates
+	// removing is the device that the user may remove, while asked.
+	removing     listedDevice
+	askingRemove bool
+	updates      updates
 }
 
 func newApp(sys desktop, path string, cfg config, paused bool) *app {
@@ -197,6 +201,7 @@ func (a *app) pairingChanged() {
 
 // pair starts syncing with a new pairing, then shows next.
 func (a *app) pair(relay, secret string, next page) error {
+	syncing := a.stopSync != nil
 	a.pause()
 	cfg := a.cfg
 	cfg.Relay, cfg.Secret = relay, secret
@@ -211,15 +216,19 @@ func (a *app) pair(relay, secret string, next page) error {
 	a.cfg = cfg
 	if err := a.save(); err != nil {
 		a.cfg = previous
-		if previous.paired() {
+		if syncing {
 			a.resume()
 		}
 		return err
 	}
-	if err := a.sys.setOpenAtLogin(true); err != nil {
-		log.Printf("opening at login: %v", err)
+	// Only the first pairing, as removing a device makes a new one too.
+	if !previous.paired() {
+		if err := a.sys.setOpenAtLogin(true); err != nil {
+			log.Printf("opening at login: %v", err)
+		}
 	}
 	a.pairingChanged()
+	a.closeInvite()
 	a.forgetDevices()
 	a.page = next
 	a.resume()
@@ -228,6 +237,27 @@ func (a *app) pair(relay, secret string, next page) error {
 
 func (a *app) setUpFirst() error {
 	return a.pair(a.cfg.Relay, client.RandomID(32), pageReady)
+}
+
+// removeDevice moves this computer to a new pairing, which the device can't
+// join, as it knows the old secret but not the new one. The other devices
+// stay listed, to be added again with a code.
+func (a *app) removeDevice(id string) error {
+	previous, kept := a.cfg, maps.Clone(a.known)
+	delete(kept, id)
+	if err := a.pair(a.cfg.Relay, client.RandomID(32), pageDevices); err != nil {
+		return err
+	}
+	a.sys.leave(previous)
+	for id, d := range kept {
+		d.Pending = true
+		kept[id] = d
+	}
+	a.known = kept
+	saveDevices(a.devicesPath, a.known)
+	a.toast = locales.Removed(a.removing.Name)
+	a.adding = true
+	return nil
 }
 
 // join pairs with what the user entered: a pairing link, at once, or a code,
