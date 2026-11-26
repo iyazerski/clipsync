@@ -24,10 +24,9 @@ android {
         // 34 for TileService.startActivityAndCollapse(PendingIntent) and the specialUse service type.
         minSdk = 34
         targetSdk = 36
-        // CI passes its run number so every build installs over the previous one.
-        val build = providers.environmentVariable("BUILD_NUMBER").orNull?.toInt() ?: 1
-        versionCode = build
-        versionName = "0.1.$build"
+        // CI passes its run number so every build installs over the previous one, and the release's version.
+        versionCode = providers.environmentVariable("BUILD_NUMBER").orNull?.toInt() ?: 1
+        versionName = providers.environmentVariable("VERSION").orNull ?: "0.0.0"
     }
 
     // A fixed release key (from CI secrets) keeps the signature stable across builds, so updates install

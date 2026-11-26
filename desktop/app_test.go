@@ -15,6 +15,11 @@ type fakeDesktop struct {
 	report  syncer.Report
 	copied  string
 	login   bool
+
+	inviting bool
+	invited  func(inviteEvent)
+	joining  string
+	join     func(client.Pairing, error)
 }
 
 func (f *fakeDesktop) startSync(_ config, report syncer.Report) (func(), error) {
@@ -33,6 +38,16 @@ func (f *fakeDesktop) installUpdate()               {}
 func (f *fakeDesktop) restart()                     {}
 func (f *fakeDesktop) openLogs()                    {}
 func (f *fakeDesktop) changed()                     {}
+
+func (f *fakeDesktop) invite(_ config, report func(inviteEvent)) func() {
+	f.inviting, f.invited = true, report
+	return func() { f.inviting = false }
+}
+
+func (f *fakeDesktop) joinCode(_, code string, done func(client.Pairing, error)) func() {
+	f.joining, f.join = code, done
+	return func() { f.joining = "" }
+}
 
 func start(t *testing.T, cfg config) (*app, *fakeDesktop, *ui.Tester) {
 	t.Helper()
@@ -59,7 +74,26 @@ func TestFirstDevice(t *testing.T) {
 	if !sys.syncing || !sys.login {
 		t.Errorf("syncing %v, opens at login %v", sys.syncing, sys.login)
 	}
+	if !sys.inviting {
+		t.Fatal("no code to add a device with")
+	}
+	sys.invited(inviteEvent{code: "42183059"})
 	click(t, tt, "Computer")
+	if !tt.HasText("42 183 059") {
+		t.Errorf("code not shown; texts %q", tt.Texts())
+	}
+	// A wrong guess ends the code, and only the user makes the next.
+	sys.invited(inviteEvent{wrong: true})
+	tt.Frame()
+	if sys.inviting || tt.HasText("42 183 059") {
+		t.Errorf("still inviting after a wrong code; texts %q", tt.Texts())
+	}
+	click(t, tt, "New code")
+	if !sys.inviting {
+		t.Error("New code made no code")
+	}
+	sys.invited(inviteEvent{code: "42183059"})
+	tt.Frame()
 	click(t, tt, "Copy link")
 	if sys.copied != saved.pairLink() || tt.HasText(saved.pairLink()) {
 		t.Errorf("copied %q, link shown %v", sys.copied, tt.HasText(saved.pairLink()))
@@ -67,6 +101,9 @@ func TestFirstDevice(t *testing.T) {
 
 	sys.report(syncer.Connected, nil)
 	click(t, tt, "Done")
+	if sys.inviting {
+		t.Error("still inviting after Done")
+	}
 	if !tt.HasText("Syncing") {
 		t.Errorf("texts %q", tt.Texts())
 	}
@@ -79,17 +116,29 @@ func TestFirstDevice(t *testing.T) {
 func TestJoin(t *testing.T) {
 	a, sys, tt := start(t, config{Relay: publicRelay})
 	click(t, tt, "Join my other devices")
-	click(t, tt, "Pairing link")
-	tt.Type("not a link")
+	click(t, tt, "Code or pairing link")
+	tt.Type("not a code")
 	click(t, tt, "Join")
-	if a.cfg.paired() || !tt.HasText("That isn't a pairing link. Copy it again from clipsync on your other computer.") {
+	if a.cfg.paired() || !tt.HasText("Enter the code from your other device, such as 42 183 059, or paste its pairing link.") {
 		t.Fatalf("paired %v, texts %q", a.cfg.paired(), tt.Texts())
 	}
 
-	other := config{Relay: "https://clip.example.com", Secret: client.RandomID(32)}
-	tt.SetClipboard(other.pairLink())
+	tt.SetClipboard("42-183 059")
 	click(t, tt, "Paste")
 	click(t, tt, "Join")
+	if sys.joining != "42183059" {
+		t.Fatalf("joining with %q", sys.joining)
+	}
+	sys.join(client.Pairing{}, client.ErrWrongCode)
+	tt.Frame()
+	if a.cfg.paired() || !tt.HasText("That code didn't work. Check it, or get a new code on your other device.") {
+		t.Fatalf("paired %v, texts %q", a.cfg.paired(), tt.Texts())
+	}
+
+	click(t, tt, "Join")
+	other := config{Relay: "https://clip.example.com", Secret: client.RandomID(32)}
+	sys.join(client.Pairing{Relay: other.Relay, Secret: other.Secret}, nil)
+	tt.Frame()
 	saved, err := loadConfig(a.path)
 	if err != nil || saved.Relay != other.Relay || saved.Secret != other.Secret || !sys.syncing {
 		t.Fatalf("saved %+v, %v, syncing %v", saved, err, sys.syncing)

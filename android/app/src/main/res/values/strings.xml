@@ -9,7 +9,7 @@
     <string name="paired">Paired</string>
     <string name="allow_installs">Allow clipsync to install updates, then tap again</string>
     <string name="unpair_title">Unpair this phone?</string>
-    <string name="unpair_text">Sync stops. To pair again, scan the QR code in clipsync on a computer.</string>
+    <string name="unpair_text">Sync stops. To pair again, use Add device in clipsync on a computer.</string>
     <string name="unpair">Unpair</string>
     <string name="cancel">Cancel</string>
     <string name="more">More</string>
@@ -53,15 +53,20 @@
     <!-- %1$s is pair_add_device, the button of clipsync on computers. -->
     <string name="pair_step_open" formatted="false">In clipsync on a computer, click %1$s</string>
     <string name="pair_add_device">Add device</string>
-    <string name="pair_step_run_detail">It shows a QR code</string>
+    <string name="pair_step_run_detail">It shows a QR code and a code</string>
     <string name="pair_step_scan">Scan the QR code with this phone\'s camera</string>
     <string name="pair_step_scan_detail">clipsync opens and pairs</string>
-    <string name="pair_manually">Type it in instead</string>
+    <string name="pair_manually">Enter a code</string>
+    <!-- The pairing code that clipsync on a computer shows, such as 42 183 059. A pairing link works too. -->
+    <string name="code">Code</string>
     <string name="relay">Relay</string>
-    <string name="secret">Secret</string>
-    <string name="hide_secret">Hide secret</string>
-    <string name="show_secret">Show secret</string>
+    <string name="relay_detail">Change it only if your computers use your own relay</string>
     <string name="pair">Pair</string>
+    <string name="joining">Pairing…</string>
+    <string name="code_invalid">Enter the code that your computer shows, such as 42 183 059</string>
+    <string name="code_wrong">That code didn\'t work. Check it, or get a new code on your computer.</string>
+    <string name="code_gone">That code has expired or was already used. Get a new code on your computer.</string>
+    <string name="code_offline">Can\'t reach %1$s. Check your connection and try again.</string>
 
     <string name="channel_sync">Sync</string>
     <string name="channel_sync_detail">Shows that clipsync is connected</string>

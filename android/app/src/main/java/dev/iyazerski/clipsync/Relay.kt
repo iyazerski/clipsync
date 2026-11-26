@@ -43,13 +43,7 @@ class Settings(context: Context) {
 
     /** Save a pairing after checking the secret; clips from before now are old news. */
     fun pair(relay: String, secret: String) {
-        val url = relay.trim().trimEnd('/')
-        val address = runCatching { URI(url) }.getOrNull()
-        if (address?.scheme != "https" || address.host == null || address.userInfo != null ||
-            address.rawQuery != null || address.rawFragment != null
-        ) {
-            throw Invalid(R.string.relay_https)
-        }
+        val url = Relay.address(relay)
         Seal(secret)
         prefs.edit {
             putString(RELAY, url)
@@ -78,6 +72,18 @@ object Relay {
     /** The longest text, in UTF-8 bytes, that the relay passes on. */
     const val MAX_TEXT = 256 * 1024
     private const val TIMEOUT_MS = 15_000
+
+    /** [relay] as the app keeps it, after checking that it's an https:// address. */
+    fun address(relay: String): String {
+        val url = relay.trim().trimEnd('/')
+        val address = runCatching { URI(url) }.getOrNull()
+        if (address?.scheme != "https" || address.host == null || address.userInfo != null ||
+            address.rawQuery != null || address.rawFragment != null
+        ) {
+            throw Invalid(R.string.relay_https)
+        }
+        return url
+    }
 
     /** Thrown when the relay doesn't know this pairing's token. */
     class Refused : Failed(R.string.relay_refused)

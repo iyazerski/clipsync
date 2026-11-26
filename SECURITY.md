@@ -19,6 +19,13 @@ Only the latest release gets fixes. Computers update themselves, or from **Check
 - Each sealed clip carries the time it was sealed. Devices refuse clips sealed more than 5 minutes away from their clock, and clips they opened already since they started, which limits what a relay could replay.
 - Devices talk to the relay only over HTTPS.
 
+## How pairing codes are protected
+
+- A code is a number that the relay gives out, plus 6 random digits that the relay never sees. The two devices turn the digits into a shared key with [CPace](https://datatracker.ietf.org/doc/draft-irtf-cfrg-cpace/), and the device that shows the code sends the secret sealed with that key.
+- Each try to pair allows one guess of the digits, and nobody can test guesses offline. After a wrong one, the code stops working and the computer says so. It makes a new code only when you ask. So anyone else, the relay too, gets about one chance in a million each time you open a code or enter one.
+- Anyone can make a code stop working by guessing, even on a relay they don't run. That can stop you from pairing for a while, but it can't pair their device.
+- A code works for 10 minutes. The pairing link and the QR code hold the secret itself, so share them only with your own devices.
+
 ## How releases are protected
 
 - Every release is built by [GitHub Actions](.github/workflows/release.yml) from the public source.

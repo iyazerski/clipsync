@@ -5,7 +5,7 @@
     <string name="paired">已配对</string>
     <string name="allow_installs">请允许 clipsync 安装更新，然后再点按一次</string>
     <string name="unpair_title">要取消此手机的配对吗？</string>
-    <string name="unpair_text">同步将停止。如需重新配对，请扫描电脑上 clipsync 中的二维码。</string>
+    <string name="unpair_text">同步将停止。如需重新配对，请在电脑上的 clipsync 中使用“添加设备”。</string>
     <string name="unpair">取消配对</string>
     <string name="cancel">取消</string>
     <string name="more">更多</string>
@@ -44,15 +44,19 @@
     <string name="pair_steps">两步完成配对</string>
     <string name="pair_step_open" formatted="false">在电脑上的 clipsync 中点击 %1$s</string>
     <string name="pair_add_device">添加设备</string>
-    <string name="pair_step_run_detail">它会显示一个二维码</string>
+    <string name="pair_step_run_detail">它会显示二维码和配对码</string>
     <string name="pair_step_scan">用此手机的相机扫描二维码</string>
     <string name="pair_step_scan_detail">clipsync 会打开并完成配对</string>
-    <string name="pair_manually">改为手动输入</string>
+    <string name="pair_manually">输入配对码</string>
+    <string name="code">配对码</string>
     <string name="relay">中继</string>
-    <string name="secret">密钥</string>
-    <string name="hide_secret">隐藏密钥</string>
-    <string name="show_secret">显示密钥</string>
+    <string name="relay_detail">仅当你的电脑使用自己的中继时才需要更改</string>
     <string name="pair">配对</string>
+    <string name="joining">正在配对…</string>
+    <string name="code_invalid">请输入电脑上显示的配对码，如 42 183 059</string>
+    <string name="code_wrong">这个配对码无效。请检查，或在电脑上获取新的配对码。</string>
+    <string name="code_gone">这个配对码已过期或已被使用。请在电脑上获取新的配对码。</string>
+    <string name="code_offline">无法连接到 %1$s。请检查网络连接后重试。</string>
     <string name="channel_sync">同步</string>
     <string name="channel_sync_detail">显示 clipsync 已连接</string>
     <string name="notification_warning">已连接 · %1$s</string>

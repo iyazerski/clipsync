@@ -5,7 +5,7 @@
     <string name="paired">Associé</string>
     <string name="allow_installs">Autorisez clipsync à installer des mises à jour, puis appuyez à nouveau</string>
     <string name="unpair_title">Dissocier ce téléphone\u00a0?</string>
-    <string name="unpair_text">La synchronisation s\'arrête. Pour l\'associer à nouveau, scannez le code QR de clipsync sur un ordinateur.</string>
+    <string name="unpair_text">La synchronisation s\'arrête. Pour l\'associer à nouveau, utilisez Ajouter un appareil dans clipsync sur un ordinateur.</string>
     <string name="unpair">Dissocier</string>
     <string name="cancel">Annuler</string>
     <string name="more">Plus</string>
@@ -44,15 +44,19 @@
     <string name="pair_steps">Associer en deux étapes</string>
     <string name="pair_step_open" formatted="false">Dans clipsync sur un ordinateur, cliquez sur %1$s</string>
     <string name="pair_add_device">Ajouter un appareil</string>
-    <string name="pair_step_run_detail">Un code QR s\'affiche</string>
+    <string name="pair_step_run_detail">Il affiche un code QR et un code</string>
     <string name="pair_step_scan">Scannez le code QR avec l\'appareil photo de ce téléphone</string>
     <string name="pair_step_scan_detail">clipsync s\'ouvre et s\'associe</string>
-    <string name="pair_manually">Saisir à la main</string>
+    <string name="pair_manually">Saisir un code</string>
+    <string name="code">Code</string>
     <string name="relay">Relais</string>
-    <string name="secret">Clé secrète</string>
-    <string name="hide_secret">Masquer la clé secrète</string>
-    <string name="show_secret">Afficher la clé secrète</string>
+    <string name="relay_detail">Ne le changez que si vos ordinateurs utilisent votre propre relais</string>
     <string name="pair">Associer</string>
+    <string name="joining">Association…</string>
+    <string name="code_invalid">Saisissez le code affiché par votre ordinateur, par exemple 42 183 059</string>
+    <string name="code_wrong">Ce code n\'a pas fonctionné. Vérifiez-le ou obtenez-en un nouveau sur votre ordinateur.</string>
+    <string name="code_gone">Ce code a expiré ou a déjà servi. Obtenez-en un nouveau sur votre ordinateur.</string>
+    <string name="code_offline">Impossible de joindre %1$s. Vérifiez votre connexion et réessayez.</string>
     <string name="channel_sync">Synchronisation</string>
     <string name="channel_sync_detail">Indique que clipsync est connecté</string>
     <string name="notification_warning">Connecté · %1$s</string>

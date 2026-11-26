@@ -5,7 +5,7 @@
     <string name="paired">Телефон привязан</string>
     <string name="allow_installs">Разрешите clipsync устанавливать обновления и нажмите ещё раз</string>
     <string name="unpair_title">Отвязать этот телефон?</string>
-    <string name="unpair_text">Синхронизация остановится. Чтобы снова привязать телефон, отсканируйте QR-код в clipsync на компьютере.</string>
+    <string name="unpair_text">Синхронизация остановится. Чтобы снова привязать телефон, нажмите «Добавить устройство» в clipsync на компьютере.</string>
     <string name="unpair">Отвязать</string>
     <string name="cancel">Отмена</string>
     <string name="more">Ещё</string>
@@ -44,15 +44,19 @@
     <string name="pair_steps">Привязка в два шага</string>
     <string name="pair_step_open" formatted="false">В clipsync на компьютере нажмите %1$s</string>
     <string name="pair_add_device">Добавить устройство</string>
-    <string name="pair_step_run_detail">Появится QR-код</string>
+    <string name="pair_step_run_detail">Он покажет QR-код и код</string>
     <string name="pair_step_scan">Отсканируйте QR-код камерой этого телефона</string>
     <string name="pair_step_scan_detail">clipsync откроется и выполнит привязку</string>
-    <string name="pair_manually">Ввести вручную</string>
+    <string name="pair_manually">Ввести код</string>
+    <string name="code">Код</string>
     <string name="relay">Ретранслятор</string>
-    <string name="secret">Секретный ключ</string>
-    <string name="hide_secret">Скрыть секретный ключ</string>
-    <string name="show_secret">Показать секретный ключ</string>
+    <string name="relay_detail">Меняйте, только если ваши компьютеры используют свой ретранслятор</string>
     <string name="pair">Привязать</string>
+    <string name="joining">Привязка…</string>
+    <string name="code_invalid">Введите код, который показывает компьютер, например 42 183 059</string>
+    <string name="code_wrong">Код не подошёл. Проверьте его или получите новый на компьютере.</string>
+    <string name="code_gone">Срок действия кода истёк, или он уже использован. Получите новый на компьютере.</string>
+    <string name="code_offline">Не удаётся связаться с %1$s. Проверьте подключение и попробуйте ещё раз.</string>
     <string name="channel_sync">Синхронизация</string>
     <string name="channel_sync_detail">Показывает, что clipsync подключён</string>
     <string name="notification_warning">Подключено · %1$s</string>

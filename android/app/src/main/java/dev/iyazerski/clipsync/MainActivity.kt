@@ -16,6 +16,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -47,7 +48,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
-import androidx.compose.foundation.text.input.TextObfuscationMode
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -69,7 +69,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumExtendedFloatingActionButton
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedSecureTextField
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedListItem
@@ -91,6 +90,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -106,12 +107,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.graphics.shapes.RoundedPolygon
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.IOException
+import java.net.URI
 
 /**
  * The only screen: pair with the computers (from the relay's pairing link, or by typing the relay and
@@ -124,6 +133,7 @@ class MainActivity : ComponentActivity() {
     private var syncState by mutableStateOf(SyncService.state)
     /** The update check's progress, or null when idle. */
     private var updating by mutableStateOf<String?>(null)
+    private val joining: JoinModel by viewModels()
     private val notifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
         setup = readSetup()
     }
@@ -186,8 +196,19 @@ class MainActivity : ComponentActivity() {
             return
         }
         notify(getString(R.string.paired))
-        SyncService.reconnect(this)
+        // Android lets only a visible app start the service; onResume starts it otherwise.
+        if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) SyncService.reconnect(this)
         setup = readSetup()
+    }
+
+    /** Pair from a pairing link at once, or from a code through [relay]. */
+    private fun join(relay: String, text: String) {
+        CodePairing.parseLink(text)?.let { return pair(it.relay, it.secret) }
+        try {
+            joining.join(Relay.address(relay), CodePairing.parse(text) ?: throw Invalid(R.string.code_invalid))
+        } catch (e: Invalid) {
+            joining.error = e.reason
+        }
     }
 
     private fun unpair() {
@@ -251,6 +272,11 @@ class MainActivity : ComponentActivity() {
         val motion = MaterialTheme.motionScheme
         val haptics = LocalHapticFeedback.current
         var confirmUnpair by rememberSaveable { mutableStateOf(false) }
+        LaunchedEffect(joining.joined) {
+            val joined = joining.joined ?: return@LaunchedEffect
+            joining.joined = null
+            if (!settings.paired) pair(joined.relay, joined.secret)
+        }
         // Lists and cards in the bright surface color stand out from it, in light and dark alike.
         val background = MaterialTheme.colorScheme.surfaceContainer
         Scaffold(
@@ -308,7 +334,7 @@ class MainActivity : ComponentActivity() {
                 ) { paired ->
                     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
                         // The form stays on screen while it fades out, so a late Done mustn't replace a new pairing.
-                        if (paired) Paired() else Unpaired { relay, secret -> if (!setup.paired) pair(relay, secret) }
+                        if (paired) Paired() else Unpaired(joining.busy, joining.error, { joining.error = null }) { relay, text -> if (!setup.paired) join(relay, text) }
                     }
                 }
                 // Room to scroll the last row out from under the Send button.
@@ -585,8 +611,33 @@ private fun UpdateProgress(progress: String?) {
     }
 }
 
+/** Joining by code, which outlives the activity's recreation so that a rotation doesn't lose the pairing. */
+class JoinModel : ViewModel() {
+    var busy by mutableStateOf(false)
+        private set
+    var error by mutableStateOf<Message?>(null)
+    /** The pairing that the code brought, for the activity to save. */
+    var joined by mutableStateOf<CodePairing.Pairing?>(null)
+
+    fun join(relay: String, code: String) {
+        busy = true
+        error = null
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) { runCatching { CodePairing.join(relay, code) } }
+            busy = false
+            result.onSuccess { joined = it }.onFailure { e ->
+                error = when (e) {
+                    is Failed -> e.reason
+                    is IOException -> Message(R.string.code_offline, listOf(URI(relay).host))
+                    else -> throw e
+                }
+            }
+        }
+    }
+}
+
 @Composable
-private fun Unpaired(onPair: (relay: String, secret: String) -> Unit) {
+private fun Unpaired(joining: Boolean, error: Message?, onEdit: () -> Unit, onJoin: (relay: String, code: String) -> Unit) {
     Column(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         MorphingShape(MaterialShapes.Cookie12Sided, MaterialTheme.colorScheme.primaryContainer, Modifier.size(136.dp)) {
             Symbol(R.drawable.sym_qr_code_scanner, Modifier.size(56.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
@@ -621,12 +672,12 @@ private fun Unpaired(onPair: (relay: String, secret: String) -> Unit) {
         )
         Step(2, AnnotatedString(stringResource(R.string.pair_step_scan)), stringResource(R.string.pair_step_scan_detail))
     }
-    ManualPairing(onPair)
+    CodeEntry(joining, error, onEdit, onJoin)
 }
 
-/** Typing the relay and the secret, for when the camera can't scan the QR code. */
+/** Typing the code that the computer shows, for when the camera can't scan the QR code. */
 @Composable
-private fun ManualPairing(onPair: (relay: String, secret: String) -> Unit) {
+private fun CodeEntry(joining: Boolean, error: Message?, onEdit: () -> Unit, onJoin: (relay: String, code: String) -> Unit) {
     var open by rememberSaveable { mutableStateOf(false) }
     val motion = MaterialTheme.motionScheme
     AnimatedContent(
@@ -644,43 +695,50 @@ private fun ManualPairing(onPair: (relay: String, secret: String) -> Unit) {
             }
             return@AnimatedContent
         }
+        val code = rememberTextFieldState()
         val relay = rememberTextFieldState("https://clip.iyazerski.dev")
-        val secret = rememberTextFieldState()
-        var showSecret by rememberSaveable { mutableStateOf(false) }
-        val ready = relay.text.isNotBlank() && secret.text.isNotBlank()
-        val pair = { if (ready) onPair(relay.text.toString(), secret.text.toString()) }
+        LaunchedEffect(code.text) { onEdit() }
+        val focus = remember { FocusRequester() }
+        LaunchedEffect(Unit) { focus.requestFocus() }
+        val ready = !joining && relay.text.isNotBlank() && code.text.isNotBlank()
+        val join = { if (ready) onJoin(relay.text.toString(), code.text.toString()) }
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedTextField(
+                state = code,
+                label = { Text(stringResource(R.string.code)) },
+                placeholder = { Text("42 183 059") },
+                isError = error != null,
+                supportingText = error?.let { { Text(it.text()) } },
+                enabled = !joining,
+                lineLimits = TextFieldLineLimits.SingleLine,
+                textStyle = MaterialTheme.typography.titleLarge.copy(textDirection = TextDirection.Ltr),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done, autoCorrectEnabled = false),
+                onKeyboardAction = { join() },
+                modifier = Modifier.fillMaxWidth().focusRequester(focus),
+            )
             OutlinedTextField(
                 state = relay,
                 label = { Text(stringResource(R.string.relay)) },
+                supportingText = { Text(stringResource(R.string.relay_detail)) },
+                enabled = !joining,
                 lineLimits = TextFieldLineLimits.SingleLine,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next, autoCorrectEnabled = false),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedSecureTextField(
-                state = secret,
-                label = { Text(stringResource(R.string.secret)) },
-                textObfuscationMode = if (showSecret) TextObfuscationMode.Visible else TextObfuscationMode.Hidden,
-                trailingIcon = {
-                    IconButton(onClick = { showSecret = !showSecret }) {
-                        Symbol(
-                            if (showSecret) R.drawable.sym_visibility_off else R.drawable.sym_visibility,
-                            description = stringResource(if (showSecret) R.string.hide_secret else R.string.show_secret),
-                        )
-                    }
-                },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-                onKeyboardAction = { pair() },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, autoCorrectEnabled = false),
                 modifier = Modifier.fillMaxWidth(),
             )
             val height = ButtonDefaults.MediumContainerHeight
             Button(
-                onClick = pair,
+                onClick = join,
                 enabled = ready,
                 shapes = ButtonDefaults.shapesFor(height),
                 contentPadding = ButtonDefaults.contentPaddingFor(height),
                 modifier = Modifier.fillMaxWidth().heightIn(min = height).padding(top = 8.dp),
-            ) { Text(stringResource(R.string.pair), style = ButtonDefaults.textStyleFor(height)) }
+            ) {
+                if (joining) {
+                    LoadingIndicator(Modifier.size(ButtonDefaults.IconSize * 1.5f), color = LocalContentColor.current)
+                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                }
+                Text(stringResource(if (joining) R.string.joining else R.string.pair), style = ButtonDefaults.textStyleFor(height))
+            }
         }
     }
 }

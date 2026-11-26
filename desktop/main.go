@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"embed"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -90,6 +91,68 @@ func (s *system) startSync(cfg config, report syncer.Report) (func(), error) {
 	// The syncer may finish a send in flight after this returns, which a new
 	// sync can't mix up: the relay orders copies by when they arrive.
 	return cancel, nil
+}
+
+func (s *system) invite(cfg config, report func(inviteEvent)) func() {
+	ctx, cancel := context.WithCancel(context.Background())
+	send := func(e inviteEvent) {
+		s.post(func() {
+			if ctx.Err() == nil {
+				report(e)
+			}
+		})
+	}
+	go func() {
+		relay, err := client.New(cfg.Relay, cfg.Secret, cfg.Device)
+		for err == nil && ctx.Err() == nil {
+			var inv *client.Invitation
+			if inv, err = relay.Invite(ctx); err != nil {
+				break
+			}
+			send(inviteEvent{code: inv.Code()})
+			opened := time.Now()
+			switch err = inv.Finish(ctx, client.Pairing{Relay: cfg.Relay, Secret: cfg.Secret}); {
+			case ctx.Err() != nil:
+				inv.Close()
+			case err == nil:
+				log.Print("a device joined by code")
+				send(inviteEvent{joined: true})
+			case errors.Is(err, client.ErrWrongCode):
+				log.Print("a device tried a wrong code")
+				send(inviteEvent{wrong: true})
+				return
+			case errors.Is(err, client.ErrCodeGone) && time.Since(opened) > time.Minute:
+				// The code expired: make the next one. A relay that drops codes
+				// sooner gets no more, rather than a code a second.
+				err = nil
+			default:
+				inv.Close()
+			}
+		}
+		if err != nil && ctx.Err() == nil {
+			send(inviteEvent{err: err})
+		}
+	}()
+	return cancel
+}
+
+func (s *system) joinCode(relay, code string, done func(client.Pairing, error)) func() {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	// Only the main thread reads and writes stopped.
+	stopped := false
+	go func() {
+		p, err := client.Join(ctx, relay, code)
+		cancel()
+		s.post(func() {
+			if !stopped {
+				done(p, err)
+			}
+		})
+	}()
+	return func() {
+		stopped = true
+		cancel()
+	}
 }
 
 func (s *system) copySecret(text string) {
@@ -404,10 +467,13 @@ func main() {
 				s.win.Hide()
 			}
 		})
-		if runtime.GOOS == "darwin" {
-			// The Dock shows clipsync only while its window does.
-			s.win.OnHide(func() { mygo.App.SetActivationPolicy(mygo.ActivationPolicyAccessory) })
-		}
+		s.win.OnHide(func() {
+			s.a.hidden()
+			if runtime.GOOS == "darwin" {
+				// The Dock shows clipsync only while its window does.
+				mygo.App.SetActivationPolicy(mygo.ActivationPolicyAccessory)
+			}
+		})
 		s.showTray(!s.a.cfg.HideTray)
 		go s.watchUpdates()
 	})

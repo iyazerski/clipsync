@@ -8,6 +8,7 @@ import (
 
 	"github.com/skip2/go-qrcode"
 
+	"github.com/iyazerski/clipsync/desktop/locales"
 	"github.com/iyazerski/clipsync/internal/client"
 	"github.com/iyazerski/clipsync/internal/syncer"
 )
@@ -57,7 +58,44 @@ type desktop interface {
 	openLogs()
 	// changed tells the system UI, as the tray, that the app's state changed.
 	changed()
+	// invite lets other devices join cfg's pairing by code, one after another,
+	// until stop is called or a device tries a wrong code. report runs on the
+	// main thread, unless stop was called.
+	invite(cfg config, report func(inviteEvent)) (stop func())
+	// joinCode pairs with the device that shows code. done runs on the main
+	// thread, unless stop was called.
+	joinCode(relay, code string, done func(client.Pairing, error)) (stop func())
 }
+
+// inviteEvent is news of the invitations: a new code, or what became of the last.
+type inviteEvent struct {
+	code   string
+	joined bool
+	wrong  bool
+	// wrong and err end the invitations.
+	err error
+}
+
+type codeNotice int
+
+const (
+	codeNoNotice codeNotice = iota
+	codeJoined
+	// codeWrong and codeFailed stop the invitations until the user asks for a
+	// new code, so that nobody can keep guessing.
+	codeWrong
+	codeFailed
+)
+
+type joinError int
+
+const (
+	joinNoError joinError = iota
+	joinInvalid
+	joinWrongCode
+	joinCodeGone
+	joinOffline
+)
 
 type updateStage int
 
@@ -93,8 +131,18 @@ type app struct {
 	lastSent     time.Time
 	lastReceived time.Time
 
-	link       string
-	linkFailed bool
+	link     string
+	joining  bool
+	stopJoin func()
+	joinErr  joinError
+
+	// code is what other devices can join with, "" while one is being made.
+	code       string
+	codeNotice codeNotice
+	stopInvite func()
+
+	// toast is a message to show once.
+	toast string
 
 	relayOpen   bool
 	relayDraft  string
@@ -172,17 +220,97 @@ func (a *app) setUpFirst() error {
 	return a.pair(a.cfg.Relay, client.RandomID(32), pageReady)
 }
 
+// join pairs with what the user entered: a pairing link, at once, or a code,
+// through the relay.
 func (a *app) join() error {
-	relay, secret, err := parsePairLink(a.link)
-	if err != nil {
-		a.linkFailed = true
+	a.joinErr = joinNoError
+	if relay, secret, err := parsePairLink(a.link); err == nil {
+		return a.joined(relay, secret)
+	}
+	code, ok := client.ParseCode(a.link)
+	if !ok {
+		a.joinErr = joinInvalid
 		return nil
 	}
+	a.joining = true
+	a.stopJoin = a.sys.joinCode(a.cfg.Relay, code, func(p client.Pairing, err error) {
+		a.joining, a.stopJoin = false, nil
+		switch {
+		case err == nil:
+			if err := a.joined(p.Relay, p.Secret); err != nil {
+				a.toast = locales.SaveFailed()
+			}
+		case errors.Is(err, client.ErrWrongCode):
+			a.joinErr = joinWrongCode
+		case errors.Is(err, client.ErrCodeGone):
+			a.joinErr = joinCodeGone
+		default:
+			log.Printf("joining: %v", err)
+			a.joinErr = joinOffline
+		}
+	})
+	return nil
+}
+
+func (a *app) cancelJoin() {
+	if a.stopJoin != nil {
+		a.stopJoin()
+	}
+	a.joining, a.stopJoin = false, nil
+}
+
+func (a *app) joined(relay, secret string) error {
 	if err := a.pair(relay, secret, pageDevices); err != nil {
 		return err
 	}
-	a.link, a.linkFailed = "", false
+	a.link, a.toast = "", locales.Joined()
 	return nil
+}
+
+// keepInvite keeps a code ready while the app shows how to add a device.
+func (a *app) keepInvite() {
+	want := a.cfg.paired() && (a.adding || a.page == pageReady)
+	stopped := a.codeNotice == codeWrong || a.codeNotice == codeFailed
+	switch {
+	case want && a.stopInvite == nil && !stopped:
+		a.openInvite()
+	case !want && (a.stopInvite != nil || a.codeNotice != codeNoNotice):
+		a.closeInvite()
+	}
+}
+
+// openInvite makes a new code, and another after each device that joins.
+func (a *app) openInvite() {
+	a.closeInvite()
+	a.stopInvite = a.sys.invite(a.cfg, func(e inviteEvent) {
+		switch {
+		case e.err != nil:
+			log.Printf("making a code: %v", e.err)
+			a.closeInvite()
+			a.codeNotice = codeFailed
+		case e.wrong:
+			a.closeInvite()
+			a.codeNotice = codeWrong
+		case e.joined:
+			a.code, a.codeNotice = "", codeJoined
+		default:
+			a.code = e.code
+		}
+	})
+}
+
+// hidden ends what only makes sense while the window shows, so that no code
+// stays open behind it.
+func (a *app) hidden() {
+	a.adding = false
+	a.closeInvite()
+}
+
+func (a *app) closeInvite() {
+	if a.stopInvite != nil {
+		a.stopInvite()
+	}
+	a.stopInvite, a.code, a.codeNotice = nil, "", codeNoNotice
 }
 
 func (a *app) unpair() error {
@@ -194,6 +322,7 @@ func (a *app) unpair() error {
 	}
 	a.cfg = cfg
 	a.page, a.adding, a.qr = pageWelcome, false, nil
+	a.closeInvite()
 	a.pause()
 	return nil
 }
@@ -217,6 +346,7 @@ func (a *app) setRelay(raw string) error {
 			return err
 		}
 		a.pairingChanged()
+		a.closeInvite()
 		if a.sync != syncPaused {
 			a.pause()
 			a.resume()
