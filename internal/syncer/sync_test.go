@@ -139,9 +139,10 @@ func TestSyncWithExistingWireProtocol(t *testing.T) {
 	board := &memoryBoard{written: make(chan string, 8)}
 	board.copy("clipboard contents from before startup")
 	stopped := make(chan struct{})
+	reported := make(chan syncer.Event, 8)
 	go func() {
 		defer close(stopped)
-		syncer.Run(ctx, relay, board)
+		syncer.Run(ctx, relay, board, func(e syncer.Event, _ error) { reported <- e })
 	}()
 	defer func() {
 		stop()
@@ -162,6 +163,9 @@ func TestSyncWithExistingWireProtocol(t *testing.T) {
 	if got := receiveWithin(t, board.written); len(got) != 256*1024 || !strings.HasSuffix(got, in) {
 		t.Fatalf("wrong incoming clip: %d bytes", len(got))
 	}
+	if got := []syncer.Event{receiveWithin(t, reported), receiveWithin(t, reported)}; got[0] != syncer.Connected || got[1] != syncer.Received {
+		t.Fatalf("reported %v, want connected then received", got)
+	}
 
 	const out = "send UTF-8 🧪"
 	board.copy(out)
@@ -173,6 +177,9 @@ func TestSyncWithExistingWireProtocol(t *testing.T) {
 	plain, err := gcm.Open(nil, packet[1:13], packet[13:], nil)
 	if err != nil || len(plain) < 8 || string(plain[8:]) != out {
 		t.Fatalf("wrong outgoing clip or unwanted echo: %v", err)
+	}
+	if got := receiveWithin(t, reported); got != syncer.Sent {
+		t.Fatalf("reported %v after sending", got)
 	}
 
 	// Replaying the remote clip after the clipboard changed must not restore it.

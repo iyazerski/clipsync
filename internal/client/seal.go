@@ -41,7 +41,7 @@ func RandomID(n int) string {
 func derive(secret string) (keys, error) {
 	raw, err := wireEncoding.DecodeString(strings.TrimSpace(secret))
 	if err != nil || len(raw) != 32 {
-		return keys{}, errors.New("the secret should be 43 characters of base64url, as clipsync pair shows it")
+		return keys{}, errors.New("the secret should be 43 characters of base64url, as in a pairing link")
 	}
 	sign := func(label string) []byte {
 		mac := hmac.New(sha256.New, raw)

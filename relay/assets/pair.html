@@ -30,7 +30,7 @@
     open.href = "clipsync://pair?relay=" + encodeURIComponent(location.origin) + "&secret=" + secret;
     history.replaceState(null, "", location.pathname);
   } else {
-    document.getElementById("hint").textContent = "This link has no pairing secret. Run `clipsync pair` on a computer and scan its QR code.";
+    document.getElementById("hint").textContent = "This link has no pairing secret. In clipsync on a computer, click Add device and scan its QR code.";
     open.remove();
   }
 </script>

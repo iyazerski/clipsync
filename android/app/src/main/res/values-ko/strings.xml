@@ -5,7 +5,7 @@
     <string name="paired">페어링됨</string>
     <string name="allow_installs">clipsync가 업데이트를 설치하도록 허용한 다음 다시 탭하세요</string>
     <string name="unpair_title">이 휴대전화의 페어링을 해제할까요?</string>
-    <string name="unpair_text">동기화가 중지됩니다. 다시 페어링하려면 컴퓨터에서 clipsync pair를 실행하세요.</string>
+    <string name="unpair_text">동기화가 중지됩니다. 다시 페어링하려면 컴퓨터의 clipsync에 표시된 QR 코드를 스캔하세요.</string>
     <string name="unpair">페어링 해제</string>
     <string name="cancel">취소</string>
     <string name="more">더보기</string>
@@ -42,7 +42,8 @@
     <string name="pair_title">컴퓨터와 페어링</string>
     <string name="pair_intro">그러면 컴퓨터에서 복사한 내용이 이 휴대전화로 오고, 한 번 탭으로 다시 보낼 수 있습니다.</string>
     <string name="pair_steps">두 단계로 페어링</string>
-    <string name="pair_step_run" formatted="false">컴퓨터에서 %1$s 실행</string>
+    <string name="pair_step_open" formatted="false">컴퓨터의 clipsync에서 %1$s 클릭</string>
+    <string name="pair_add_device">기기 추가</string>
     <string name="pair_step_run_detail">QR 코드가 표시됩니다</string>
     <string name="pair_step_scan">이 휴대전화의 카메라로 QR 코드 스캔</string>
     <string name="pair_step_scan_detail">clipsync가 열리고 페어링됩니다</string>
@@ -65,7 +66,7 @@
     <string name="relay_https">릴레이는 https:// 주소여야 합니다</string>
     <string name="relay_refused">릴레이가 비밀 키를 거부했습니다: 다시 페어링하세요</string>
     <string name="relay_answered">릴레이 응답: %1$d</string>
-    <string name="secret_length">비밀 키는 `clipsync pair`에 표시되는 대로 43자여야 합니다</string>
+    <string name="secret_length">비밀 키는 페어링 링크에 있는 것처럼 43자여야 합니다</string>
     <string name="clip_not_base64">base64url이 아닙니다</string>
     <string name="clip_short">클립이 너무 짧습니다</string>
     <string name="clip_format">알 수 없는 클립 형식 %1$d: clipsync를 업데이트하세요</string>

@@ -1,11 +1,12 @@
 name: Release
 
-# Ship every asset together so the latest-release download URLs stay valid.
+# Ship every asset in one release, so the latest-release download URLs and the
+# apps' update checks always find all of them.
 on:
   push:
     branches: [main]
     paths:
-      - "cmd/**"
+      - "desktop/**"
       - "internal/**"
       - "android/**"
       - "go.mod"
@@ -30,32 +31,95 @@ env:
   PUBLISH: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || inputs.publish) }}
 
 jobs:
-  build:
+  draft:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || inputs.publish)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      MAC_ASSET: clipsync-aarch64-apple-darwin.tar.gz
-      WINDOWS_ASSET: clipsync-x86_64-pc-windows-msvc.zip
+    permissions:
+      contents: write
+    steps:
+      # The builds upload to this draft, which stays hidden until every asset is in.
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if ! gh release view "v$VERSION" > /dev/null 2>&1; then
+            gh release create "v$VERSION" --draft --target "$GITHUB_SHA" --title "clipsync v$VERSION" --notes-file - <<EOF
+          Build from ${GITHUB_SHA::7}.
+
+          **Mac:** run \`curl -fsSL https://github.com/$GH_REPO/releases/latest/download/install.sh | sh\`. The app isn't notarized yet, so the disk image needs **System Settings → Privacy & Security → Open Anyway** the first time.
+          **Windows:** run \`irm https://github.com/$GH_REPO/releases/latest/download/install.ps1 | iex\` in PowerShell, or open the setup and click **More info → Run anyway**.
+          **Phone:** open clipsync.apk on the phone and allow installing from this source.
+          EOF
+          fi
+
+  desktop:
+    needs: draft
+    # Without a draft to upload to, as for a check, the apps are built all the same.
+    if: ${{ !cancelled() && (needs.draft.result == 'success' || needs.draft.result == 'skipped') }}
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Disk images need macOS.
+          - { name: macOS, os: macos-latest, platform: darwin/universal }
+          - { name: Windows, os: ubuntu-latest, platform: windows/amd64 }
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
-      - name: Build and package desktop binaries
+      - name: Install NSIS, for the Windows installer
+        if: matrix.name == 'Windows'
+        run: sudo apt-get update && sudo apt-get install -y nsis
+      - name: Leave Hindi out of the Windows installer
+        if: matrix.name == 'Windows'
+        # NSIS has no Hindi, and mygo build stops on a language it lacks. The app
+        # embeds desktop/locales itself, so only the installer falls back to English.
         run: |
-          mkdir -p bin/mac bin/windows dist
-          export CGO_ENABLED=0
-          ldflags="-s -w -X main.version=$VERSION"
-          GOOS=darwin GOARCH=arm64 go build -mod=readonly -trimpath -ldflags "$ldflags" -o bin/mac/clipsync ./cmd/clipsync
-          export GOOS=windows GOARCH=amd64
-          go build -mod=readonly -trimpath -ldflags "$ldflags" -o bin/windows/clipsync.exe ./cmd/clipsync
-          # The background service must start without a console window.
-          go build -mod=readonly -trimpath -ldflags "$ldflags -H windowsgui" -o bin/windows/clipsyncw.exe ./cmd/clipsync
-          tar -C bin/mac -czf "dist/$MAC_ASSET" clipsync
-          zip -j "dist/$WINDOWS_ASSET" bin/windows/clipsync.exe bin/windows/clipsyncw.exe
-          cd dist
-          sha256sum "$MAC_ASSET" > "$MAC_ASSET.sha256"
-          sha256sum "$WINDOWS_ASSET" > "$WINDOWS_ASSET.sha256"
+          mkdir -p desktop/build/installer-locales
+          cp desktop/locales/*.json desktop/build/installer-locales/
+          rm desktop/build/installer-locales/hi.json
+          jq '.i18n.dir = "build/installer-locales"' desktop/mygo.json > "$RUNNER_TEMP/mygo.json"
+          mv "$RUNNER_TEMP/mygo.json" desktop/mygo.json
+      - name: Build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MYGO_UPDATER_PRIVATE_KEY: ${{ env.PUBLISH == 'true' && secrets.MYGO_UPDATER_PRIVATE_KEY || '' }}
+        run: |
+          upload=
+          if [ "$PUBLISH" = true ]; then
+            test -n "$MYGO_UPDATER_PRIVATE_KEY"
+            upload=-upload
+          fi
+          jq --arg version "$VERSION" '.version = $version' desktop/mygo.json > "$RUNNER_TEMP/mygo.json"
+          mv "$RUNNER_TEMP/mygo.json" desktop/mygo.json
+          go tool mygo build -platform "${{ matrix.platform }}" $upload desktop
+      - uses: actions/upload-artifact@v7
+        if: env.PUBLISH != 'true'
+        with:
+          name: ${{ matrix.name }}
+          path: |
+            desktop/build/*/*.dmg
+            desktop/build/*/*setup*.exe
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
+
+  android:
+    needs: draft
+    if: ${{ !cancelled() && (needs.draft.result == 'success' || needs.draft.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
@@ -77,71 +141,37 @@ jobs:
         run: |
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           ./gradlew --no-daemon assembleRelease
+          mkdir -p ../dist
           cp app/build/outputs/apk/release/app-release.apk ../dist/clipsync.apk
+      - name: Upload to the draft release
+        if: env.PUBLISH == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release upload "v$VERSION" dist/clipsync.apk --clobber
       - uses: actions/upload-artifact@v7
+        if: env.PUBLISH != 'true'
         with:
-          name: mac
-          path: dist/${{ env.MAC_ASSET }}*
-          compression-level: 0
-          retention-days: 7
-          if-no-files-found: error
-      - uses: actions/upload-artifact@v7
-        with:
-          name: windows-and-android
-          path: |
-            dist/${{ env.WINDOWS_ASSET }}*
-            dist/clipsync.apk
+          name: android
+          path: dist/clipsync.apk
           compression-level: 0
           retention-days: 7
           if-no-files-found: error
 
   publish:
+    needs: [desktop, android]
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || inputs.publish)
-    needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v8
-        with:
-          path: dist
-          merge-multiple: true
-      - name: Publish GitHub release
+      - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          gh release create "v$VERSION" dist/* \
-            --target "$GITHUB_SHA" \
-            --title "clipsync v$VERSION" \
-            --notes "Build from ${GITHUB_SHA::7}. Mac: \`brew install iyazerski/tap/clipsync\`, or \`curl -fsSL https://raw.githubusercontent.com/$GH_REPO/main/install.sh | sh\`. Windows: \`irm https://raw.githubusercontent.com/$GH_REPO/main/install.ps1 | iex\`. Phone: open clipsync.apk on the phone and allow installing from this source." \
-            --latest
-
-  homebrew:
-    needs: publish
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v8
-        with:
-          name: mac
-          path: dist
-      - name: Push formula to iyazerski/homebrew-tap
-        env:
-          DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
-        run: |
-          export GIT_SSH_COMMAND="ssh -i $RUNNER_TEMP/tap_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
-          echo "$DEPLOY_KEY" > "$RUNNER_TEMP/tap_key"
-          chmod 600 "$RUNNER_TEMP/tap_key"
-          git clone --depth 1 git@github.com:iyazerski/homebrew-tap.git "$RUNNER_TEMP/tap"
-          mkdir -p "$RUNNER_TEMP/tap/Formula"
-          scripts/homebrew-formula.sh "$VERSION" dist > "$RUNNER_TEMP/tap/Formula/clipsync.rb"
-          cd "$RUNNER_TEMP/tap"
-          git add Formula/clipsync.rb
-          if git diff --cached --quiet; then
-            echo "Formula is already at $VERSION"
-            exit 0
-          fi
-          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-            commit -m "Update clipsync to $VERSION"
-          git push
+          # Both desktop jobs merge their lines into SHA256SUMS. If they upload at the
+          # same moment, one can drop the other's. install.ps1 needs the Windows setup
+          # line: re-run the macOS job if this fails.
+          gh release download "v$VERSION" --pattern SHA256SUMS --output - | grep -q "setup-$VERSION-amd64\.exe$"
+          gh release edit "v$VERSION" --draft=false --latest

@@ -5,7 +5,7 @@
     <string name="paired">Sparowano</string>
     <string name="allow_installs">Zezwól clipsync na instalowanie aktualizacji i dotknij ponownie</string>
     <string name="unpair_title">Usunąć parowanie tego telefonu?</string>
-    <string name="unpair_text">Synchronizacja się zatrzyma. Aby sparować ponownie, uruchom clipsync pair na komputerze.</string>
+    <string name="unpair_text">Synchronizacja się zatrzyma. Aby sparować ponownie, zeskanuj kod QR w clipsync na komputerze.</string>
     <string name="unpair">Usuń parowanie</string>
     <string name="cancel">Anuluj</string>
     <string name="more">Więcej</string>
@@ -42,7 +42,8 @@
     <string name="pair_title">Sparuj z komputerami</string>
     <string name="pair_intro">Wtedy to, co skopiujesz na komputerze, trafi na ten telefon, a odesłać możesz jednym dotknięciem.</string>
     <string name="pair_steps">Parowanie w dwóch krokach</string>
-    <string name="pair_step_run" formatted="false">Na komputerze uruchom %1$s</string>
+    <string name="pair_step_open" formatted="false">W clipsync na komputerze kliknij %1$s</string>
+    <string name="pair_add_device">Dodaj urządzenie</string>
     <string name="pair_step_run_detail">Pokaże kod QR</string>
     <string name="pair_step_scan">Zeskanuj kod QR aparatem tego telefonu</string>
     <string name="pair_step_scan_detail">clipsync otworzy się i sparuje</string>
@@ -65,7 +66,7 @@
     <string name="relay_https">Przekaźnik musi mieć adres https://</string>
     <string name="relay_refused">Przekaźnik odrzucił klucz tajny: sparuj ponownie</string>
     <string name="relay_answered">Przekaźnik odpowiedział %1$d</string>
-    <string name="secret_length">Klucz tajny powinien mieć 43 znaki, tak jak pokazuje go `clipsync pair`</string>
+    <string name="secret_length">Klucz tajny powinien mieć 43 znaki, tak jak w linku parowania</string>
     <string name="clip_not_base64">To nie base64url</string>
     <string name="clip_short">Fragment za krótki</string>
     <string name="clip_format">Format fragmentu %1$d jest nieznany: zaktualizuj clipsync</string>

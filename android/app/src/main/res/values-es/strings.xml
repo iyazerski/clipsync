@@ -5,7 +5,7 @@
     <string name="paired">Vinculado</string>
     <string name="allow_installs">Permite que clipsync instale actualizaciones y vuelve a tocar</string>
     <string name="unpair_title">¿Desvincular este teléfono?</string>
-    <string name="unpair_text">La sincronización se detiene. Para volver a vincularlo, ejecuta clipsync pair en un ordenador.</string>
+    <string name="unpair_text">La sincronización se detiene. Para volver a vincularlo, escanea el código QR de clipsync en un ordenador.</string>
     <string name="unpair">Desvincular</string>
     <string name="cancel">Cancelar</string>
     <string name="more">Más</string>
@@ -42,7 +42,8 @@
     <string name="pair_title">Vincula tus ordenadores</string>
     <string name="pair_intro">Así, lo que copies en un ordenador llegará a este teléfono, y podrás enviar de vuelta con un toque.</string>
     <string name="pair_steps">Vincula en dos pasos</string>
-    <string name="pair_step_run" formatted="false">En un ordenador, ejecuta %1$s</string>
+    <string name="pair_step_open" formatted="false">En clipsync en un ordenador, haz clic en %1$s</string>
+    <string name="pair_add_device">Añadir dispositivo</string>
     <string name="pair_step_run_detail">Muestra un código QR</string>
     <string name="pair_step_scan">Escanea el código QR con la cámara de este teléfono</string>
     <string name="pair_step_scan_detail">clipsync se abre y se vincula</string>
@@ -65,7 +66,7 @@
     <string name="relay_https">El relé debe ser una dirección https://</string>
     <string name="relay_refused">El relé rechazó la clave secreta: vuelve a vincular</string>
     <string name="relay_answered">El relé respondió %1$d</string>
-    <string name="secret_length">La clave secreta debe tener 43 caracteres, tal como la muestra `clipsync pair`</string>
+    <string name="secret_length">La clave secreta debe tener 43 caracteres, como en el enlace de vinculación</string>
     <string name="clip_not_base64">No es base64url</string>
     <string name="clip_short">Clip demasiado corto</string>
     <string name="clip_format">El formato de clip %1$d es desconocido: actualiza clipsync</string>

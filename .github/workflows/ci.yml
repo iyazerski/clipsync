@@ -34,20 +34,25 @@ jobs:
           go-version-file: go.mod
       - name: Format and licenses
         run: |
-          test -z "$(gofmt -l cmd internal relay)"
+          test -z "$(gofmt -l desktop internal relay)"
           make licenses
           git diff --exit-code THIRD_PARTY_LICENSES.md
       - name: Vet and test Go
         run: |
           go vet -mod=readonly ./...
           go test -mod=readonly -race ./...
-      - name: Check desktop targets
+      - name: Check the desktop app
         run: |
+          cd desktop
+          go tool mygo i18n check
+          go tool mygo generate
+          git diff --exit-code locales
+          cd ..
           export CGO_ENABLED=0
-          for target in darwin/arm64 windows/amd64; do
+          for target in darwin/arm64 darwin/amd64 windows/amd64; do
             export GOOS="${target%/*}" GOARCH="${target#*/}"
-            go vet -mod=readonly ./cmd/clipsync
-            go test -mod=readonly -c -o "$RUNNER_TEMP/clipsync-$GOOS.test" ./cmd/clipsync
+            go vet -mod=readonly ./desktop
+            go test -mod=readonly -c -o "$RUNNER_TEMP/clipsync-$GOOS-$GOARCH.test" ./desktop
           done
       - uses: actions/setup-java@v6
         if: steps.changes.outputs.android == 'true'

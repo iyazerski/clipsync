@@ -9,7 +9,7 @@
     <string name="paired">Paired</string>
     <string name="allow_installs">Allow clipsync to install updates, then tap again</string>
     <string name="unpair_title">Unpair this phone?</string>
-    <string name="unpair_text">Sync stops. To pair again, run clipsync pair on a computer.</string>
+    <string name="unpair_text">Sync stops. To pair again, scan the QR code in clipsync on a computer.</string>
     <string name="unpair">Unpair</string>
     <string name="cancel">Cancel</string>
     <string name="more">More</string>
@@ -50,8 +50,9 @@
     <string name="pair_title">Pair with your computers</string>
     <string name="pair_intro">Then what you copy on a computer lands on this phone, and you can send back in one tap.</string>
     <string name="pair_steps">Pair in two steps</string>
-    <!-- %1$s is the command, clipsync pair. -->
-    <string name="pair_step_run" formatted="false">On a computer, run %1$s</string>
+    <!-- %1$s is pair_add_device, the button of clipsync on computers. -->
+    <string name="pair_step_open" formatted="false">In clipsync on a computer, click %1$s</string>
+    <string name="pair_add_device">Add device</string>
     <string name="pair_step_run_detail">It shows a QR code</string>
     <string name="pair_step_scan">Scan the QR code with this phone\'s camera</string>
     <string name="pair_step_scan_detail">clipsync opens and pairs</string>
@@ -76,7 +77,7 @@
     <string name="relay_https">The relay should be an https:// address</string>
     <string name="relay_refused">The relay refused the secret: pair again</string>
     <string name="relay_answered">The relay answered %1$d</string>
-    <string name="secret_length">The secret should be 43 characters, as `clipsync pair` shows it</string>
+    <string name="secret_length">The secret should be 43 characters, as in the pairing link</string>
     <string name="clip_not_base64">Not base64url</string>
     <string name="clip_short">Clip too short</string>
     <string name="clip_format">Clip format %1$d is unknown: update clipsync</string>

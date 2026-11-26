@@ -5,7 +5,7 @@
     <string name="paired">ペアリングしました</string>
     <string name="allow_installs">clipsync にアップデートのインストールを許可してから、もう一度タップしてください</string>
     <string name="unpair_title">このスマートフォンのペアリングを解除しますか？</string>
-    <string name="unpair_text">同期が停止します。もう一度ペアリングするには、コンピューターで clipsync pair を実行してください。</string>
+    <string name="unpair_text">同期が停止します。もう一度ペアリングするには、コンピューターの clipsync に表示される QR コードをスキャンしてください。</string>
     <string name="unpair">ペアリングを解除</string>
     <string name="cancel">キャンセル</string>
     <string name="more">その他</string>
@@ -42,7 +42,8 @@
     <string name="pair_title">コンピューターとペアリング</string>
     <string name="pair_intro">コンピューターでコピーした内容がこのスマートフォンに届き、ワンタップで送り返せるようになります。</string>
     <string name="pair_steps">2 ステップでペアリング</string>
-    <string name="pair_step_run" formatted="false">コンピューターで %1$s を実行</string>
+    <string name="pair_step_open" formatted="false">コンピューターの clipsync で %1$s をクリック</string>
+    <string name="pair_add_device">デバイスを追加</string>
     <string name="pair_step_run_detail">QR コードが表示されます</string>
     <string name="pair_step_scan">このスマートフォンのカメラで QR コードをスキャン</string>
     <string name="pair_step_scan_detail">clipsync が開いてペアリングします</string>
@@ -65,7 +66,7 @@
     <string name="relay_https">リレーは https:// のアドレスにしてください</string>
     <string name="relay_refused">リレーがシークレットを拒否しました：もう一度ペアリングしてください</string>
     <string name="relay_answered">リレーが %1$d を返しました</string>
-    <string name="secret_length">シークレットは `clipsync pair` に表示される 43 文字である必要があります</string>
+    <string name="secret_length">シークレットはペアリングリンクと同じ 43 文字である必要があります</string>
     <string name="clip_not_base64">base64url ではありません</string>
     <string name="clip_short">クリップが短すぎます</string>
     <string name="clip_format">クリップ形式 %1$d は不明です：clipsync をアップデートしてください</string>

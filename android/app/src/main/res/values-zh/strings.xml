@@ -5,7 +5,7 @@
     <string name="paired">已配对</string>
     <string name="allow_installs">请允许 clipsync 安装更新，然后再点按一次</string>
     <string name="unpair_title">要取消此手机的配对吗？</string>
-    <string name="unpair_text">同步将停止。如需重新配对，请在电脑上运行 clipsync pair。</string>
+    <string name="unpair_text">同步将停止。如需重新配对，请扫描电脑上 clipsync 中的二维码。</string>
     <string name="unpair">取消配对</string>
     <string name="cancel">取消</string>
     <string name="more">更多</string>
@@ -42,7 +42,8 @@
     <string name="pair_title">与你的电脑配对</string>
     <string name="pair_intro">之后，你在电脑上复制的内容会出现在此手机上，你也可以一键发送回去。</string>
     <string name="pair_steps">两步完成配对</string>
-    <string name="pair_step_run" formatted="false">在电脑上运行 %1$s</string>
+    <string name="pair_step_open" formatted="false">在电脑上的 clipsync 中点击 %1$s</string>
+    <string name="pair_add_device">添加设备</string>
     <string name="pair_step_run_detail">它会显示一个二维码</string>
     <string name="pair_step_scan">用此手机的相机扫描二维码</string>
     <string name="pair_step_scan_detail">clipsync 会打开并完成配对</string>
@@ -65,7 +66,7 @@
     <string name="relay_https">中继必须是 https:// 地址</string>
     <string name="relay_refused">中继拒绝了密钥：请重新配对</string>
     <string name="relay_answered">中继返回了 %1$d</string>
-    <string name="secret_length">密钥应为 43 个字符，与 `clipsync pair` 显示的一致</string>
+    <string name="secret_length">密钥应为 43 个字符，与配对链接中的一致</string>
     <string name="clip_not_base64">不是 base64url</string>
     <string name="clip_short">片段过短</string>
     <string name="clip_format">片段格式 %1$d 未知：请更新 clipsync</string>

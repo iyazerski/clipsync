@@ -1,6 +1,8 @@
-install:
-	mkdir -p $(HOME)/.local/bin
-	CGO_ENABLED=0 go build -mod=readonly -trimpath -ldflags '-s -w' -o $(HOME)/.local/bin/clipsync ./cmd/clipsync
+dev:
+	go tool mygo dev desktop
+
+app:
+	go tool mygo build desktop
 
 test: test-go test-android
 

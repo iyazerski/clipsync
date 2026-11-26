@@ -102,7 +102,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -606,14 +606,15 @@ private fun Unpaired(onPair: (relay: String, secret: String) -> Unit) {
         )
     }
     Section(stringResource(R.string.pair_steps)) {
-        val command = MaterialTheme.colorScheme.primary
-        // The command goes where the translation puts it, in its own style.
-        val (before, after) = stringResource(R.string.pair_step_run).split("%1\$s")
+        val button = MaterialTheme.colorScheme.primary
+        // The button's label goes where the translation puts it, in its own style.
+        val (before, after) = stringResource(R.string.pair_step_open).split("%1\$s")
+        val label = stringResource(R.string.pair_add_device)
         Step(
             1,
             buildAnnotatedString {
                 append(before)
-                withStyle(SpanStyle(fontFamily = FontFamily.Monospace, color = command)) { append("clipsync pair") }
+                withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, color = button)) { append(label) }
                 append(after)
             },
             stringResource(R.string.pair_step_run_detail),

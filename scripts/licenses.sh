@@ -16,7 +16,11 @@ if [ ! -f "$go_license" ]; then
   go_license="$(dirname "$goroot")/LICENSE"
 fi
 license "Go standard library and runtime" "$go_license"
-for module in github.com/ebitengine/purego github.com/skip2/go-qrcode golang.org/x/sys; do
+# The modules the desktop app and the relay link, on any system.
+modules=$(for os in darwin windows; do
+  GOOS=$os go list -mod=readonly -deps -f '{{with .Module}}{{if not .Main}}{{.Path}}{{end}}{{end}}' ./desktop ./relay
+done | sort -u)
+for module in $modules; do
   go mod download "$module"
   dir=$(go list -m -f '{{.Dir}}' "$module")
   license "$module" "$dir/LICENSE"
@@ -25,3 +29,4 @@ for module in github.com/ebitengine/purego github.com/skip2/go-qrcode golang.org
   fi
 done
 cat android/licenses.md
+printf '\n## Material Symbols\n\nThe desktop app'"'"'s icons are Google'"'"'s Material Symbols, under the Apache License 2.0,\nwhose full text is above.\n'

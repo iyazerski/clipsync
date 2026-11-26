@@ -5,7 +5,7 @@
     <string name="paired">Pareado</string>
     <string name="allow_installs">Permita que o clipsync instale atualizações e toque de novo</string>
     <string name="unpair_title">Desparear este celular?</string>
-    <string name="unpair_text">A sincronização para. Para parear de novo, execute clipsync pair em um computador.</string>
+    <string name="unpair_text">A sincronização para. Para parear de novo, leia o QR code do clipsync em um computador.</string>
     <string name="unpair">Desparear</string>
     <string name="cancel">Cancelar</string>
     <string name="more">Mais</string>
@@ -42,7 +42,8 @@
     <string name="pair_title">Pareie com seus computadores</string>
     <string name="pair_intro">Assim, o que você copiar em um computador chega a este celular, e você pode enviar de volta com um toque.</string>
     <string name="pair_steps">Pareie em duas etapas</string>
-    <string name="pair_step_run" formatted="false">Em um computador, execute %1$s</string>
+    <string name="pair_step_open" formatted="false">No clipsync em um computador, clique em %1$s</string>
+    <string name="pair_add_device">Adicionar dispositivo</string>
     <string name="pair_step_run_detail">Ele mostra um QR code</string>
     <string name="pair_step_scan">Leia o QR code com a câmera deste celular</string>
     <string name="pair_step_scan_detail">O clipsync abre e faz o pareamento</string>
@@ -65,7 +66,7 @@
     <string name="relay_https">O relay deve ser um endereço https://</string>
     <string name="relay_refused">O relay recusou a chave secreta: pareie de novo</string>
     <string name="relay_answered">O relay respondeu %1$d</string>
-    <string name="secret_length">A chave secreta deve ter 43 caracteres, como `clipsync pair` mostra</string>
+    <string name="secret_length">A chave secreta deve ter 43 caracteres, como no link de pareamento</string>
     <string name="clip_not_base64">Não é base64url</string>
     <string name="clip_short">Clip curto demais</string>
     <string name="clip_format">O formato de clip %1$d é desconhecido: atualize o clipsync</string>

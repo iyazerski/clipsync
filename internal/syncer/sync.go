@@ -20,6 +20,20 @@ const (
 	sendFor      = 120 * time.Second
 )
 
+// Event is what the syncer tells the app about, for its status.
+type Event int
+
+const (
+	Connected Event = iota
+	// Disconnected comes with the error that ended the stream, or nil.
+	Disconnected
+	Sent
+	Received
+)
+
+// Report is called from the syncer's goroutines.
+type Report func(Event, error)
+
 type Board interface {
 	ChangeCount() uint64
 	Read() (string, error)
@@ -68,30 +82,35 @@ func (c *clipboard) holds(id [sha256.Size]byte) bool {
 	return c.hasText && c.text == id
 }
 
-func (c *clipboard) receive(text string) {
+func (c *clipboard) receive(ctx context.Context, text string) bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	// A clip that arrives as the sync stops must not land after it stopped.
+	if ctx.Err() != nil {
+		return false
+	}
 	id := sha256.Sum256([]byte(text))
 	if c.hasText && c.text == id {
-		return
+		return false
 	}
 	count, err := c.board.Write(text)
 	if err != nil {
 		log.Printf("skipped a clip: %v", err)
-		return
+		return false
 	}
 	c.count, c.text, c.hasText = count, id, true
 	log.Printf("received %d characters", utf8.RuneCountInString(text))
+	return true
 }
 
-func Run(ctx context.Context, relay *client.Client, board Board) {
+func Run(ctx context.Context, relay *client.Client, board Board, report Report) {
 	c := &clipboard{board: board, count: board.ChangeCount()}
 	pending := make(chan string, 1)
 	woke := make(chan struct{}, 1)
 	var workers sync.WaitGroup
 	workers.Go(func() { poll(ctx, c, pending, woke) })
-	workers.Go(func() { send(ctx, relay, c, pending) })
-	workers.Go(func() { listen(ctx, relay, c, woke) })
+	workers.Go(func() { send(ctx, relay, c, pending, report) })
+	workers.Go(func() { listen(ctx, relay, c, woke, report) })
 	workers.Wait()
 }
 
@@ -124,7 +143,7 @@ func poll(ctx context.Context, c *clipboard, pending chan string, woke chan<- st
 	}
 }
 
-func send(ctx context.Context, relay *client.Client, c *clipboard, pending <-chan string) {
+func send(ctx context.Context, relay *client.Client, c *clipboard, pending <-chan string, report Report) {
 	var text string
 	for ctx.Err() == nil {
 		if text == "" {
@@ -148,6 +167,7 @@ func send(ctx context.Context, relay *client.Client, c *clipboard, pending <-cha
 				log.Printf("sending failed: %v", err)
 			} else {
 				log.Printf("sent %d characters", utf8.RuneCountInString(text))
+				report(Sent, nil)
 				break
 			}
 			if time.Now().UnixMilli() > deadline {
@@ -170,7 +190,7 @@ func send(ctx context.Context, relay *client.Client, c *clipboard, pending <-cha
 	}
 }
 
-func listen(ctx context.Context, relay *client.Client, c *clipboard, woke <-chan struct{}) {
+func listen(ctx context.Context, relay *client.Client, c *clipboard, woke <-chan struct{}, report Report) {
 	seen := uint64(time.Now().UnixMilli())
 	var receiver client.Receiver
 	backoff := client.MinBackoff
@@ -179,12 +199,16 @@ func listen(ctx context.Context, relay *client.Client, c *clipboard, woke <-chan
 		streamCtx, cancel := context.WithCancel(ctx)
 		done := make(chan error, 1)
 		go func() {
-			done <- relay.Stream(streamCtx, &receiver, seen, func() { log.Print("connected") }, func(id uint64, text string, err error) {
+			connected := func() {
+				log.Print("connected")
+				report(Connected, nil)
+			}
+			done <- relay.Stream(streamCtx, &receiver, seen, connected, func(id uint64, text string, err error) {
 				seen = max(seen, id)
 				if err != nil {
 					log.Printf("skipped a clip: %v", err)
-				} else {
-					c.receive(text)
+				} else if c.receive(ctx, text) {
+					report(Received, nil)
 				}
 			})
 		}()
@@ -196,9 +220,13 @@ func listen(ctx context.Context, relay *client.Client, c *clipboard, woke <-chan
 			backoff = client.MinBackoff
 		case err := <-done:
 			cancel()
-			if err != nil && ctx.Err() == nil {
+			if ctx.Err() != nil {
+				return
+			}
+			if err != nil {
 				log.Printf("relay: %v", err)
 			}
+			report(Disconnected, err)
 			if time.Since(started) > client.StableAfter {
 				backoff = client.MinBackoff
 			}

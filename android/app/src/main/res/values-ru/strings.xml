@@ -5,7 +5,7 @@
     <string name="paired">Телефон привязан</string>
     <string name="allow_installs">Разрешите clipsync устанавливать обновления и нажмите ещё раз</string>
     <string name="unpair_title">Отвязать этот телефон?</string>
-    <string name="unpair_text">Синхронизация остановится. Чтобы снова привязать телефон, выполните clipsync pair на компьютере.</string>
+    <string name="unpair_text">Синхронизация остановится. Чтобы снова привязать телефон, отсканируйте QR-код в clipsync на компьютере.</string>
     <string name="unpair">Отвязать</string>
     <string name="cancel">Отмена</string>
     <string name="more">Ещё</string>
@@ -42,7 +42,8 @@
     <string name="pair_title">Привяжите компьютеры</string>
     <string name="pair_intro">Тогда скопированное на компьютере будет попадать на этот телефон, а отправить обратно можно будет одним нажатием.</string>
     <string name="pair_steps">Привязка в два шага</string>
-    <string name="pair_step_run" formatted="false">На компьютере выполните %1$s</string>
+    <string name="pair_step_open" formatted="false">В clipsync на компьютере нажмите %1$s</string>
+    <string name="pair_add_device">Добавить устройство</string>
     <string name="pair_step_run_detail">Появится QR-код</string>
     <string name="pair_step_scan">Отсканируйте QR-код камерой этого телефона</string>
     <string name="pair_step_scan_detail">clipsync откроется и выполнит привязку</string>
@@ -65,7 +66,7 @@
     <string name="relay_https">Адрес ретранслятора должен начинаться с https://</string>
     <string name="relay_refused">Ретранслятор отклонил секретный ключ: привяжите телефон заново</string>
     <string name="relay_answered">Ретранслятор ответил %1$d</string>
-    <string name="secret_length">Секретный ключ должен состоять из 43 символов, как его показывает `clipsync pair`</string>
+    <string name="secret_length">Секретный ключ должен состоять из 43 символов, как в ссылке для привязки</string>
     <string name="clip_not_base64">Не base64url</string>
     <string name="clip_short">Фрагмент слишком короткий</string>
     <string name="clip_format">Формат фрагмента %1$d неизвестен: обновите clipsync</string>

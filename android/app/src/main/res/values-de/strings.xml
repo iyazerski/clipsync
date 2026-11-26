@@ -5,7 +5,7 @@
     <string name="paired">Gekoppelt</string>
     <string name="allow_installs">Erlaube clipsync, Updates zu installieren, und tippe dann noch einmal</string>
     <string name="unpair_title">Kopplung dieses Smartphones aufheben?</string>
-    <string name="unpair_text">Die Synchronisierung stoppt. Um erneut zu koppeln, führe clipsync pair auf einem Computer aus.</string>
+    <string name="unpair_text">Die Synchronisierung stoppt. Um erneut zu koppeln, scanne den QR-Code in clipsync auf einem Computer.</string>
     <string name="unpair">Entkoppeln</string>
     <string name="cancel">Abbrechen</string>
     <string name="more">Mehr</string>
@@ -42,7 +42,8 @@
     <string name="pair_title">Mit deinen Computern koppeln</string>
     <string name="pair_intro">Dann landet, was du auf einem Computer kopierst, auf diesem Smartphone, und du kannst mit einem Tipp zurücksenden.</string>
     <string name="pair_steps">In zwei Schritten koppeln</string>
-    <string name="pair_step_run" formatted="false">Führe auf einem Computer %1$s aus</string>
+    <string name="pair_step_open" formatted="false">Klicke in clipsync auf einem Computer auf %1$s</string>
+    <string name="pair_add_device">Gerät hinzufügen</string>
     <string name="pair_step_run_detail">Es zeigt einen QR-Code</string>
     <string name="pair_step_scan">Scanne den QR-Code mit der Kamera dieses Smartphones</string>
     <string name="pair_step_scan_detail">clipsync öffnet sich und koppelt</string>
@@ -65,7 +66,7 @@
     <string name="relay_https">Das Relay muss eine https://-Adresse sein</string>
     <string name="relay_refused">Das Relay hat den Schlüssel abgelehnt: Kopple erneut</string>
     <string name="relay_answered">Das Relay antwortete mit %1$d</string>
-    <string name="secret_length">Der Schlüssel muss 43 Zeichen lang sein, so wie `clipsync pair` ihn anzeigt</string>
+    <string name="secret_length">Der Schlüssel muss 43 Zeichen lang sein, wie im Kopplungslink</string>
     <string name="clip_not_base64">Kein Base64url</string>
     <string name="clip_short">Clip zu kurz</string>
     <string name="clip_format">Clip-Format %1$d ist unbekannt: Aktualisiere clipsync</string>
