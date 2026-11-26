@@ -4,9 +4,11 @@ package client
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -44,6 +46,8 @@ func Token(secret string) (string, error) {
 type Client struct {
 	address, device string
 	keys            keys
+	// profile is the sealed profile that Stream announces, if any.
+	profile string
 }
 
 var httpClient = func() *http.Client {
@@ -64,17 +68,22 @@ func New(address, secret, device string) (*Client, error) {
 	return &Client{address: address, device: device, keys: k}, nil
 }
 
-func (c *Client) request(ctx context.Context, method, path, text string, seen uint64) (*http.Response, error) {
+// Announce makes Stream tell the other devices about this one, and pass on
+// what the relay knows of them. Call it before Stream.
+func (c *Client) Announce(p Profile) {
+	c.profile = c.keys.sealProfile(c.device, p)
+}
+
+func (c *Client) request(ctx context.Context, method, path, text string, header http.Header) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, method, c.address+path, strings.NewReader(text))
 	if err != nil {
 		return nil, err
 	}
+	for name, values := range header {
+		req.Header[name] = values
+	}
 	req.Header.Set("Authorization", "Bearer "+c.keys.token)
 	req.Header.Set(protocol.DeviceHeader, c.device)
-	if path == protocol.EventsPath {
-		req.Header.Set("Accept", "text/event-stream")
-		req.Header.Set("Last-Event-ID", strconv.FormatUint(seen, 10))
-	}
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -92,11 +101,70 @@ func (c *Client) request(ctx context.Context, method, path, text string, seen ui
 func (c *Client) Check(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, requestTimeout)
 	defer cancel()
-	resp, err := c.request(ctx, http.MethodGet, protocol.EventsPath, "", uint64(time.Now().UnixMilli()))
+	resp, err := c.request(ctx, http.MethodGet, protocol.EventsPath, "", eventsHeader(uint64(time.Now().UnixMilli()), ""))
 	if err != nil {
 		return err
 	}
 	return resp.Body.Close()
+}
+
+func eventsHeader(seen uint64, profile string) http.Header {
+	header := http.Header{"Accept": {"text/event-stream"}, "Last-Event-Id": {strconv.FormatUint(seen, 10)}}
+	if profile != "" {
+		header.Set(protocol.ProfileHeader, profile)
+	}
+	return header
+}
+
+// Leave tells the relay that this device unpaired, so the others forget it.
+func (c *Client) Leave(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, requestTimeout)
+	defer cancel()
+	resp, err := c.request(ctx, http.MethodDelete, protocol.DevicePath, "", nil)
+	if err != nil {
+		return err
+	}
+	return resp.Body.Close()
+}
+
+// Device is another device of the pairing, as the relay last knew it.
+type Device struct {
+	ID string
+	Profile
+	Online bool
+	// Seen is when an offline device last disconnected.
+	Seen time.Time
+}
+
+// Devices is the relay's news of the pairing's devices. Left lists the devices
+// that unpaired.
+type Devices struct {
+	List []Device
+	Left []string
+}
+
+func (c *Client) openDevices(data string) (Devices, error) {
+	var wire protocol.Devices
+	if err := json.Unmarshal([]byte(data), &wire); err != nil {
+		return Devices{}, err
+	}
+	news := Devices{Left: wire.Left}
+	for _, d := range wire.Devices {
+		if d.ID == c.device {
+			continue
+		}
+		p, err := c.keys.openProfile(d.ID, d.Profile)
+		if err != nil {
+			log.Printf("skipped device %s: %v", d.ID, err)
+			continue
+		}
+		device := Device{ID: d.ID, Profile: p, Online: d.Online}
+		if !d.Online {
+			device.Seen = time.UnixMilli(d.Seen)
+		}
+		news.List = append(news.List, device)
+	}
+	return news, nil
 }
 
 func (c *Client) Publish(ctx context.Context, text string) error {
@@ -105,7 +173,7 @@ func (c *Client) Publish(ctx context.Context, text string) error {
 	}
 	ctx, cancel := context.WithTimeout(ctx, requestTimeout)
 	defer cancel()
-	resp, err := c.request(ctx, http.MethodPost, protocol.ClipPath, c.keys.seal(text, time.Now()), 0)
+	resp, err := c.request(ctx, http.MethodPost, protocol.ClipPath, c.keys.seal(text, time.Now()), nil)
 	if err != nil {
 		return err
 	}
@@ -136,11 +204,12 @@ func (b streamBody) Read(p []byte) (int, error) {
 }
 
 // Stream calls connected once headers arrive, then receive for each clip,
-// including invalid clips whose event ID still advances the cursor.
-func (c *Client) Stream(ctx context.Context, receiver *Receiver, seen uint64, connected func(), receive func(uint64, string, error)) error {
+// including invalid clips whose event ID still advances the cursor. After
+// Announce, it calls devices with each news of the other devices.
+func (c *Client) Stream(ctx context.Context, receiver *Receiver, seen uint64, connected func(), receive func(uint64, string, error), devices func(Devices)) error {
 	ctx, cancel := context.WithCancelCause(ctx)
 	defer cancel(nil)
-	resp, err := c.request(ctx, http.MethodGet, protocol.EventsPath, "", seen)
+	resp, err := c.request(ctx, http.MethodGet, protocol.EventsPath, "", eventsHeader(seen, c.profile))
 	if err != nil {
 		return err
 	}
@@ -171,21 +240,32 @@ func (c *Client) Stream(ctx context.Context, receiver *Receiver, seen uint64, co
 	scanner := bufio.NewScanner(streamBody{Reader: resp.Body, activity: activity})
 	scanner.Buffer(make([]byte, 4096), protocol.MaxSealed+16)
 	var id uint64
+	var event string
 	var sealed strings.Builder
 	for scanner.Scan() && ctx.Err() == nil {
 		line := scanner.Text()
 		if line == "" {
-			if sealed.Len() > 0 {
+			switch {
+			case sealed.Len() == 0:
+			case event == protocol.DevicesEvent:
+				if news, err := c.openDevices(sealed.String()); err != nil {
+					log.Printf("skipped news of the devices: %v", err)
+				} else if devices != nil {
+					devices(news)
+				}
+			case event == "":
 				text, err := c.keys.open(sealed.String(), time.Now(), receiver.opened)
 				receive(id, text, err)
 			}
-			id = 0
+			id, event = 0, ""
 			sealed.Reset()
 			continue
 		}
 		field, value, _ := strings.Cut(line, ":")
 		value = strings.TrimPrefix(value, " ")
 		switch field {
+		case "event":
+			event = value
 		case "id":
 			id = 0
 			if parsed, err := strconv.ParseUint(value, 10, 64); err == nil {

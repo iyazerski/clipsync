@@ -36,6 +36,11 @@ class Settings(context: Context) {
         get() = prefs.getLong(SEEN, 0)
         set(value) = prefs.edit { putLong(SEEN, value) }
 
+    /** The pairing's other devices, as [SyncService] last heard of them. */
+    var devices: List<KnownDevice>
+        get() = Devices.decode(prefs.getString(DEVICES, null))
+        set(value) = prefs.edit { putString(DEVICES, Devices.encode(value)) }
+
     /** Whether the Send clipboard tile is in Quick Settings, as [SendTile] last heard. */
     var tileAdded: Boolean
         get() = prefs.getBoolean(TILE_ADDED, false)
@@ -49,11 +54,12 @@ class Settings(context: Context) {
             putString(RELAY, url)
             putString(SECRET, secret.trim())
             putLong(SEEN, System.currentTimeMillis())
+            remove(DEVICES)
         }
     }
 
     fun unpair() {
-        prefs.edit { remove(RELAY).remove(SECRET) }
+        prefs.edit { remove(RELAY).remove(SECRET).remove(DEVICES) }
     }
 
     private companion object {
@@ -61,6 +67,7 @@ class Settings(context: Context) {
         const val SECRET = "secret"
         const val DEVICE = "device"
         const val SEEN = "seen"
+        const val DEVICES = "devices"
         const val TILE_ADDED = "tile_added"
     }
 }
@@ -89,14 +96,26 @@ object Relay {
     class Refused : Failed(R.string.relay_refused)
 
     /** A request to [path] with this phone's token and device id. */
-    fun connect(settings: Settings, seal: Seal, path: String): HttpURLConnection {
-        val relay = settings.relay ?: throw Failed(R.string.pair_first)
-        return (URL(relay + path).openConnection() as HttpURLConnection).apply {
+    fun connect(settings: Settings, seal: Seal, path: String): HttpURLConnection =
+        connect(settings.relay ?: throw Failed(R.string.pair_first), settings.device, seal, path)
+
+    private fun connect(relay: String, device: String, seal: Seal, path: String) =
+        (URL(relay + path).openConnection() as HttpURLConnection).apply {
             connectTimeout = TIMEOUT_MS
             readTimeout = TIMEOUT_MS
             instanceFollowRedirects = false
             setRequestProperty("Authorization", "Bearer ${seal.token}")
-            setRequestProperty(DEVICE_HEADER, settings.device)
+            setRequestProperty(DEVICE_HEADER, device)
+        }
+
+    /** Tell the other devices that this one unpaired. Blocks on the network. */
+    fun leave(relay: String, secret: String, device: String) {
+        val connection = connect(relay, device, Seal(secret), Devices.PATH)
+        try {
+            connection.requestMethod = "DELETE"
+            if (connection.responseCode != HttpURLConnection.HTTP_NO_CONTENT) throw Failed(R.string.relay_answered, connection.responseCode)
+        } finally {
+            connection.disconnect()
         }
     }
 

@@ -16,6 +16,11 @@
     <string name="fix_background_detail">حتى لا يوقف Android المزامنة لتوفير البطارية. على ColorOS، اسمح أيضًا بالنشاط في الخلفية من معلومات التطبيق ← استخدام البطارية.</string>
     <string name="fix_notifications">السماح بالإشعارات</string>
     <string name="fix_notifications_detail">يعرض حالة المزامنة وزر الإرسال</string>
+    <string name="your_devices">أجهزتك</string>
+    <string name="this_device">هذا الجهاز</string>
+    <string name="device_online">متصل</string>
+    <string name="device_seen">آخر ظهور %1$s</string>
+    <string name="no_other_devices">تظهر أجهزتك الأخرى هنا بمجرد اتصالها. إن لم تظهر، فحدّثها.</string>
     <string name="more_ways">طرق أخرى للإرسال</string>
     <string name="way_select">تحديد النص</string>
     <string name="way_select_detail">ثم اختر «إرسال إلى الكمبيوتر»</string>

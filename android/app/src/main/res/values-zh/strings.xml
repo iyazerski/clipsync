@@ -16,6 +16,11 @@
     <string name="fix_background_detail">以免 Android 为省电而停止同步。在 ColorOS 上，还需在“应用信息”→“耗电管理”中允许后台行为。</string>
     <string name="fix_notifications">允许通知</string>
     <string name="fix_notifications_detail">显示同步状态和发送按钮</string>
+    <string name="your_devices">你的设备</string>
+    <string name="this_device">此设备</string>
+    <string name="device_online">在线</string>
+    <string name="device_seen">上次在线：%1$s</string>
+    <string name="no_other_devices">你的其他设备连接后会显示在这里。如果没有显示，请更新它们。</string>
     <string name="more_ways">更多发送方式</string>
     <string name="way_select">选择文本</string>
     <string name="way_select_detail">然后选择“发送到电脑”</string>

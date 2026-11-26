@@ -38,8 +38,11 @@ const (
 
 // desktop is what the app needs from the system around it.
 type desktop interface {
-	// startSync syncs cfg's pairing until stop is called. report runs on the main thread.
-	startSync(cfg config, report syncer.Report) (stop func(), err error)
+	// startSync syncs cfg's pairing until stop is called. report and devices
+	// run on the main thread.
+	startSync(cfg config, report syncer.Report, devices func(client.Devices)) (stop func(), err error)
+	// leave tells the other devices of cfg's pairing that this one unpaired.
+	leave(cfg config)
 	// copySecret puts text on the clipboard marked as private, so that
 	// clipboard managers and clipsync itself leave it alone.
 	copySecret(text string)
@@ -131,6 +134,11 @@ type app struct {
 	lastSent     time.Time
 	lastReceived time.Time
 
+	devicesPath string
+	known       map[string]knownDevice
+	// online holds the devices that the relay last said were connected.
+	online map[string]bool
+
 	link     string
 	joining  bool
 	stopJoin func()
@@ -158,7 +166,8 @@ type app struct {
 }
 
 func newApp(sys desktop, path string, cfg config, paused bool) *app {
-	a := &app{sys: sys, path: path, cfg: cfg, computer: computerName(), page: pageWelcome}
+	a := &app{sys: sys, path: path, cfg: cfg, computer: computerName(), page: pageWelcome, devicesPath: devicesPath(path)}
+	a.known = loadDevices(a.devicesPath)
 	if cfg.paired() {
 		a.page = pageDevices
 		a.pairingChanged()
@@ -211,6 +220,7 @@ func (a *app) pair(relay, secret string, next page) error {
 		log.Printf("opening at login: %v", err)
 	}
 	a.pairingChanged()
+	a.forgetDevices()
 	a.page = next
 	a.resume()
 	return nil
@@ -320,10 +330,12 @@ func (a *app) unpair() error {
 		log.Printf("saving settings: %v", err)
 		return err
 	}
+	a.sys.leave(a.cfg)
 	a.cfg = cfg
 	a.page, a.adding, a.qr = pageWelcome, false, nil
 	a.closeInvite()
 	a.pause()
+	a.forgetDevices()
 	return nil
 }
 
@@ -360,6 +372,7 @@ func (a *app) pause() {
 		a.stopSync()
 		a.stopSync = nil
 	}
+	a.lostTouch()
 	a.sync = syncPaused
 	a.sys.changed()
 }
@@ -370,9 +383,14 @@ func (a *app) resume() {
 	}
 	a.syncs++
 	syncs := a.syncs
+	current := func() bool { return a.syncs == syncs && a.stopSync != nil }
 	stop, err := a.sys.startSync(a.cfg, func(e syncer.Event, err error) {
-		if a.syncs == syncs && a.stopSync != nil {
+		if current() {
 			a.report(e, err)
+		}
+	}, func(news client.Devices) {
+		if current() {
+			a.devicesNews(news)
 		}
 	})
 	if err != nil {
@@ -389,6 +407,7 @@ func (a *app) report(e syncer.Event, err error) {
 	case syncer.Connected:
 		a.sync = syncConnected
 	case syncer.Disconnected:
+		a.lostTouch()
 		a.sync = syncOffline
 		if errors.Is(err, client.ErrRefused) {
 			a.sync = syncRefused

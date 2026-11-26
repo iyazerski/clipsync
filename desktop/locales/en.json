@@ -66,6 +66,13 @@
   "addDevice": "Add device",
   "yourDevices": "Your devices",
   "thisDevice": "This device",
+  "deviceOnline": "Online",
+  "deviceSeen": "Last seen {ago}",
+  "@deviceSeen": {
+    "description": "ago is a relative time, as \"5 minutes ago\" or \"yesterday\".",
+    "placeholders": { "ago": { "type": "String", "example": "5 minutes ago" } }
+  },
+  "noOtherDevices": "Your other devices show up here once they connect. Update them if they don't.",
   "addMore": "Add another device",
   "addMoreDetail": "Pair a phone or a computer",
 

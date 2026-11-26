@@ -103,14 +103,16 @@ func (c *clipboard) receive(ctx context.Context, text string) bool {
 	return true
 }
 
-func Run(ctx context.Context, relay *client.Client, board Board, report Report) {
+// Run syncs board through relay until ctx ends. devices, if not nil, gets the
+// news of the other devices, for a relay client that announced itself.
+func Run(ctx context.Context, relay *client.Client, board Board, report Report, devices func(client.Devices)) {
 	c := &clipboard{board: board, count: board.ChangeCount()}
 	pending := make(chan string, 1)
 	woke := make(chan struct{}, 1)
 	var workers sync.WaitGroup
 	workers.Go(func() { poll(ctx, c, pending, woke) })
 	workers.Go(func() { send(ctx, relay, c, pending, report) })
-	workers.Go(func() { listen(ctx, relay, c, woke, report) })
+	workers.Go(func() { listen(ctx, relay, c, woke, report, devices) })
 	workers.Wait()
 }
 
@@ -190,7 +192,7 @@ func send(ctx context.Context, relay *client.Client, c *clipboard, pending <-cha
 	}
 }
 
-func listen(ctx context.Context, relay *client.Client, c *clipboard, woke <-chan struct{}, report Report) {
+func listen(ctx context.Context, relay *client.Client, c *clipboard, woke <-chan struct{}, report Report, devices func(client.Devices)) {
 	seen := uint64(time.Now().UnixMilli())
 	var receiver client.Receiver
 	backoff := client.MinBackoff
@@ -210,7 +212,7 @@ func listen(ctx context.Context, relay *client.Client, c *clipboard, woke <-chan
 				} else if c.receive(ctx, text) {
 					report(Received, nil)
 				}
-			})
+			}, devices)
 		}()
 		select {
 		case <-woke:

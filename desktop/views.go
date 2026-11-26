@@ -53,11 +53,13 @@ var (
 	iconHide     = icon("visibility_off")
 	iconSync     = icon("sync")
 	iconUpdate   = icon("system_update")
+	iconMac      = icon("laptop_mac")
+	iconWindows  = icon("desktop_windows")
 	iconComputer = func() *ui.SVG {
 		if runtime.GOOS == "windows" {
-			return icon("desktop_windows")
+			return iconWindows
 		}
-		return icon("laptop_mac")
+		return iconMac
 	}()
 )
 
@@ -590,7 +592,10 @@ func since(c *ui.Context, t time.Time) string {
 	if minutes < 60 {
 		return i18n.FormatRelativeTime(c.Locale(), -minutes, i18n.RelativeMinute, i18n.RelativeTimeOptions{Auto: true})
 	}
-	return i18n.FormatRelativeTime(c.Locale(), -math.Floor(elapsed.Hours()), i18n.RelativeHour, i18n.RelativeTimeOptions{Auto: true})
+	if hours := math.Floor(elapsed.Hours()); hours < 24 {
+		return i18n.FormatRelativeTime(c.Locale(), -hours, i18n.RelativeHour, i18n.RelativeTimeOptions{Auto: true})
+	}
+	return i18n.FormatRelativeTime(c.Locale(), -math.Floor(elapsed.Hours()/24), i18n.RelativeDay, i18n.RelativeTimeOptions{Auto: true})
 }
 
 func pageHeader(c *ui.Context, title string, actions func()) {
@@ -651,16 +656,24 @@ func (a *app) devices(c *ui.Context) {
 		})
 	})
 	ui.Text(c, locales.YourDevices()).FontSize(13).FontWeight(600).TextColor(t.TextMuted).Margin(8, 0, -6, 4)
+	others := a.otherDevices()
 	card(c).Children(func() {
-		ui.Row(c).Padding(14, 18).Gap(14).AlignItems(ui.Center).Children(func() {
-			badge(c, iconComputer, t.Accent)
-			ui.Column(c).Grow(1).Shrink(1).Gap(3).Children(func() {
-				ui.Text(c, a.computer).FontSize(15).FontWeight(600).SingleLine().Ellipsis("…")
-				ui.Text(c, osName()).FontSize(13).TextColor(t.TextMuted)
-			})
+		deviceRow(c, iconComputer, t.Accent, a.computer, osName(), func() {
 			ui.Badge(c, locales.ThisDevice()).Background(t.Accent.Alpha(0.14)).TextColor(t.Accent)
 		})
+		for _, d := range others {
+			ui.Divider(c).MarginStart(68)
+			svg, kind := kindLook(d.Kind)
+			color, status := t.TextMuted, locales.DeviceSeen(since(c, d.Seen))
+			if d.online {
+				color, status = t.Success, locales.DeviceOnline()
+			}
+			deviceRow(c, svg, color, d.Name, kind+" · "+status, nil)
+		}
 	})
+	if len(others) == 0 {
+		ui.Text(c, locales.NoOtherDevices()).FontSize(13).TextColor(t.TextMuted).LineHeight(1.35).Margin(-4, 4, 0, 4)
+	}
 	more := ui.ButtonBase(c).Label(locales.AddMore()).Padding(14, 18).Gap(14).Radius(12).AlignItems(ui.Center).
 		Border(1.5, t.Border).BorderStyle(ui.BorderDashed)
 	if more.Hovered() {
@@ -676,6 +689,31 @@ func (a *app) devices(c *ui.Context) {
 	if more.Clicked() {
 		a.adding = true
 	}
+}
+
+func deviceRow(c *ui.Context, svg *ui.SVG, color ui.Color, name, detail string, end func()) {
+	t := c.Theme()
+	ui.Row(c).Padding(14, 18).Gap(14).AlignItems(ui.Center).Children(func() {
+		badge(c, svg, color)
+		ui.Column(c).Grow(1).Shrink(1).Gap(3).Children(func() {
+			ui.Text(c, name).FontSize(15).FontWeight(600).SingleLine().Ellipsis("…")
+			ui.Text(c, detail).FontSize(13).TextColor(t.TextMuted).SingleLine().Ellipsis("…")
+		})
+		if end != nil {
+			end()
+		}
+	})
+}
+
+// kindLook is the icon and name of a kind of device.
+func kindLook(kind string) (*ui.SVG, string) {
+	switch kind {
+	case "android":
+		return iconPhone, "Android"
+	case "windows":
+		return iconWindows, "Windows"
+	}
+	return iconMac, "macOS"
 }
 
 func osName() string {

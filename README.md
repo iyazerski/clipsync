@@ -82,7 +82,7 @@ Or download the Mac disk image or the Windows setup from the [latest release](ht
 3. For your phone, click **Add device** and scan the QR code with the phone's camera. The page that opens has the app: download it and install it. Android asks you to allow installing apps from your browser the first time. Then scan again, and tap **Open clipsync**. No camera? Tap **Enter a code** in the app and type the code instead.
 4. In the phone app, tap **Run in the background** under **Finish setup**, and **Quick Settings tile** to add it. On ColorOS, also go to App info → Battery usage and turn on **Allow background activity** and **Allow auto launch**.
 
-That's it. Copy something on one device and paste it on another. If macOS asks whether clipsync may paste, click **Allow**.
+That's it. Copy something on one device and paste it on another. If macOS asks whether clipsync may paste, click **Allow**. Each device lists the others under **Your devices**, with which are online and when the rest were last seen.
 
 ### Used the clipsync command before?
 

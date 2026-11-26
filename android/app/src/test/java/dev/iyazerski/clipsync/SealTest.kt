@@ -2,6 +2,8 @@ package dev.iyazerski.clipsync
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertThrows
 import org.junit.Test
 
@@ -40,5 +42,21 @@ class SealTest {
         assertThrows(IllegalArgumentException::class.java) { seal.open(sealed, opened, sealedAt - maxAge - 1) }
         assertEquals("héllo 👋", seal.open(sealed, opened, sealedAt + 1000))
         assertThrows(IllegalArgumentException::class.java) { seal.open(sealed, opened, sealedAt + 2000) }
+    }
+
+    @Test
+    fun profilesOpenOnlyForTheirDevice() {
+        val seal = Seal(secret)
+        // Sealed by the computers' code.
+        val fromGo = "AcRzK4f7wpWuDdXLGj2N3E9wyXr8tpjsvDvtlbTJ0yt2akI7eS0pXIb8OWDhZleWjl9AtAIFOCjdt_HbylSePSwvqF2lUX352a0G"
+        assertEquals(Profile("Ivan’s MacBook 🔐", "mac"), seal.openProfile("mac-fixture", fromGo))
+        assertNull(seal.openProfile("phone-1", fromGo))
+        assertNull(Seal("A".repeat(43)).openProfile("mac-fixture", fromGo))
+
+        // Longer than a name may be, in what JSON escapes the most.
+        val long = seal.sealProfile("phone-1", Profile("\u2019".repeat(80), "android"))
+        assertTrue(long.length <= 1024)
+        assertEquals("\u2019".repeat(64), seal.openProfile("phone-1", long)?.name)
+        assertThrows(IllegalArgumentException::class.java) { seal.open(long, Seal.Opened()) }
     }
 }

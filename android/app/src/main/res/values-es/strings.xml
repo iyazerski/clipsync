@@ -16,6 +16,11 @@
     <string name="fix_background_detail">Para que Android no detenga la sincronización para ahorrar batería. En ColorOS, permite también la actividad en segundo plano en Información de la app → Uso de batería.</string>
     <string name="fix_notifications">Permitir notificaciones</string>
     <string name="fix_notifications_detail">Muestra el estado de la sincronización y un botón Enviar</string>
+    <string name="your_devices">Tus dispositivos</string>
+    <string name="this_device">Este dispositivo</string>
+    <string name="device_online">En línea</string>
+    <string name="device_seen">Visto por última vez %1$s</string>
+    <string name="no_other_devices">Tus otros dispositivos aparecen aquí cuando se conectan. Si no aparecen, actualízalos.</string>
     <string name="more_ways">Más formas de enviar</string>
     <string name="way_select">Selecciona texto</string>
     <string name="way_select_detail">Luego elige Enviar al ordenador</string>

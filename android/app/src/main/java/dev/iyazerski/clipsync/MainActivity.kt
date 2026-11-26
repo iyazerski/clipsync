@@ -11,6 +11,10 @@ import android.content.pm.PackageManager
 import android.graphics.drawable.Icon
 import android.os.Bundle
 import android.os.PowerManager
+import android.icu.text.DisplayContext
+import android.icu.text.RelativeDateTimeFormatter
+import android.icu.util.ULocale
+import android.text.format.DateUtils
 import android.provider.Settings as SystemSettings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -85,6 +89,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -117,10 +122,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.net.URI
+import kotlin.concurrent.thread
 
 /**
  * The only screen: pair with the computers (from the relay's pairing link, or by typing the relay and
@@ -131,6 +138,7 @@ class MainActivity : ComponentActivity() {
     private val snackbar = SnackbarHostState()
     private var setup by mutableStateOf(Setup())
     private var syncState by mutableStateOf(SyncService.state)
+    private var devices by mutableStateOf(emptyList<KnownDevice>())
     /** The update check's progress, or null when idle. */
     private var updating by mutableStateOf<String?>(null)
     private val joining: JoinModel by viewModels()
@@ -160,15 +168,18 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         SyncService.onState = { syncState = it }
+        SyncService.onDevices = { devices = settings.devices }
         if (settings.paired) SyncService.start(this)
         // The tile, battery, or notification settings may have changed while the app was away.
         setup = readSetup()
         // State changes while paused don't reach the screen.
         syncState = SyncService.state
+        devices = settings.devices
     }
 
     override fun onPause() {
         SyncService.onState = null
+        SyncService.onDevices = null
         super.onPause()
     }
 
@@ -195,6 +206,7 @@ class MainActivity : ComponentActivity() {
             notify(e.reason.read(this))
             return
         }
+        devices = settings.devices
         notify(getString(R.string.paired))
         // Android lets only a visible app start the service; onResume starts it otherwise.
         if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) SyncService.reconnect(this)
@@ -213,7 +225,21 @@ class MainActivity : ComponentActivity() {
 
     private fun unpair() {
         SyncService.stop(this)
+        val relay = settings.relay
+        val secret = settings.secret
+        val device = settings.device
+        if (relay != null && secret != null) {
+            thread(name = "clipsync-leave") {
+                try {
+                    Relay.leave(relay, secret, device)
+                } catch (e: IOException) {
+                    // The others list this phone as offline until their list forgets it.
+                } catch (e: Failed) {
+                }
+            }
+        }
         settings.unpair()
+        devices = emptyList()
         setup = readSetup()
     }
 
@@ -401,6 +427,46 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
+    private fun DeviceList() {
+        val name = remember { phoneName(this) }
+        // Ticks, so that "Last seen" keeps up.
+        val now by produceState(System.currentTimeMillis()) {
+            while (true) {
+                delay(DateUtils.MINUTE_IN_MILLIS)
+                value = System.currentTimeMillis()
+            }
+        }
+        val connected = syncState is SyncState.Connected
+        val count = 1 + devices.size
+        Section(stringResource(R.string.your_devices)) {
+            InfoRow(0, count, R.drawable.sym_phone_android, name, "Android") {
+                Text(stringResource(R.string.this_device), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            }
+            devices.forEachIndexed { index, device ->
+                val (icon, kind) = when (device.kind) {
+                    "android" -> R.drawable.sym_phone_android to "Android"
+                    "windows" -> R.drawable.sym_desktop_windows to "Windows"
+                    else -> R.drawable.sym_laptop_mac to "macOS"
+                }
+                val status = if (device.online && connected) {
+                    stringResource(R.string.device_online)
+                } else {
+                    stringResource(R.string.device_seen, ago(device.seen, now))
+                }
+                InfoRow(index + 1, count, icon, device.name, "$kind · $status")
+            }
+            if (devices.isEmpty()) {
+                Text(
+                    stringResource(R.string.no_other_devices),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp),
+                )
+            }
+        }
+    }
+
+    @Composable
     private fun Paired() {
         StatusHero(syncState)
         val fixes = buildList {
@@ -446,6 +512,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        DeviceList()
         Section(stringResource(R.string.more_ways)) {
             InfoRow(0, 4, R.drawable.sym_text_select_start, stringResource(R.string.way_select), stringResource(R.string.way_select_detail))
             InfoRow(1, 4, R.drawable.sym_share, stringResource(R.string.way_share), stringResource(R.string.way_share_detail))
@@ -466,6 +533,19 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+}
+
+/** How long ago [then] was, in whole minutes, hours, or days, to go in the middle of a sentence. */
+private fun ago(then: Long, now: Long): String {
+    val minutes = (now - then).coerceAtLeast(0) / DateUtils.MINUTE_IN_MILLIS
+    val (amount, unit) = when {
+        minutes < 60 -> minutes to RelativeDateTimeFormatter.RelativeDateTimeUnit.MINUTE
+        minutes < 24 * 60 -> minutes / 60 to RelativeDateTimeFormatter.RelativeDateTimeUnit.HOUR
+        else -> minutes / (24 * 60) to RelativeDateTimeFormatter.RelativeDateTimeUnit.DAY
+    }
+    return RelativeDateTimeFormatter.getInstance(
+        ULocale.getDefault(), null, RelativeDateTimeFormatter.Style.LONG, DisplayContext.CAPITALIZATION_FOR_MIDDLE_OF_SENTENCE,
+    ).format(-amount.toDouble(), unit)
 }
 
 /** What the screen shows, read from settings and system state. */

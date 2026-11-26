@@ -22,6 +22,11 @@
     <string name="fix_notifications">Allow notifications</string>
     <string name="fix_notifications_detail">Shows the sync status and a Send button</string>
 
+    <string name="your_devices">Your devices</string>
+    <string name="this_device">This device</string>
+    <string name="device_online">Online</string>
+    <string name="device_seen">Last seen %1$s</string>
+    <string name="no_other_devices">Your other devices show up here once they connect. Update them if they don\'t.</string>
     <string name="more_ways">More ways to send</string>
     <string name="way_select">Select text</string>
     <string name="way_select_detail">Then pick Send to computer</string>

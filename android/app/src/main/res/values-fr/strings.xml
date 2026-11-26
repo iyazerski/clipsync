@@ -16,6 +16,11 @@
     <string name="fix_background_detail">Pour qu\'Android n\'arrête pas la synchronisation afin d\'économiser la batterie. Sur ColorOS, autorisez aussi l\'activité en arrière-plan dans Infos sur l\'appli → Utilisation de la batterie.</string>
     <string name="fix_notifications">Autoriser les notifications</string>
     <string name="fix_notifications_detail">Affiche l\'état de la synchronisation et un bouton Envoyer</string>
+    <string name="your_devices">Vos appareils</string>
+    <string name="this_device">Cet appareil</string>
+    <string name="device_online">En ligne</string>
+    <string name="device_seen">Vu pour la dernière fois %1$s</string>
+    <string name="no_other_devices">Vos autres appareils s\'affichent ici dès qu\'ils se connectent. Sinon, mettez-les à jour.</string>
     <string name="more_ways">Autres façons d\'envoyer</string>
     <string name="way_select">Sélectionnez du texte</string>
     <string name="way_select_detail">Puis choisissez Envoyer sur l\'ordinateur</string>

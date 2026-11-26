@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"container/list"
 	"context"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -55,7 +56,17 @@ type clip struct {
 type room struct {
 	latest    *clip
 	expiry    *time.Timer
-	listeners map[chan *clip]struct{}
+	listeners map[*listener]struct{}
+	members   map[string]*member
+	// left holds the devices that said goodbye, so that the others forget them too.
+	left map[string]*list.Element
+}
+
+// A listener is one device's event stream. devices is nil unless the device
+// announced itself, and then wakes the stream to send the room's devices.
+type listener struct {
+	clips   chan *clip
+	devices chan struct{}
 }
 
 type roomKey = [sha256.Size]byte
@@ -65,12 +76,17 @@ type relay struct {
 	private *roomKey
 	ttl     time.Duration
 
-	maxStreams, maxRoomStreams, maxStored, maxPairings int
+	maxStreams, maxRoomStreams, maxStored, maxPairings, maxMembers int
 
-	mu       sync.Mutex
-	id       uint64
-	streams  int
-	stored   int
+	mu      sync.Mutex
+	id      uint64
+	streams int
+	stored  int
+	// members counts the devices and goodbyes that rooms remember.
+	members int
+	// idle lists the offline devices and the goodbyes, oldest first: what
+	// the relay forgets first.
+	idle     *list.List
 	rooms    map[roomKey]*room
 	pairings map[string]*pairing
 }
@@ -82,6 +98,8 @@ func newRelay(token string, ttl time.Duration) *relay {
 		maxRoomStreams: maxRoomStreams,
 		maxStored:      maxStored,
 		maxPairings:    maxPairings,
+		maxMembers:     maxMembers,
+		idle:           list.New(),
 		rooms:          make(map[roomKey]*room),
 		pairings:       make(map[string]*pairing),
 	}
@@ -104,7 +122,7 @@ func validToken(token string) bool {
 func (r *relay) room(key roomKey) *room {
 	rm := r.rooms[key]
 	if rm == nil {
-		rm = &room{listeners: make(map[chan *clip]struct{})}
+		rm = &room{listeners: make(map[*listener]struct{}), members: make(map[string]*member), left: make(map[string]*list.Element)}
 		r.rooms[key] = rm
 	}
 	return rm
@@ -112,7 +130,7 @@ func (r *relay) room(key roomKey) *room {
 
 // prune forgets a room with no devices and no clip. The caller holds r.mu.
 func (r *relay) prune(key roomKey, rm *room) {
-	if rm.latest == nil && len(rm.listeners) == 0 && r.rooms[key] == rm {
+	if rm.latest == nil && len(rm.listeners) == 0 && len(rm.members) == 0 && len(rm.left) == 0 && r.rooms[key] == rm {
 		delete(r.rooms, key)
 	}
 }
@@ -127,6 +145,7 @@ func (r *relay) routes() http.Handler {
 	})
 	mux.HandleFunc("POST "+protocol.ClipPath, r.authorize(r.publish))
 	mux.HandleFunc("GET "+protocol.EventsPath, r.authorize(r.events))
+	mux.HandleFunc("DELETE "+protocol.DevicePath, r.authorize(r.leave))
 	r.pairingRoutes(mux)
 	return mux
 }
@@ -187,18 +206,18 @@ func (r *relay) publish(w http.ResponseWriter, req *http.Request, key roomKey, d
 			}
 		})
 	}
-	for listener := range rm.listeners {
+	for l := range rm.listeners {
 		select {
-		case listener <- item:
+		case l.clips <- item:
 		default:
 			// Don't let a slow device block publishers. Catch it up to the latest clip.
-			for range len(listener) {
+			for range len(l.clips) {
 				select {
-				case <-listener:
+				case <-l.clips:
 				default:
 				}
 			}
-			listener <- item
+			l.clips <- item
 		}
 	}
 	r.prune(key, rm)
@@ -215,7 +234,15 @@ func (r *relay) events(w http.ResponseWriter, req *http.Request, key roomKey, de
 	if id, err := strconv.ParseUint(req.Header.Get("Last-Event-ID"), 10, 64); err == nil {
 		seen = id
 	}
-	listener := make(chan *clip, queueSize)
+	profile := req.Header.Get(protocol.ProfileHeader)
+	if profile != "" && !validProfile(profile) {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	l := &listener{clips: make(chan *clip, queueSize)}
+	if profile != "" {
+		l.devices = make(chan struct{}, 1)
+	}
 	r.mu.Lock()
 	if r.streams >= r.maxStreams {
 		r.mu.Unlock()
@@ -229,15 +256,20 @@ func (r *relay) events(w http.ResponseWriter, req *http.Request, key roomKey, de
 		return
 	}
 	r.streams++
-	rm.listeners[listener] = struct{}{}
+	rm.listeners[l] = struct{}{}
 	if rm.latest != nil {
-		listener <- rm.latest
+		l.clips <- rm.latest
+	}
+	var m *member
+	if profile != "" {
+		m = r.join(rm, device, profile)
 	}
 	r.mu.Unlock()
 	defer func() {
 		r.mu.Lock()
 		r.streams--
-		delete(rm.listeners, listener)
+		delete(rm.listeners, l)
+		r.part(key, rm, device, m, time.Now())
 		r.prune(key, rm)
 		r.mu.Unlock()
 	}()
@@ -269,7 +301,14 @@ func (r *relay) events(w http.ResponseWriter, req *http.Request, key roomKey, de
 			if !send(":\n\n") {
 				return
 			}
-		case item := <-listener:
+		case <-l.devices:
+			r.mu.Lock()
+			data := rm.devicesEvent()
+			r.mu.Unlock()
+			if !send("event: ", protocol.DevicesEvent, "\ndata: ", data, "\n\n") {
+				return
+			}
+		case item := <-l.clips:
 			if item.id <= seen || item.device == device {
 				continue
 			}
@@ -332,14 +371,16 @@ func serve(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	rl := newRelay(*token, time.Duration(limit)*time.Second)
 	server := &http.Server{
-		Handler:           newRelay(*token, time.Duration(limit)*time.Second).routes(),
+		Handler:           rl.routes(),
 		ReadHeaderTimeout: 10 * time.Second,
 		MaxHeaderBytes:    8 << 10,
 		IdleTimeout:       2 * time.Minute,
 		BaseContext:       func(net.Listener) context.Context { return ctx },
 	}
 	shutdownDone := make(chan struct{})
+	go rl.forgetOldMembers(ctx)
 	stopped := context.AfterFunc(ctx, func() {
 		defer close(shutdownDone)
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

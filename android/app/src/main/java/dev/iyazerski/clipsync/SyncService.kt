@@ -18,6 +18,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.SystemClock
+import org.json.JSONException
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.text.DateFormat
@@ -70,6 +71,8 @@ class SyncService : Service() {
         settings = Settings(this)
         createChannel()
         updateState(SyncState.Connecting, notify = false)
+        // The process may have died while devices were online.
+        settings.devices = Devices.lostTouch(settings.devices, System.currentTimeMillis())
         startForeground(NOTIFICATION, notification(state), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(network)
     }
@@ -166,12 +169,14 @@ class SyncService : Service() {
 
     /** Follow the relay's event stream until it ends or fails. */
     private fun stream() {
-        val seal = Seal(settings.secret ?: throw Failed(R.string.pair_first))
+        val secret = settings.secret ?: throw Failed(R.string.pair_first)
+        val seal = Seal(secret)
         val conn = Relay.connect(settings, seal, Relay.EVENTS_PATH).apply {
             // The relay sends a comment every 45 s on an idle stream.
             readTimeout = SILENCE_LIMIT_MS
             setRequestProperty("Accept", "text/event-stream")
             setRequestProperty("Last-Event-ID", settings.seen.toString())
+            setRequestProperty(Devices.PROFILE_HEADER, seal.sealProfile(settings.device, Profile(phoneName(this@SyncService), "android")))
         }
         val abort = synchronized(lock) {
             if (kicked || !running) {
@@ -187,15 +192,22 @@ class SyncService : Service() {
             setState(SyncState.Connected(lastClipAt))
             conn.inputStream.bufferedReader(Charsets.UTF_8).use { reader ->
                 var id: Long? = null
+                var event: String? = null
                 val data = StringBuilder()
                 while (running) {
                     val line = reader.readLine() ?: return
                     when {
                         line.isEmpty() -> {
-                            if (data.isNotEmpty()) received(seal, id, data.toString())
+                            when {
+                                data.isEmpty() -> {}
+                                event == Devices.EVENT -> devicesNews(secret, seal, data.toString())
+                                event == null -> received(seal, id, data.toString())
+                            }
                             id = null
+                            event = null
                             data.setLength(0)
                         }
+                        line.startsWith("event:") -> event = line.substring(6).trim()
                         line.startsWith("id:") -> id = line.substring(3).trim().toLongOrNull()
                         line.startsWith("data:") -> data.append(line.substring(5).trim())
                     }
@@ -206,6 +218,30 @@ class SyncService : Service() {
                 if (connection === conn) connection = null
             }
             conn.disconnect()
+            if (!abort) changeDevices(secret) { Devices.lostTouch(it, System.currentTimeMillis()) }
+        }
+    }
+
+    private fun devicesNews(secret: String, seal: Seal, data: String) {
+        val news = try {
+            Devices.parse(seal, settings.device, data, System.currentTimeMillis())
+        } catch (e: JSONException) {
+            return
+        }
+        changeDevices(secret) { Devices.merge(it, news, System.currentTimeMillis()) }
+    }
+
+    /**
+     * Update the device list on the main thread, where the app pairs and unpairs, unless the pairing
+     * changed since the stream with [secret] began.
+     */
+    private fun changeDevices(secret: String, update: (List<KnownDevice>) -> List<KnownDevice>) {
+        main.post {
+            if (settings.secret != secret) return@post
+            val devices = update(settings.devices)
+            if (devices == settings.devices) return@post
+            settings.devices = devices
+            onDevices?.invoke()
         }
     }
 
@@ -285,6 +321,8 @@ class SyncService : Service() {
             private set
         /** Called on the main thread when [state] changes. */
         var onState: ((SyncState) -> Unit)? = null
+        /** Called on the main thread when [Settings.devices] changes. */
+        var onDevices: (() -> Unit)? = null
 
         fun start(context: Context) {
             context.startForegroundService(Intent(context, SyncService::class.java))

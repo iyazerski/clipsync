@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/hmac"
@@ -8,9 +9,11 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"strings"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/iyazerski/clipsync/internal/protocol"
@@ -30,6 +33,8 @@ var wireEncoding = base64.RawURLEncoding.Strict()
 type keys struct {
 	token string
 	aead  cipher.AEAD
+	// profile seals profiles, apart from clips so that neither opens as the other.
+	profile cipher.AEAD
 }
 
 func RandomID(n int) string {
@@ -48,15 +53,63 @@ func derive(secret string) (keys, error) {
 		mac.Write([]byte(label))
 		return mac.Sum(nil)
 	}
-	block, err := aes.NewCipher(sign("clipsync/key"))
-	if err != nil {
-		return keys{}, err
+	// Neither fails with a 32-byte key.
+	gcm := func(label string) cipher.AEAD {
+		block, _ := aes.NewCipher(sign(label))
+		aead, _ := cipher.NewGCM(block)
+		return aead
 	}
-	aead, err := cipher.NewGCM(block)
-	if err != nil {
-		return keys{}, err
+	return keys{token: wireEncoding.EncodeToString(sign("clipsync/token")), aead: gcm("clipsync/key"), profile: gcm("clipsync/profile")}, nil
+}
+
+// Profile is how a device shows in the others' lists.
+type Profile struct {
+	Name string `json:"name"`
+	// Kind is "mac", "windows" or "android".
+	Kind string `json:"kind"`
+}
+
+const (
+	profileVersion = 1
+	maxName        = 64
+	maxKind        = 16
+)
+
+// sealProfile seals p to device, so that the relay can't pass it off as
+// another device's: version || nonce || encrypted(JSON) || tag.
+func (k keys) sealProfile(device string, p Profile) string {
+	name := []rune(strings.Map(func(r rune) rune {
+		if !unicode.IsPrint(r) {
+			return -1
+		}
+		return r
+	}, strings.ToValidUTF8(p.Name, "")))
+	p.Name = strings.TrimSpace(string(name[:min(len(name), maxName)]))
+	var plain bytes.Buffer
+	encoder := json.NewEncoder(&plain)
+	encoder.SetEscapeHTML(false)
+	encoder.Encode(p)
+	buf := make([]byte, headerSize, headerSize+plain.Len()+tagSize)
+	buf[0] = profileVersion
+	rand.Read(buf[1:headerSize])
+	buf = k.profile.Seal(buf, buf[1:headerSize], plain.Bytes(), []byte(device))
+	return wireEncoding.EncodeToString(buf)
+}
+
+func (k keys) openProfile(device, sealed string) (Profile, error) {
+	buf, err := wireEncoding.DecodeString(sealed)
+	if err != nil || len(buf) < headerSize+tagSize || buf[0] != profileVersion {
+		return Profile{}, errors.New("invalid profile format")
 	}
-	return keys{token: wireEncoding.EncodeToString(sign("clipsync/token")), aead: aead}, nil
+	plain, err := k.profile.Open(nil, buf[1:headerSize], buf[headerSize:], []byte(device))
+	if err != nil {
+		return Profile{}, errors.New("can't open the profile: it's from another pairing or device")
+	}
+	var p Profile
+	if err := json.Unmarshal(plain, &p); err != nil || utf8.RuneCountInString(p.Name) > maxName || len(p.Kind) > maxKind {
+		return Profile{}, errors.New("invalid profile")
+	}
+	return p, nil
 }
 
 func (k keys) seal(text string, now time.Time) string {

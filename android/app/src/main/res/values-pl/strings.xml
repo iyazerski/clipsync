@@ -16,6 +16,11 @@
     <string name="fix_background_detail">Żeby Android nie zatrzymywał synchronizacji, by oszczędzać baterię. W ColorOS zezwól też na aktywność w tle w Informacjach o aplikacji → Użycie baterii.</string>
     <string name="fix_notifications">Zezwól na powiadomienia</string>
     <string name="fix_notifications_detail">Pokazuje stan synchronizacji i przycisk Wyślij</string>
+    <string name="your_devices">Twoje urządzenia</string>
+    <string name="this_device">To urządzenie</string>
+    <string name="device_online">Online</string>
+    <string name="device_seen">Ostatnio widziane %1$s</string>
+    <string name="no_other_devices">Twoje inne urządzenia pojawią się tutaj, gdy się połączą. Jeśli nie, zaktualizuj je.</string>
     <string name="more_ways">Inne sposoby wysyłania</string>
     <string name="way_select">Zaznacz tekst</string>
     <string name="way_select_detail">Potem wybierz „Wyślij na komputer”</string>

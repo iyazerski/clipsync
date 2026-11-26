@@ -19,6 +19,12 @@ Only the latest release gets fixes. Computers update themselves, or from **Check
 - Each sealed clip carries the time it was sealed. Devices refuse clips sealed more than 5 minutes away from their clock, and clips they opened already since they started, which limits what a relay could replay.
 - Devices talk to the relay only over HTTPS.
 
+## What the relay knows about your devices
+
+- To list your devices on each other, every device gives the relay its name and kind (phone or computer), sealed with a key derived from the secret and bound to the device's random ID. The relay can't read them, or pass one device's off as another's.
+- The relay does see each device's random ID, how many devices a pairing has, and when each one connects and disconnects. It keeps that for up to 7 days after a device was last online, in memory only. A relay could also say a device is online when it isn't.
+- **Unpair** tells the relay, which tells your other devices to drop this one from their list. It doesn't change the secret, so a device that kept it could still join again. Removing a device for good comes in a later release.
+
 ## How pairing codes are protected
 
 - A code is a number that the relay gives out, plus 6 random digits that the relay never sees. The two devices turn the digits into a shared key with [CPace](https://datatracker.ietf.org/doc/draft-irtf-cfrg-cpace/), and the device that shows the code sends the secret sealed with that key.
