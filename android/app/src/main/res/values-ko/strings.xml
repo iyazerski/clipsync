@@ -16,6 +16,11 @@
     <string name="fix_background_detail">Android가 배터리를 아끼려고 동기화를 중지하지 않도록 합니다. ColorOS에서는 앱 정보 → 배터리 사용량에서 백그라운드 활동도 허용하세요.</string>
     <string name="fix_notifications">알림 허용</string>
     <string name="fix_notifications_detail">동기화 상태와 보내기 버튼을 표시합니다</string>
+    <string name="your_devices">내 기기</string>
+    <string name="this_device">이 기기</string>
+    <string name="device_online">온라인</string>
+    <string name="device_seen">마지막 접속: %1$s</string>
+    <string name="no_other_devices">다른 기기는 연결되면 여기에 표시됩니다. 표시되지 않으면 업데이트하세요.</string>
     <string name="more_ways">다른 보내기 방법</string>
     <string name="way_select">텍스트 선택</string>
     <string name="way_select_detail">그런 다음 컴퓨터로 보내기 선택</string>

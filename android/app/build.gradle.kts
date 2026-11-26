@@ -73,4 +73,6 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.13.0")
 
     testImplementation("junit:junit:4.13.2")
+    // Android's own org.json is a stub in unit tests.
+    testImplementation("org.json:json:20250517")
 }

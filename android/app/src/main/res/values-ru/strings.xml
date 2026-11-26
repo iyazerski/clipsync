@@ -16,6 +16,11 @@
     <string name="fix_background_detail">Чтобы Android не останавливал синхронизацию ради экономии батареи. В ColorOS также разрешите фоновую активность в разделе «О приложении» → «Использование батареи».</string>
     <string name="fix_notifications">Разрешить уведомления</string>
     <string name="fix_notifications_detail">Показывает состояние синхронизации и кнопку отправки</string>
+    <string name="your_devices">Ваши устройства</string>
+    <string name="this_device">Это устройство</string>
+    <string name="device_online">В сети</string>
+    <string name="device_seen">Был в сети %1$s</string>
+    <string name="no_other_devices">Другие устройства появятся здесь, когда подключатся. Если нет, обновите их.</string>
     <string name="more_ways">Другие способы отправки</string>
     <string name="way_select">Выделите текст</string>
     <string name="way_select_detail">Затем выберите «Отправить на компьютер»</string>

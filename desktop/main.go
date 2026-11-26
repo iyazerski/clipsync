@@ -71,7 +71,7 @@ func (s *system) post(fn func()) {
 	})
 }
 
-func (s *system) startSync(cfg config, report syncer.Report) (func(), error) {
+func (s *system) startSync(cfg config, report syncer.Report, devices func(client.Devices)) (func(), error) {
 	if s.board == nil {
 		board, err := newPasteboard()
 		if err != nil {
@@ -83,14 +83,33 @@ func (s *system) startSync(cfg config, report syncer.Report) (func(), error) {
 	if err != nil {
 		return nil, err
 	}
+	kind := "mac"
+	if runtime.GOOS == "windows" {
+		kind = "windows"
+	}
+	relay.Announce(client.Profile{Name: computerName(), Kind: kind})
 	log.Printf("syncing through %s", cfg.Relay)
 	ctx, cancel := context.WithCancel(context.Background())
 	go syncer.Run(ctx, relay, s.board, func(e syncer.Event, err error) {
 		s.post(func() { report(e, err) })
+	}, func(news client.Devices) {
+		s.post(func() { devices(news) })
 	})
 	// The syncer may finish a send in flight after this returns, which a new
 	// sync can't mix up: the relay orders copies by when they arrive.
 	return cancel, nil
+}
+
+func (s *system) leave(cfg config) {
+	relay, err := client.New(cfg.Relay, cfg.Secret, cfg.Device)
+	if err != nil {
+		return
+	}
+	go func() {
+		if err := relay.Leave(context.Background()); err != nil {
+			log.Printf("telling the other devices about unpairing: %v", err)
+		}
+	}()
 }
 
 func (s *system) invite(cfg config, report func(inviteEvent)) func() {
@@ -416,6 +435,11 @@ func main() {
 
 	mygo.App.OnBeforeQuit(func(*mygo.QuitEvent) { s.quitting = true })
 	mygo.App.OnQuitCanceled(func() { s.quitting = false })
+	mygo.App.OnQuit(func() {
+		if s.a != nil {
+			s.a.lostTouch()
+		}
+	})
 	mygo.App.OnSecondInstance(func([]string, string) { s.show() })
 	mygo.App.OnActivate(func(visible bool) {
 		if !visible {

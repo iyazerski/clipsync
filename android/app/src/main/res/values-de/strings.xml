@@ -16,6 +16,11 @@
     <string name="fix_background_detail">Damit Android die Synchronisierung nicht zum Akkusparen stoppt. Erlaube unter ColorOS außerdem die Hintergrundaktivität unter App-Info → Akkunutzung.</string>
     <string name="fix_notifications">Benachrichtigungen erlauben</string>
     <string name="fix_notifications_detail">Zeigt den Synchronisierungsstatus und eine Schaltfläche zum Senden</string>
+    <string name="your_devices">Deine Geräte</string>
+    <string name="this_device">Dieses Gerät</string>
+    <string name="device_online">Online</string>
+    <string name="device_seen">Zuletzt gesehen %1$s</string>
+    <string name="no_other_devices">Deine anderen Geräte erscheinen hier, sobald sie sich verbinden. Aktualisiere sie, falls nicht.</string>
     <string name="more_ways">Weitere Wege zum Senden</string>
     <string name="way_select">Text auswählen</string>
     <string name="way_select_detail">Dann „An den Computer senden“ wählen</string>

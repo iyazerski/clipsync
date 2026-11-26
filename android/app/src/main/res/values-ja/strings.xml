@@ -16,6 +16,11 @@
     <string name="fix_background_detail">バッテリー節約のために Android が同期を停止しないようにします。ColorOS では、「アプリ情報」→「バッテリー使用量」でバックグラウンドアクティビティも許可してください。</string>
     <string name="fix_notifications">通知を許可</string>
     <string name="fix_notifications_detail">同期の状態と送信ボタンを表示します</string>
+    <string name="your_devices">あなたのデバイス</string>
+    <string name="this_device">このデバイス</string>
+    <string name="device_online">オンライン</string>
+    <string name="device_seen">最終接続: %1$s</string>
+    <string name="no_other_devices">ほかのデバイスは接続するとここに表示されます。表示されない場合はアップデートしてください。</string>
     <string name="more_ways">その他の送信方法</string>
     <string name="way_select">テキストを選択</string>
     <string name="way_select_detail">次に「コンピューターに送信」を選びます</string>

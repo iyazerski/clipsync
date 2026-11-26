@@ -184,7 +184,7 @@ func (c *Client) Invite(ctx context.Context) (*Invitation, error) {
 	}
 	ctx, cancel := context.WithTimeout(ctx, requestTimeout)
 	defer cancel()
-	resp, err := c.request(ctx, http.MethodPost, protocol.PairingPath, wireEncoding.EncodeToString(slices.Concat(inv.sid, inv.share.public)), 0)
+	resp, err := c.request(ctx, http.MethodPost, protocol.PairingPath, wireEncoding.EncodeToString(slices.Concat(inv.sid, inv.share.public)), nil)
 	if err != nil {
 		return nil, err
 	}

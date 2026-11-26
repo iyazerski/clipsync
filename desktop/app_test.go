@@ -3,6 +3,7 @@ package main
 import (
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 
@@ -13,6 +14,8 @@ import (
 type fakeDesktop struct {
 	syncing bool
 	report  syncer.Report
+	devices func(client.Devices)
+	left    string
 	copied  string
 	login   bool
 
@@ -22,10 +25,11 @@ type fakeDesktop struct {
 	join     func(client.Pairing, error)
 }
 
-func (f *fakeDesktop) startSync(_ config, report syncer.Report) (func(), error) {
-	f.syncing, f.report = true, report
+func (f *fakeDesktop) startSync(_ config, report syncer.Report, devices func(client.Devices)) (func(), error) {
+	f.syncing, f.report, f.devices = true, report, devices
 	return func() { f.syncing = false }, nil
 }
+func (f *fakeDesktop) leave(cfg config)             { f.left = cfg.Device }
 func (f *fakeDesktop) copySecret(text string)       { f.copied = text }
 func (f *fakeDesktop) openAtLogin() bool            { return f.login }
 func (f *fakeDesktop) setOpenAtLogin(on bool) error { f.login = on; return nil }
@@ -149,5 +153,48 @@ func TestJoin(t *testing.T) {
 	click(t, tt, "Unpair")
 	if saved, _ := loadConfig(a.path); saved.paired() || sys.syncing || !tt.HasText("Welcome to clipsync") {
 		t.Errorf("saved %+v, syncing %v, texts %q", saved, sys.syncing, tt.Texts())
+	}
+}
+
+func TestDeviceList(t *testing.T) {
+	cfg := config{Relay: publicRelay, Secret: client.RandomID(32), Device: "mac-1"}
+	a, sys, tt := start(t, cfg)
+	if err := saveConfig(a.path, cfg); err != nil {
+		t.Fatal(err)
+	}
+	if !tt.HasText("Your other devices show up here once they connect. Update them if they don't.") {
+		t.Errorf("texts %q", tt.Texts())
+	}
+	sys.devices(client.Devices{List: []client.Device{
+		{ID: "phone-1", Profile: client.Profile{Name: "Pixel", Kind: "android"}, Online: true},
+		{ID: "win-1", Profile: client.Profile{Name: "Desk", Kind: "windows"}, Seen: time.Now().Add(-75 * time.Hour)},
+	}})
+	tt.Frame()
+	if !tt.HasText("Android · Online") || !tt.HasText("Windows · Last seen 3 days ago") {
+		t.Fatalf("texts %q", tt.Texts())
+	}
+
+	// Offline, this device can't tell who's online, but remembers who it saw.
+	sys.report(syncer.Disconnected, nil)
+	tt.Frame()
+	if tt.HasText("Android · Online") || !tt.HasText("Pixel") {
+		t.Errorf("texts %q", tt.Texts())
+	}
+	restarted := newApp(&fakeDesktop{}, a.path, cfg, false)
+	if tt := ui.NewTester(restarted.view, 800, 1000); !tt.HasText("Pixel") || !tt.HasText("Desk") {
+		t.Fatalf("forgot the devices on restart; texts %q", tt.Texts())
+	}
+
+	sys.devices(client.Devices{Left: []string{"win-1"}})
+	tt = ui.NewTester(a.view, 800, 1000)
+	if tt.HasText("Desk") || !tt.HasText("Pixel") {
+		t.Errorf("a device that unpaired is still listed; texts %q", tt.Texts())
+	}
+
+	click(t, tt, "Settings")
+	click(t, tt, "Unpair…")
+	click(t, tt, "Unpair")
+	if sys.left != "mac-1" || len(loadDevices(a.devicesPath)) != 0 {
+		t.Errorf("left as %q, kept %v", sys.left, loadDevices(a.devicesPath))
 	}
 }

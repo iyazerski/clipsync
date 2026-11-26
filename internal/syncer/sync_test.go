@@ -142,7 +142,7 @@ func TestSyncWithExistingWireProtocol(t *testing.T) {
 	reported := make(chan syncer.Event, 8)
 	go func() {
 		defer close(stopped)
-		syncer.Run(ctx, relay, board, func(e syncer.Event, _ error) { reported <- e })
+		syncer.Run(ctx, relay, board, func(e syncer.Event, _ error) { reported <- e }, nil)
 	}()
 	defer func() {
 		stop()

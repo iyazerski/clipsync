@@ -590,6 +590,40 @@ func (msgs Messages) ThisDevice() string {
 	return Catalog.Format(msgs.locale, "thisDevice", nil)
 }
 
+// DeviceOnline says "Online"
+// in the language the app shows.
+func DeviceOnline() string { return In(i18n.Locale()).DeviceOnline() }
+
+// DeviceOnline says "Online"
+// in the language of msgs.
+func (msgs Messages) DeviceOnline() string {
+	return Catalog.Format(msgs.locale, "deviceOnline", nil)
+}
+
+// DeviceSeen says "Last seen {ago}"
+// in the language the app shows.
+//
+// ago is a relative time, as "5 minutes ago" or "yesterday".
+func DeviceSeen(ago string) string { return In(i18n.Locale()).DeviceSeen(ago) }
+
+// DeviceSeen says "Last seen {ago}"
+// in the language of msgs.
+//
+// ago is a relative time, as "5 minutes ago" or "yesterday".
+func (msgs Messages) DeviceSeen(ago string) string {
+	return Catalog.Format(msgs.locale, "deviceSeen", map[string]any{"ago": ago})
+}
+
+// NoOtherDevices says "Your other devices show up here once they connect. Update them if they don't."
+// in the language the app shows.
+func NoOtherDevices() string { return In(i18n.Locale()).NoOtherDevices() }
+
+// NoOtherDevices says "Your other devices show up here once they connect. Update them if they don't."
+// in the language of msgs.
+func (msgs Messages) NoOtherDevices() string {
+	return Catalog.Format(msgs.locale, "noOtherDevices", nil)
+}
+
 // AddMore says "Add another device"
 // in the language the app shows.
 func AddMore() string { return In(i18n.Locale()).AddMore() }

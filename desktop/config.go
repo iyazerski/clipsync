@@ -84,18 +84,21 @@ func loadConfig(path string) (config, error) {
 	return cfg, nil
 }
 
-func saveConfig(path string, cfg config) error {
+func saveConfig(path string, cfg config) error { return writeJSON(path, cfg) }
+
+// writeJSON replaces path with v in one step, so that a failed write keeps the old file.
+func writeJSON(path string, v any) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		return err
 	}
-	f, err := os.CreateTemp(filepath.Dir(path), ".config-*")
+	f, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+"-*")
 	if err != nil {
 		return err
 	}
 	defer os.Remove(f.Name())
 	enc := json.NewEncoder(f)
 	enc.SetIndent("", "  ")
-	if err := errors.Join(enc.Encode(cfg), f.Close()); err != nil {
+	if err := errors.Join(enc.Encode(v), f.Close()); err != nil {
 		return err
 	}
 	return os.Rename(f.Name(), path)

@@ -16,6 +16,11 @@
     <string name="fix_background_detail">ताकि बैटरी बचाने के लिए Android सिंक बंद न करे। ColorOS पर, ऐप की जानकारी → बैटरी उपयोग में बैकग्राउंड गतिविधि की भी अनुमति दें।</string>
     <string name="fix_notifications">सूचनाओं की अनुमति दें</string>
     <string name="fix_notifications_detail">सिंक की स्थिति और भेजें बटन दिखाता है</string>
+    <string name="your_devices">आपके डिवाइस</string>
+    <string name="this_device">यह डिवाइस</string>
+    <string name="device_online">ऑनलाइन</string>
+    <string name="device_seen">आख़िरी बार %1$s देखा गया</string>
+    <string name="no_other_devices">आपके दूसरे डिवाइस कनेक्ट होते ही यहाँ दिखेंगे। न दिखें तो उन्हें अपडेट करें।</string>
     <string name="more_ways">भेजने के और तरीके</string>
     <string name="way_select">टेक्स्ट चुनें</string>
     <string name="way_select_detail">फिर “कंप्यूटर पर भेजें” चुनें</string>
