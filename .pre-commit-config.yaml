@@ -24,7 +24,7 @@ repos:
         entry: sh -c 'go vet -mod=readonly ./... && go test -mod=readonly ./...'
         language: system
         pass_filenames: false
-        files: ^(cmd/|relay/|internal/|go\.(mod|sum)$)
+        files: ^(desktop/|relay/|internal/|go\.(mod|sum)$)
 
       - id: android-check
         name: Android lint and tests

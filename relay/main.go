@@ -313,9 +313,9 @@ func serve(ctx context.Context, args []string) error {
 	case *public && *token != "":
 		return errors.New("set either CLIPSYNC_TOKEN or CLIPSYNC_PUBLIC=true, not both")
 	case !*public && *token == "":
-		return errors.New("set CLIPSYNC_TOKEN to the output of clipsync token, or CLIPSYNC_PUBLIC=true to let every pairing in")
+		return errors.New("set CLIPSYNC_TOKEN to the relay token in clipsync's settings, or CLIPSYNC_PUBLIC=true to let every pairing in")
 	case !*public && !validToken(*token):
-		return errors.New("CLIPSYNC_TOKEN should be the output of clipsync token")
+		return errors.New("CLIPSYNC_TOKEN should be the relay token in clipsync's settings")
 	}
 	limit, err := strconv.ParseUint(*ttl, 10, 64)
 	if err != nil || limit > uint64(math.MaxInt64/int64(time.Second)) {

@@ -31,7 +31,7 @@ Apple's Universal Clipboard works only between Apple devices that are close to e
 - **Private by design.** Text is encrypted on the device before it leaves. The relay passes it on, but can't read it. It keeps only the latest copy, in memory, for 2 minutes.
 - **Skips your passwords.** clipsync ignores copies that password managers mark as private.
 - **No account.** No sign-up and no tracking. Use the public relay, or run your own in a small container on an x86-64 or ARM64 host.
-- **Set up in minutes.** One command per computer, and no server needed. Pair the phone by scanning a QR code.
+- **Set up in minutes.** One small app per computer, and no server or terminal needed. Pair the phone by scanning a QR code.
 - **Free and open source.** MIT licensed.
 
 ## How it works
@@ -44,7 +44,7 @@ flowchart LR
 ```
 
 - **Relay:** a tiny server that passes each copy to your other devices. The public relay at `clip.iyazerski.dev` serves everyone, and keeps each user's devices apart. You can also [host your own](#host-your-own-relay). Nobody is the "host", so it doesn't matter which device is on or what its IP address is.
-- **Computers:** a background service sends what you copy and puts what your other devices copy on the clipboard. It starts at login.
+- **Computers:** the app lives in the menu bar or the notification area. It sends what you copy and puts what your other devices copy on the clipboard. It starts at login.
 - **Phone:** the app puts what you copy on your computers on the phone's clipboard, automatically. Android doesn't let apps read the clipboard in the background, so sending from the phone takes one tap: select text and pick **Send to computer**, share text to clipsync, or tap the **Send clipboard** tile in Quick Settings.
 - **Encryption:** your devices share one secret. Each copy is sealed with AES-256-GCM on the device. The relay only gets a token derived from the secret, so it can tell which devices belong together, but it can't read what they send. Devices also refuse copies that are old or that they already got.
 
@@ -52,50 +52,41 @@ flowchart LR
 
 You need:
 
-Macs with Apple silicon, Windows PCs, or both. An Android phone with Android 14 or later is optional.
+Macs with macOS 13 or later, Windows PCs, or both. An Android phone with Android 14 or later is optional.
 
-### 1. Set up your first computer
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/desktop-dark.png">
+  <img src="docs/screenshots/desktop-light.png" width="600" alt="The clipsync app on a Mac, syncing, with this computer in its list of devices">
+</picture>
 
-On a Mac, in Terminal, with [Homebrew](https://brew.sh):
+### 1. Install clipsync on your computers
 
-```sh
-brew install iyazerski/tap/clipsync
-clipsync setup
-```
-
-Or without Homebrew:
+On a Mac, in Terminal:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/iyazerski/clipsync/main/install.sh | sh
-clipsync setup
+curl -fsSL https://github.com/iyazerski/clipsync/releases/latest/download/install.sh | sh
 ```
 
 On Windows, in PowerShell:
 
 ```powershell
-irm https://raw.githubusercontent.com/iyazerski/clipsync/main/install.ps1 | iex
-clipsync setup
+irm https://github.com/iyazerski/clipsync/releases/latest/download/install.ps1 | iex
 ```
 
-If the installer asks you to open a new terminal or to add a folder to your PATH, do that first. `setup` makes a new secret, links this computer to the public relay, and starts clipsync in the background. To use your own relay, add `--relay https://clip.example.com`: see [Host your own relay](#host-your-own-relay). If macOS asks whether clipsync may access the pasteboard, choose to always allow it.
+Or download the Mac disk image or the Windows setup from the [latest release](https://github.com/iyazerski/clipsync/releases/latest). The apps aren't signed by Apple or Microsoft yet, so the system warns about them the first time. On a Mac, open the app, then go to **System Settings → Privacy & Security** and click **Open Anyway**. On Windows, click **More info → Run anyway**. The commands above skip these warnings.
 
-### 2. Add your other computers
+### 2. Pair your devices
 
-On your first computer, run:
+1. On your first computer, open clipsync and choose **Set up my first device**.
+2. On each other computer, open clipsync and choose **Join my other devices**. On the first computer, click **Add device**, pick **Computer**, and copy the pairing link. Paste it on the other computer.
+3. For your phone, click **Add device** and scan the QR code with the phone's camera. The page that opens has the app: download it and install it. Android asks you to allow installing apps from your browser the first time. Then scan again, and tap **Open clipsync**.
+4. In the phone app, tap **Run in the background** under **Finish setup**, and **Quick Settings tile** to add it. On ColorOS, also go to App info → Battery usage and turn on **Allow background activity** and **Allow auto launch**.
 
-```sh
-clipsync pair
-```
+That's it. Copy something on one device and paste it on another. If macOS asks whether clipsync may paste, click **Allow**.
 
-It shows a `clipsync setup --relay … --secret …` command. Install clipsync on each other computer as in step 1, then run that command there.
+### Used the clipsync command before?
 
-### 3. Add your phone
-
-1. [Download the app](https://github.com/iyazerski/clipsync/releases/latest/download/clipsync.apk) on the phone and install it. Android asks you to allow installing apps from your browser the first time.
-2. Run `clipsync pair` on a computer, scan the QR code with the phone's camera, and tap **Open clipsync**.
-3. In the app, tap **Run in the background** under **Finish setup**, and **Quick Settings tile** to add it. On ColorOS, also go to App info → Battery usage and turn on **Allow background activity** and **Allow auto launch**.
-
-That's it. Copy something on one device and paste it on another.
+Install the app as in step 1. It keeps your pairing, and it replaces the old background service. Then remove the command: run `brew uninstall clipsync`, or delete `~/.local/bin/clipsync` on a Mac.
 
 ### If Defender blocks clipsync
 
@@ -111,14 +102,9 @@ On a work PC, IT may manage this rule: ask them to allow that folder.
 
 The public relay is a free service with no uptime promise. Host your own if you'd rather nobody else saw when your devices connect, or you want a relay that nobody can turn off. You need a server with Docker, ports 80 and 443 open, and a domain name pointing to it, like `clip.example.com`. A small cloud server or a home server works.
 
-On your first computer, link clipsync to your relay's address and print the token that your relay will accept:
+On your first computer, open clipsync, click **Use your own relay**, and enter your relay's address. Then choose **Set up my first device**. clipsync says it can't reach the relay yet. That's expected: you start it next. Open **Settings**, and copy the **Relay token**.
 
-```sh
-clipsync setup --relay https://clip.example.com
-clipsync token
-```
-
-`setup` says the relay isn't reachable yet. That's expected: you start it next. On your server, download [`relay/compose.yaml`](relay/compose.yaml), and create a `.env` file next to it with your domain and that token:
+On your server, download [`relay/compose.yaml`](relay/compose.yaml), and create a `.env` file next to it with your domain and that token:
 
 ```sh
 curl -fsSLO https://raw.githubusercontent.com/iyazerski/clipsync/main/relay/compose.yaml
@@ -128,7 +114,7 @@ docker compose up -d
 
 This starts the relay behind [Caddy](https://caddyserver.com), which gets a free HTTPS certificate for your domain and renews it. Within a minute, your computer connects by itself. The relay refuses every device that isn't paired with yours. To let anyone use it, like the public relay, set `CLIPSYNC_PUBLIC=true` instead of `CLIPSYNC_TOKEN`.
 
-Then add your other computers and your phone with `clipsync pair`, as in [Get started](#2-add-your-other-computers). Devices you already paired with the public relay keep their secret: run `clipsync setup --relay https://clip.example.com` on each computer, and pair the phone again.
+Then add your other computers and your phone, as in [Get started](#2-pair-your-devices). Devices that you already paired with the public relay keep their secret: on each computer, open **Settings**, click **Change** under **Relay**, and enter the new address. Unpair the phone, and pair it again.
 
 <details>
 <summary><b>Already have a reverse proxy?</b></summary>
@@ -144,17 +130,9 @@ The proxy must serve HTTPS and pass streamed responses through as they come. Cad
 
 </details>
 
-## Commands
+## Settings
 
-| Command | What it does |
-| --- | --- |
-| `clipsync setup` | Link this computer to the relay and start syncing in the background. Add `--secret` to join devices you already set up, and `--relay <url>` to use your own relay. |
-| `clipsync pair` | Show the QR code for your phone and the setup command for other computers. |
-| `clipsync token` | Print the token for your own relay's `CLIPSYNC_TOKEN`. |
-| `clipsync update` | Install the latest version and restart the background service. With Homebrew, run `brew upgrade clipsync` instead. |
-| `clipsync uninstall` | Stop syncing in the background. Your settings stay. |
-
-The service logs to `~/Library/Logs/clipsync.log` on a Mac and to `%LOCALAPPDATA%\clipsync\clipsync.log` on Windows. The phone app updates itself from **Check for updates** in its ⋮ menu.
+The app's **Settings** choose its language, whether it opens at login and shows in the menu bar or notification area, and whether it updates itself. **Show logs** there opens its log file. The phone app updates itself from **Check for updates** in its ⋮ menu.
 
 ## FAQ
 
@@ -189,24 +167,25 @@ Since Android 10, apps can't read the clipboard in the background, so no app can
 
 </details>
 <details>
-<summary><b>Does it work on iPhone, Linux or Intel Macs?</b></summary>
+<summary><b>Does it work on iPhone or Linux?</b></summary>
 
-Not yet. The desktop service runs on Macs with Apple silicon and on Windows, and the phone app is for Android.
+Not yet. The desktop app runs on Macs, with Apple silicon or Intel, and on Windows. The phone app is for Android.
 
 </details>
 <details>
 <summary><b>How do I remove it?</b></summary>
 
-Run `clipsync uninstall`. Then run `brew uninstall clipsync`, or delete the binary (`~/.local/bin/clipsync` on a Mac, `%LOCALAPPDATA%\Programs\clipsync` on Windows) and the settings folder (`~/Library/Application Support/clipsync` on a Mac, `%LOCALAPPDATA%\clipsync` on Windows). On the phone, tap **Unpair** in the ⋮ menu and uninstall the app.
+On a computer, open clipsync's **Settings** and click **Unpair**. Then quit clipsync from its menu. On a Mac, drag it from Applications to the Trash, or run `curl -fsSL https://github.com/iyazerski/clipsync/releases/latest/download/install.sh | sh -s -- --uninstall`. On Windows, uninstall it from **Settings → Apps**. On the phone, tap **Unpair** in the ⋮ menu and uninstall the app.
 
 </details>
 
 ## Build from source
 
-The desktop service and relay need [Go](https://go.dev/dl/) 1.27.4 or later. Android needs JDK 21 and the Android SDK. Set `ANDROID_HOME` to the SDK directory.
+The desktop app and relay need [Go](https://go.dev/dl/) 1.27.4 or later. The app is built with [MyGo](https://mygo.run). Android needs JDK 21 and the Android SDK. Set `ANDROID_HOME` to the SDK directory.
 
 ```sh
-make install   # build clipsync and put it in ~/.local/bin
+make dev       # run the desktop app, and reload it as you change it
+make app       # build the desktop app into desktop/build
 make test      # run the Go and Android checks
 cd android && ./gradlew assembleRelease   # build the app
 ```

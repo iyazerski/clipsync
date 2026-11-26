@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="824" height="824" viewBox="100 100 824 824">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#48484A"/>
+      <stop offset="1" stop-color="#1C1C1E"/>
+    </linearGradient>
+    <linearGradient id="board" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E5E5EA"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)"/>
+  <g transform="translate(58 71) scale(8.4)">
+    <rect x="32" y="30" width="44" height="50" rx="4" fill="url(#board)"/>
+    <rect x="41" y="25" width="26" height="12" rx="3" fill="#2C2C2E"/>
+    <path fill="#2C2C2E" d="M41,50h26v5h-26zM41,62h18v5h-18z"/>
+  </g>
+</svg>

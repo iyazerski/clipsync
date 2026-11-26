@@ -5,7 +5,7 @@
     <string name="paired">Associé</string>
     <string name="allow_installs">Autorisez clipsync à installer des mises à jour, puis appuyez à nouveau</string>
     <string name="unpair_title">Dissocier ce téléphone\u00a0?</string>
-    <string name="unpair_text">La synchronisation s\'arrête. Pour l\'associer à nouveau, exécutez clipsync pair sur un ordinateur.</string>
+    <string name="unpair_text">La synchronisation s\'arrête. Pour l\'associer à nouveau, scannez le code QR de clipsync sur un ordinateur.</string>
     <string name="unpair">Dissocier</string>
     <string name="cancel">Annuler</string>
     <string name="more">Plus</string>
@@ -42,7 +42,8 @@
     <string name="pair_title">Associez vos ordinateurs</string>
     <string name="pair_intro">Ce que vous copiez sur un ordinateur arrivera alors sur ce téléphone, et vous pourrez le renvoyer d\'une simple pression.</string>
     <string name="pair_steps">Associer en deux étapes</string>
-    <string name="pair_step_run" formatted="false">Sur un ordinateur, exécutez %1$s</string>
+    <string name="pair_step_open" formatted="false">Dans clipsync sur un ordinateur, cliquez sur %1$s</string>
+    <string name="pair_add_device">Ajouter un appareil</string>
     <string name="pair_step_run_detail">Un code QR s\'affiche</string>
     <string name="pair_step_scan">Scannez le code QR avec l\'appareil photo de ce téléphone</string>
     <string name="pair_step_scan_detail">clipsync s\'ouvre et s\'associe</string>
@@ -65,7 +66,7 @@
     <string name="relay_https">Le relais doit être une adresse https://</string>
     <string name="relay_refused">Le relais a refusé la clé secrète\u00a0: associez à nouveau</string>
     <string name="relay_answered">Le relais a répondu %1$d</string>
-    <string name="secret_length">La clé secrète doit faire 43 caractères, comme l\'affiche `clipsync pair`</string>
+    <string name="secret_length">La clé secrète doit faire 43 caractères, comme dans le lien d\'association</string>
     <string name="clip_not_base64">Pas du base64url</string>
     <string name="clip_short">Clip trop court</string>
     <string name="clip_format">Le format de clip %1$d est inconnu\u00a0: mettez clipsync à jour</string>

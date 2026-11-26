@@ -5,7 +5,7 @@
     <string name="paired">تم الإقران</string>
     <string name="allow_installs">اسمح لـ clipsync بتثبيت التحديثات، ثم انقر مرة أخرى</string>
     <string name="unpair_title">هل تريد إلغاء إقران هذا الهاتف؟</string>
-    <string name="unpair_text">ستتوقف المزامنة. للإقران مرة أخرى، شغّل clipsync pair على جهاز كمبيوتر.</string>
+    <string name="unpair_text">ستتوقف المزامنة. للإقران مرة أخرى، امسح رمز QR في clipsync على جهاز كمبيوتر.</string>
     <string name="unpair">إلغاء الإقران</string>
     <string name="cancel">إلغاء</string>
     <string name="more">المزيد</string>
@@ -42,7 +42,8 @@
     <string name="pair_title">الإقران مع أجهزة الكمبيوتر</string>
     <string name="pair_intro">بعدها يصل ما تنسخه على جهاز الكمبيوتر إلى هذا الهاتف، ويمكنك الإرسال في الاتجاه المعاكس بنقرة واحدة.</string>
     <string name="pair_steps">الإقران في خطوتين</string>
-    <string name="pair_step_run" formatted="false">على جهاز كمبيوتر، شغّل %1$s</string>
+    <string name="pair_step_open" formatted="false">في clipsync على جهاز كمبيوتر، انقر على %1$s</string>
+    <string name="pair_add_device">إضافة جهاز</string>
     <string name="pair_step_run_detail">يعرض رمز QR</string>
     <string name="pair_step_scan">امسح رمز QR بكاميرا هذا الهاتف</string>
     <string name="pair_step_scan_detail">يفتح clipsync ويُكمل الإقران</string>
@@ -65,7 +66,7 @@
     <string name="relay_https">يجب أن يكون عنوان المرحّل بصيغة \u2066https://\u2069</string>
     <string name="relay_refused">رفض المرحّل المفتاح السري: أعد الإقران</string>
     <string name="relay_answered">ردّ المرحّل بالرمز %1$d</string>
-    <string name="secret_length">يجب أن يتكون المفتاح السري من 43 حرفًا كما يعرضه \u2066`clipsync pair`\u2069</string>
+    <string name="secret_length">يجب أن يتكون المفتاح السري من 43 حرفًا كما في رابط الإقران</string>
     <string name="clip_not_base64">ليس بصيغة base64url</string>
     <string name="clip_short">المقطع قصير جدًا</string>
     <string name="clip_format">تنسيق المقطع %1$d غير معروف: حدّث clipsync</string>

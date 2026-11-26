@@ -5,7 +5,7 @@
     <string name="paired">पेयर हो गया</string>
     <string name="allow_installs">clipsync को अपडेट इंस्टॉल करने की अनुमति दें, फिर दोबारा टैप करें</string>
     <string name="unpair_title">इस फ़ोन को अनपेयर करें?</string>
-    <string name="unpair_text">सिंक रुक जाएगा। फिर से पेयर करने के लिए किसी कंप्यूटर पर clipsync pair चलाएँ।</string>
+    <string name="unpair_text">सिंक रुक जाएगा। फिर से पेयर करने के लिए किसी कंप्यूटर पर clipsync का QR कोड स्कैन करें।</string>
     <string name="unpair">अनपेयर करें</string>
     <string name="cancel">रद्द करें</string>
     <string name="more">और</string>
@@ -42,7 +42,8 @@
     <string name="pair_title">अपने कंप्यूटर से पेयर करें</string>
     <string name="pair_intro">फिर आप कंप्यूटर पर जो कॉपी करेंगे, वह इस फ़ोन पर आ जाएगा, और आप एक टैप में वापस भेज सकेंगे।</string>
     <string name="pair_steps">दो चरणों में पेयर करें</string>
-    <string name="pair_step_run" formatted="false">किसी कंप्यूटर पर %1$s चलाएँ</string>
+    <string name="pair_step_open" formatted="false">किसी कंप्यूटर पर clipsync में %1$s पर क्लिक करें</string>
+    <string name="pair_add_device">डिवाइस जोड़ें</string>
     <string name="pair_step_run_detail">यह एक QR कोड दिखाता है</string>
     <string name="pair_step_scan">इस फ़ोन के कैमरे से QR कोड स्कैन करें</string>
     <string name="pair_step_scan_detail">clipsync खुलकर पेयर हो जाता है</string>
@@ -65,7 +66,7 @@
     <string name="relay_https">रिले का पता https:// वाला होना चाहिए</string>
     <string name="relay_refused">रिले ने सीक्रेट अस्वीकार कर दिया: फिर से पेयर करें</string>
     <string name="relay_answered">रिले का जवाब: %1$d</string>
-    <string name="secret_length">सीक्रेट 43 अक्षरों का होना चाहिए, जैसा `clipsync pair` दिखाता है</string>
+    <string name="secret_length">सीक्रेट 43 अक्षरों का होना चाहिए, जैसा पेयरिंग लिंक में है</string>
     <string name="clip_not_base64">base64url नहीं है</string>
     <string name="clip_short">क्लिप बहुत छोटी है</string>
     <string name="clip_format">क्लिप फ़ॉर्मैट %1$d अज्ञात है: clipsync अपडेट करें</string>
