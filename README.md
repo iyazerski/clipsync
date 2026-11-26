@@ -15,8 +15,8 @@ Free, end-to-end encrypted, and no account needed.
 [![Buy me a coffee](https://img.shields.io/badge/buy%20me%20a%20coffee-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/iyazerski)
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/desktop-dark.png">
-  <img src="docs/screenshots/desktop-light.png" width="640" alt="clipsync on a Mac showing Syncing status and a list of paired devices">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/hero-dark.png">
+  <img src="docs/screenshots/hero-light.png" width="840" alt="clipsync running on desktop and Android, syncing MacBook Air, Pixel 9, and Office PC">
 </picture>
 
 </div>

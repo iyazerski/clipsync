@@ -39,6 +39,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -48,8 +49,12 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.rememberTextFieldState
@@ -61,31 +66,31 @@ import androidx.compose.material3.DropdownMenuGroup
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.DropdownMenuPopup
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FloatingActionButtonDefaults
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeFlexibleTopAppBar
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MediumExtendedFloatingActionButton
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedListItem
+import androidx.compose.material3.SmallExtendedFloatingActionButton
+import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -99,7 +104,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -113,6 +117,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
@@ -290,12 +295,15 @@ class MainActivity : ComponentActivity() {
     @Composable
     private fun Screen() {
         // Each screen keeps its own scroll, so pairing from deep in the form, or unpairing, starts the other at its top.
-        val (bar, scroll) = key(setup.paired) { TopAppBarDefaults.exitUntilCollapsedScrollBehavior() to rememberScrollState() }
+        val scroll = key(setup.paired) { rememberScrollState() }
         // The menu starts updates from any scroll position, and their progress shows at the top.
         LaunchedEffect(updating != null) {
             if (updating != null) scroll.animateScrollTo(0)
         }
+        val scrolled by remember(scroll) { derivedStateOf { scroll.value > 0 } }
+        val fabExpanded by remember(scroll) { derivedStateOf { scroll.value < 48 } }
         val motion = MaterialTheme.motionScheme
+        val accents = LocalClipsyncAccents.current
         val haptics = LocalHapticFeedback.current
         var confirmUnpair by rememberSaveable { mutableStateOf(false) }
         LaunchedEffect(joining.joined) {
@@ -303,21 +311,25 @@ class MainActivity : ComponentActivity() {
             joining.joined = null
             if (!settings.paired) pair(joined.relay, joined.secret)
         }
-        // Lists and cards in the bright surface color stand out from it, in light and dark alike.
-        val background = MaterialTheme.colorScheme.surfaceContainer
+        val topBarColor by animateColorAsState(
+            if (scrolled) MaterialTheme.colorScheme.surfaceContainerHigh else accents.canvas,
+            motion.defaultEffectsSpec(),
+            label = "topBar",
+        )
+        val topBarChipColor by animateColorAsState(
+            if (scrolled) accents.card else accents.chip,
+            motion.defaultEffectsSpec(),
+            label = "topBarChip",
+        )
         Scaffold(
-            modifier = Modifier.nestedScroll(bar.nestedScrollConnection),
-            containerColor = background,
+            containerColor = accents.canvas,
             topBar = {
-                LargeFlexibleTopAppBar(
-                    title = { Text(stringResource(R.string.app_name)) },
-                    subtitle = if (setup.paired) ({ Text(setup.relayHost) }) else null,
-                    actions = { Menu(onUnpair = { confirmUnpair = true }) },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = background,
-                        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    ),
-                    scrollBehavior = bar,
+                TopBar(
+                    relayHost = if (setup.paired) setup.relayHost else null,
+                    syncState = syncState,
+                    containerColor = topBarColor,
+                    chipColor = topBarChipColor,
+                    onUnpair = { confirmUnpair = true },
                 )
             },
             floatingActionButton = {
@@ -326,17 +338,40 @@ class MainActivity : ComponentActivity() {
                     enter = scaleIn(motion.defaultSpatialSpec()) + fadeIn(motion.defaultEffectsSpec()),
                     exit = scaleOut(motion.fastSpatialSpec()) + fadeOut(motion.fastEffectsSpec()),
                 ) {
-                    MediumExtendedFloatingActionButton(onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-                        sendClipboard()
-                    }) {
-                        Symbol(R.drawable.sym_content_paste_go, Modifier.size(FloatingActionButtonDefaults.MediumIconSize))
-                        Spacer(Modifier.width(12.dp))
-                        Text(stringResource(R.string.send_clipboard))
-                    }
+                    val label = stringResource(R.string.send_clipboard)
+                    SmallExtendedFloatingActionButton(
+                        onClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                            sendClipboard()
+                        },
+                        expanded = fabExpanded,
+                        shape = RoundedCornerShape(20.dp),
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.widthIn(max = 260.dp),
+                        icon = {
+                            Symbol(
+                                R.drawable.sym_content_paste_go,
+                                Modifier.size(22.dp),
+                                description = if (fabExpanded) null else label,
+                            )
+                        },
+                        text = {
+                            Text(
+                                label,
+                                style = MaterialTheme.typography.labelLarge,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        },
+                    )
                 }
             },
-            snackbarHost = { SnackbarHost(snackbar) },
+            snackbarHost = {
+                SnackbarHost(snackbar) { data ->
+                    Snackbar(data, shape = RoundedCornerShape(16.dp))
+                }
+            },
         ) { insets ->
             Column(
                 Modifier
@@ -347,7 +382,7 @@ class MainActivity : ComponentActivity() {
                     // Inside the scroll, so the list scrolls behind the navigation bar.
                     .padding(insets)
                     .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
                 UpdateProgress(updating)
                 AnimatedContent(
@@ -358,13 +393,13 @@ class MainActivity : ComponentActivity() {
                     },
                     label = "screen",
                 ) { paired ->
-                    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
                         // The form stays on screen while it fades out, so a late Done mustn't replace a new pairing.
                         if (paired) Paired() else Unpaired(joining.busy, joining.error, { joining.error = null }) { relay, text -> if (!setup.paired) join(relay, text) }
                     }
                 }
                 // Room to scroll the last row out from under the Send button.
-                Spacer(Modifier.height(if (setup.paired) 96.dp else 8.dp))
+                Spacer(Modifier.height(if (setup.paired) 88.dp else 12.dp))
             }
         }
         if (confirmUnpair) {
@@ -387,14 +422,77 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @Composable
+    private fun TopBar(
+        relayHost: String?,
+        syncState: SyncState,
+        containerColor: Color,
+        chipColor: Color,
+        onUnpair: () -> Unit,
+    ) {
+        val accents = LocalClipsyncAccents.current
+        val colors = MaterialTheme.colorScheme
+        val targetDot = when (syncState) {
+            is SyncState.Connected -> accents.connectedAccent
+            SyncState.Connecting -> colors.primary
+            is SyncState.Error -> colors.error
+            SyncState.Offline, SyncState.Stopped -> colors.outline
+        }
+        val dotColor by animateColorAsState(targetDot, MaterialTheme.motionScheme.defaultEffectsSpec(), label = "dot")
+        Surface(color = containerColor) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(start = 18.dp, end = 14.dp, top = 12.dp, bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Text(
+                        stringResource(R.string.app_name),
+                        style = MaterialTheme.typography.headlineMediumEmphasized,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (!relayHost.isNullOrEmpty()) {
+                        Surface(color = chipColor, shape = CircleShape) {
+                            Row(
+                                Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                StatusDot(dotColor)
+                                Text(
+                                    relayHost,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = colors.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                    }
+                }
+                Menu(chipColor = chipColor, onUnpair = onUnpair)
+            }
+        }
+    }
+
     /** The top bar's overflow menu: updates, the version, and unpairing. */
     @Composable
-    private fun Menu(onUnpair: () -> Unit) {
+    private fun Menu(chipColor: Color, onUnpair: () -> Unit) {
         var open by remember { mutableStateOf(false) }
         val versionName = remember { packageManager.getPackageInfo(packageName, 0).versionName }
         val count = if (setup.paired) 2 else 1
         Box {
-            IconButton(onClick = { open = true }) { Symbol(R.drawable.sym_more_vert, description = stringResource(R.string.more)) }
+            FilledTonalIconButton(
+                onClick = { open = true },
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = chipColor,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                ),
+            ) { Symbol(R.drawable.sym_more_vert, description = stringResource(R.string.more)) }
             DropdownMenuPopup(expanded = open, onDismissRequest = { open = false }) {
                 DropdownMenuGroup(shapes = MenuDefaults.groupShape(0, 1)) {
                     DropdownMenuItem(
@@ -437,30 +535,58 @@ class MainActivity : ComponentActivity() {
             }
         }
         val connected = syncState is SyncState.Connected
+        val colors = MaterialTheme.colorScheme
+        val accents = LocalClipsyncAccents.current
         val count = 1 + devices.size
         Section(stringResource(R.string.your_devices)) {
-            InfoRow(0, count, R.drawable.sym_phone_android, name, "Android") {
-                Text(stringResource(R.string.this_device), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-            }
+            SegmentedListItem(
+                shapes = rowShapes(0, count),
+                colors = rowColors(),
+                leadingContent = {
+                    IconBadge(R.drawable.sym_phone_android, colors.primaryContainer, colors.onPrimaryContainer)
+                },
+                trailingContent = { TagPill(stringResource(R.string.this_device)) },
+                supportingContent = { Text("Android") },
+            ) { Text(name, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) }
             devices.forEachIndexed { index, device ->
                 val (icon, kind) = when (device.kind) {
                     "android" -> R.drawable.sym_phone_android to "Android"
                     "windows" -> R.drawable.sym_desktop_windows to "Windows"
                     else -> R.drawable.sym_laptop_mac to "macOS"
                 }
-                val status = if (device.online && connected) {
+                val online = device.online && connected
+                val status = if (online) {
                     stringResource(R.string.device_online)
                 } else {
                     stringResource(R.string.device_seen, ago(device.seen, now))
                 }
-                InfoRow(index + 1, count, icon, device.name, "$kind · $status")
+                SegmentedListItem(
+                    shapes = rowShapes(index + 1, count),
+                    colors = rowColors(),
+                    leadingContent = {
+                        IconBadge(
+                            icon,
+                            containerColor = if (online) accents.onlineIconContainer else colors.surfaceContainerHigh,
+                            contentColor = if (online) accents.onlineIconContent else colors.onSurfaceVariant,
+                        )
+                    },
+                    supportingContent = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            if (online) StatusDot(accents.connectedAccent)
+                            Text("$kind · $status")
+                        }
+                    },
+                ) { Text(device.name, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) }
             }
             if (devices.isEmpty()) {
                 Text(
                     stringResource(R.string.no_other_devices),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp),
+                    color = colors.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 12.dp, top = 6.dp, end = 12.dp),
                 )
             }
         }
@@ -468,6 +594,7 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun Paired() {
+        val accents = LocalClipsyncAccents.current
         StatusHero(syncState)
         val fixes = buildList {
             if (!setup.battery) {
@@ -492,23 +619,24 @@ class MainActivity : ComponentActivity() {
             }
         }
         if (fixes.isNotEmpty()) {
-            val colors = MaterialTheme.colorScheme
-            Section(stringResource(R.string.finish_setup)) {
+            Section(stringResource(R.string.finish_setup), titleColor = accents.warningIconContent) {
                 fixes.forEachIndexed { index, fix ->
                     SegmentedListItem(
                         onClick = fix.onClick,
-                        shapes = ListItemDefaults.segmentedShapes(index, fixes.size),
+                        shapes = rowShapes(index, fixes.size),
                         colors = ListItemDefaults.segmentedColors(
-                            containerColor = colors.tertiaryContainer,
-                            contentColor = colors.onTertiaryContainer,
-                            leadingContentColor = colors.onTertiaryContainer,
-                            trailingContentColor = colors.onTertiaryContainer,
-                            supportingContentColor = colors.onTertiaryContainer,
+                            containerColor = accents.warningContainer,
+                            contentColor = accents.onWarningContainer,
+                            leadingContentColor = accents.warningIconContent,
+                            trailingContentColor = accents.onWarningContainer,
+                            supportingContentColor = accents.onWarningContainer.copy(alpha = 0.85f),
                         ),
-                        leadingContent = { Symbol(fix.icon) },
+                        leadingContent = {
+                            IconBadge(fix.icon, accents.warningIconContainer, accents.warningIconContent)
+                        },
                         trailingContent = { Symbol(R.drawable.sym_chevron_right) },
                         supportingContent = { Text(fix.detail) },
-                    ) { Text(fix.title) }
+                    ) { Text(fix.title, fontWeight = FontWeight.Bold) }
                 }
             }
         }
@@ -518,18 +646,29 @@ class MainActivity : ComponentActivity() {
             InfoRow(1, 4, R.drawable.sym_share, stringResource(R.string.way_share), stringResource(R.string.way_share_detail))
             InfoRow(2, 4, R.drawable.sym_notifications, stringResource(R.string.way_notification), stringResource(R.string.way_notification_detail))
             if (setup.tileAdded) {
-                InfoRow(3, 4, R.drawable.sym_widgets, stringResource(R.string.way_tile), stringResource(R.string.way_tile_detail)) {
-                    Symbol(R.drawable.sym_check, tint = MaterialTheme.colorScheme.primary, description = stringResource(R.string.added))
-                }
+                SegmentedListItem(
+                    shapes = rowShapes(3, 4),
+                    colors = rowColors(),
+                    leadingContent = {
+                        IconBadge(R.drawable.sym_widgets, accents.onlineIconContainer, accents.onlineIconContent)
+                    },
+                    trailingContent = {
+                        Symbol(R.drawable.sym_check, tint = accents.onlineIconContent, description = stringResource(R.string.added))
+                    },
+                    supportingContent = { Text(stringResource(R.string.way_tile_detail)) },
+                ) { Text(stringResource(R.string.way_tile), fontWeight = FontWeight.Bold) }
             } else {
+                val colors = MaterialTheme.colorScheme
                 SegmentedListItem(
                     onClick = ::addTile,
-                    shapes = ListItemDefaults.segmentedShapes(3, 4),
+                    shapes = rowShapes(3, 4),
                     colors = rowColors(),
-                    leadingContent = { Symbol(R.drawable.sym_widgets) },
-                    trailingContent = { Symbol(R.drawable.sym_add, description = stringResource(R.string.add)) },
+                    leadingContent = {
+                        IconBadge(R.drawable.sym_widgets, colors.surfaceContainerHigh, colors.onSurfaceVariant)
+                    },
+                    trailingContent = { TagPill(stringResource(R.string.add), icon = R.drawable.sym_add) },
                     supportingContent = { Text(stringResource(R.string.way_tile_add)) },
-                ) { Text(stringResource(R.string.way_tile)) }
+                ) { Text(stringResource(R.string.way_tile), fontWeight = FontWeight.Bold) }
             }
         }
     }
@@ -567,6 +706,8 @@ private class StatusView(
     val shape: RoundedPolygon,
     val icon: Int,
     val container: Color,
+    val content: Color,
+    val subtle: Color,
     val accent: Color,
     val onAccent: Color,
 )
@@ -574,6 +715,7 @@ private class StatusView(
 @Composable
 private fun statusView(state: SyncState): StatusView {
     val colors = MaterialTheme.colorScheme
+    val accents = LocalClipsyncAccents.current
     return when (state) {
         is SyncState.Connected -> StatusView(
             stringResource(R.string.status_connected),
@@ -584,9 +726,11 @@ private fun statusView(state: SyncState): StatusView {
             },
             MaterialShapes.Cookie9Sided,
             R.drawable.sym_check,
-            colors.primaryContainer,
-            colors.primary,
-            colors.onPrimary,
+            accents.connectedContainer,
+            accents.onConnectedContainer,
+            accents.connectedSubtle,
+            accents.connectedAccent,
+            accents.onConnectedAccent,
         )
         // A loading indicator takes the place of the shape and icon.
         SyncState.Connecting -> StatusView(
@@ -594,7 +738,9 @@ private fun statusView(state: SyncState): StatusView {
             stringResource(R.string.status_reaching),
             MaterialShapes.Cookie9Sided,
             R.drawable.sym_check,
-            colors.surfaceBright,
+            accents.card,
+            colors.onSurface,
+            colors.onSurfaceVariant,
             colors.primary,
             colors.onPrimary,
         )
@@ -603,7 +749,9 @@ private fun statusView(state: SyncState): StatusView {
             stringResource(R.string.status_retrying),
             MaterialShapes.Ghostish,
             R.drawable.sym_cloud_off,
-            colors.surfaceBright,
+            accents.card,
+            colors.onSurface,
+            colors.onSurfaceVariant,
             colors.secondary,
             colors.onSecondary,
         )
@@ -612,7 +760,9 @@ private fun statusView(state: SyncState): StatusView {
             stringResource(R.string.status_resume),
             MaterialShapes.Ghostish,
             R.drawable.sym_cloud_off,
-            colors.surfaceBright,
+            accents.card,
+            colors.onSurface,
+            colors.onSurfaceVariant,
             colors.secondary,
             colors.onSecondary,
         )
@@ -622,13 +772,15 @@ private fun statusView(state: SyncState): StatusView {
             MaterialShapes.SoftBurst,
             R.drawable.sym_priority_high,
             colors.errorContainer,
+            colors.onErrorContainer,
+            colors.onErrorContainer.copy(alpha = 0.85f),
             colors.error,
             colors.onError,
         )
     }
 }
 
-/** The sync state, big and first: a shape that morphs with it, and what it means. */
+/** The sync state, compact and first: a shape that morphs with it beside its details. */
 @Composable
 private fun StatusHero(state: SyncState) {
     val view = statusView(state)
@@ -637,32 +789,48 @@ private fun StatusHero(state: SyncState) {
     var badge by remember { mutableStateOf(view) }
     SideEffect { if (state != SyncState.Connecting) badge = view }
     val container by animateColorAsState(view.container, motion.defaultEffectsSpec(), label = "container")
+    val content by animateColorAsState(view.content, motion.defaultEffectsSpec(), label = "content")
+    val subtle by animateColorAsState(view.subtle, motion.defaultEffectsSpec(), label = "subtle")
     val accent by animateColorAsState(view.accent, motion.defaultEffectsSpec(), label = "accent")
     Surface(
         color = container,
-        shape = MaterialTheme.shapes.extraLargeIncreased,
+        contentColor = content,
+        shape = RoundedCornerShape(28.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(Modifier.padding(24.dp)) {
-            Crossfade(state == SyncState.Connecting, Modifier.size(96.dp), motion.defaultEffectsSpec(), label = "badge") { connecting ->
+        Row(
+            Modifier.padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Crossfade(state == SyncState.Connecting, Modifier.size(64.dp), motion.defaultEffectsSpec(), label = "badge") { connecting ->
                 if (connecting) {
                     LoadingIndicator(Modifier.fillMaxSize(), color = accent)
                 } else {
                     val shown = if (state == SyncState.Connecting) badge else view
                     MorphingShape(shown.shape, accent, Modifier.fillMaxSize()) {
-                        Symbol(shown.icon, Modifier.size(40.dp), tint = shown.onAccent)
+                        Symbol(shown.icon, Modifier.size(30.dp), tint = shown.onAccent)
                     }
                 }
             }
-            Spacer(Modifier.height(20.dp))
-            Text(view.title, style = MaterialTheme.typography.headlineLargeEmphasized)
-            Text(view.detail, style = MaterialTheme.typography.bodyLarge)
-            Spacer(Modifier.height(16.dp))
-            Text(
-                stringResource(R.string.status_about),
-                style = MaterialTheme.typography.bodyMedium,
-                color = LocalContentColor.current.copy(alpha = 0.75f),
-            )
+            Column(Modifier.weight(1f)) {
+                Text(view.title, style = MaterialTheme.typography.headlineSmallEmphasized)
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    view.detail,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        fontFeatureSettings = "tnum",
+                    ),
+                    color = subtle,
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    stringResource(R.string.status_about),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = subtle.copy(alpha = 0.85f),
+                )
+            }
         }
     }
 }
@@ -718,11 +886,11 @@ class JoinModel : ViewModel() {
 
 @Composable
 private fun Unpaired(joining: Boolean, error: Message?, onEdit: () -> Unit, onJoin: (relay: String, code: String) -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        MorphingShape(MaterialShapes.Cookie12Sided, MaterialTheme.colorScheme.primaryContainer, Modifier.size(136.dp)) {
-            Symbol(R.drawable.sym_qr_code_scanner, Modifier.size(56.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+    Column(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        MorphingShape(MaterialShapes.Cookie12Sided, MaterialTheme.colorScheme.primaryContainer, Modifier.size(112.dp)) {
+            Symbol(R.drawable.sym_qr_code_scanner, Modifier.size(46.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(20.dp))
         Text(
             stringResource(R.string.pair_title),
             style = MaterialTheme.typography.headlineMediumEmphasized,
@@ -731,9 +899,10 @@ private fun Unpaired(joining: Boolean, error: Message?, onEdit: () -> Unit, onJo
         Spacer(Modifier.height(8.dp))
         Text(
             stringResource(R.string.pair_intro),
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 8.dp),
         )
     }
     Section(stringResource(R.string.pair_steps)) {
@@ -745,7 +914,7 @@ private fun Unpaired(joining: Boolean, error: Message?, onEdit: () -> Unit, onJo
             1,
             buildAnnotatedString {
                 append(before)
-                withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, color = button)) { append(label) }
+                withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = button)) { append(label) }
                 append(after)
             },
             stringResource(R.string.pair_step_run_detail),
@@ -790,8 +959,12 @@ private fun CodeEntry(joining: Boolean, error: Message?, onEdit: () -> Unit, onJ
                 isError = error != null,
                 supportingText = error?.let { { Text(it.text()) } },
                 enabled = !joining,
+                shape = RoundedCornerShape(16.dp),
                 lineLimits = TextFieldLineLimits.SingleLine,
-                textStyle = MaterialTheme.typography.titleLarge.copy(textDirection = TextDirection.Ltr),
+                textStyle = MaterialTheme.typography.titleLarge.copy(
+                    textDirection = TextDirection.Ltr,
+                    fontFeatureSettings = "tnum",
+                ),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done, autoCorrectEnabled = false),
                 onKeyboardAction = { join() },
                 modifier = Modifier.fillMaxWidth().focusRequester(focus),
@@ -801,6 +974,7 @@ private fun CodeEntry(joining: Boolean, error: Message?, onEdit: () -> Unit, onJ
                 label = { Text(stringResource(R.string.relay)) },
                 supportingText = { Text(stringResource(R.string.relay_detail)) },
                 enabled = !joining,
+                shape = RoundedCornerShape(16.dp),
                 lineLimits = TextFieldLineLimits.SingleLine,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, autoCorrectEnabled = false),
                 modifier = Modifier.fillMaxWidth(),
@@ -828,32 +1002,44 @@ private fun Message.text() = stringResource(id, *args.toTypedArray())
 
 /** A titled group of rows that join into one rounded block. */
 @Composable
-private fun Section(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+private fun Section(
+    title: String,
+    titleColor: Color = MaterialTheme.colorScheme.primary,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Text(
             title,
             style = MaterialTheme.typography.titleSmallEmphasized,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(start = 16.dp, bottom = 8.dp),
+            color = titleColor,
+            modifier = Modifier.padding(start = 12.dp, bottom = 5.dp),
         )
         content()
     }
 }
 
-/** Colors for the rows of a [Section]. */
+/** Colors and shapes for the rows of a [Section]. */
 @Composable
-private fun rowColors() = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceBright)
+private fun rowColors() = ListItemDefaults.segmentedColors(containerColor = LocalClipsyncAccents.current.card)
+
+@Composable
+private fun rowShapes(index: Int, count: Int) = ListItemDefaults.segmentedShapes(
+    index,
+    count,
+    defaultShapes = ListItemDefaults.shapes(shape = RoundedCornerShape(8.dp)),
+)
 
 /** Row [index] of [count] in a [Section], which only explains. */
 @Composable
 private fun InfoRow(index: Int, count: Int, icon: Int, title: String, detail: String, trailing: (@Composable () -> Unit)? = null) {
+    val colors = MaterialTheme.colorScheme
     SegmentedListItem(
-        shapes = ListItemDefaults.segmentedShapes(index, count),
+        shapes = rowShapes(index, count),
         colors = rowColors(),
-        leadingContent = { Symbol(icon) },
+        leadingContent = { IconBadge(icon, colors.surfaceContainerHigh, colors.onSurfaceVariant) },
         trailingContent = trailing,
         supportingContent = { Text(detail) },
-    ) { Text(title) }
+    ) { Text(title, fontWeight = FontWeight.Bold) }
 }
 
 /** A numbered pairing step in a [Section] of two. */
@@ -861,7 +1047,7 @@ private fun InfoRow(index: Int, count: Int, icon: Int, title: String, detail: St
 private fun Step(number: Int, title: AnnotatedString, detail: String) {
     val colors = MaterialTheme.colorScheme
     SegmentedListItem(
-        shapes = ListItemDefaults.segmentedShapes(number - 1, 2),
+        shapes = rowShapes(number - 1, 2),
         colors = rowColors(),
         leadingContent = {
             Box(
@@ -870,5 +1056,5 @@ private fun Step(number: Int, title: AnnotatedString, detail: String) {
             ) { Text("$number", style = MaterialTheme.typography.titleMediumEmphasized, color = colors.onPrimary) }
         },
         supportingContent = { Text(detail) },
-    ) { Text(title) }
+    ) { Text(title, fontWeight = FontWeight.SemiBold) }
 }
