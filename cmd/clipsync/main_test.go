@@ -53,7 +53,8 @@ func TestPairingCommands(t *testing.T) {
 	}
 	address := relay.URL
 	run("setup", "--relay", address+"/", "--secret", fixtureSecret)
-	run("setup", "--relay", address)
+	// Without --relay, setup keeps the relay that the computer already uses.
+	run("setup")
 	if got := strings.TrimSpace(run("token")); got != fixtureToken {
 		t.Fatalf("token is incompatible with the existing relay: %q", got)
 	}

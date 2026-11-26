@@ -643,7 +643,7 @@ private fun ManualPairing(onPair: (relay: String, secret: String) -> Unit) {
             }
             return@AnimatedContent
         }
-        val relay = rememberTextFieldState()
+        val relay = rememberTextFieldState("https://clip.iyazerski.dev")
         val secret = rememberTextFieldState()
         var showSecret by rememberSaveable { mutableStateOf(false) }
         val ready = relay.text.isNotBlank() && secret.text.isNotBlank()
@@ -652,7 +652,6 @@ private fun ManualPairing(onPair: (relay: String, secret: String) -> Unit) {
             OutlinedTextField(
                 state = relay,
                 label = { Text(stringResource(R.string.relay)) },
-                placeholder = { Text("https://clip.example.com") },
                 lineLimits = TextFieldLineLimits.SingleLine,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next, autoCorrectEnabled = false),
                 modifier = Modifier.fillMaxWidth(),

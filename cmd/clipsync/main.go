@@ -3,6 +3,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -25,15 +26,19 @@ import (
 
 var version = "0.1.0"
 
+const publicRelay = "https://clip.iyazerski.dev"
+
 const help = `Usage: clipsync <command>
 
-  setup --relay <https://url> [--secret <secret>]   Pair and start syncing at login
-  pair                                            Show pairing QR and command
-  token                                           Print the relay token
-  run                                             Sync in the foreground
-  uninstall                                       Stop syncing at login (keep settings)
-  update                                          Install the latest release
-  --version                                       Print the version
+  setup [--relay <https://url>] [--secret <secret>]   Pair and start syncing at login
+  pair                                              Show pairing QR and command
+  token                                             Print the token for a private relay
+  run                                               Sync in the foreground
+  uninstall                                         Stop syncing at login (keep settings)
+  update                                            Install the latest release
+  --version                                         Print the version
+
+Without --relay, setup keeps the relay it used before, or uses ` + publicRelay + `.
 `
 
 type agent interface {
@@ -139,7 +144,7 @@ func cli(ctx context.Context, args []string, out io.Writer, service agent) error
 	}
 	cfg, err := loadConfig(path)
 	if errors.Is(err, os.ErrNotExist) {
-		return errors.New("not set up yet: run clipsync setup --relay <url> first")
+		return errors.New("not set up yet: run clipsync setup first")
 	}
 	if err != nil {
 		return err
@@ -183,15 +188,17 @@ func setup(ctx context.Context, path string, args []string, out io.Writer, servi
 	if flags.NArg() > 0 {
 		return errors.New("setup takes only --relay and --secret flags")
 	}
-	addressValue, err := client.NormalizeRelay(*address)
-	if err != nil {
-		return err
-	}
 	cfg, err := loadConfig(path)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
-	cfg.Relay = addressValue
+	if *address == "" {
+		*address = cmp.Or(cfg.Relay, publicRelay)
+	}
+	cfg.Relay, err = client.NormalizeRelay(*address)
+	if err != nil {
+		return err
+	}
 	if cfg.Device == "" {
 		prefix := "mac"
 		if runtime.GOOS == "windows" {
@@ -218,7 +225,7 @@ func setup(ctx context.Context, path string, args []string, out io.Writer, servi
 	case err == nil:
 		fmt.Fprintln(out, "the relay accepts this secret")
 	case errors.Is(err, client.ErrRefused):
-		fmt.Fprintln(out, "the relay refused the token; set its CLIPSYNC_TOKEN to the output of clipsync token")
+		fmt.Fprintln(out, "the relay refused the token; if it's your private relay, set its CLIPSYNC_TOKEN to the output of clipsync token")
 	default:
 		fmt.Fprintf(out, "couldn't reach the relay (%v)\n", err)
 	}
