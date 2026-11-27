@@ -160,19 +160,24 @@
 
     .shot {
       margin: 0 auto;
-      max-width: 1100px;
+      max-width: 1180px;
       padding: 0 24px;
     }
-    .shot img,
-    .demo {
+    .shot video {
       display: block;
       width: 100%;
       height: auto;
-      border-radius: 16px;
-    }
-    .demo {
-      border: 1px solid var(--line);
-      background: #090e17;
+      aspect-ratio: 2 / 1;
+      background: var(--bg);
+      pointer-events: none;
+      -webkit-mask-image:
+        linear-gradient(to right, transparent, #000 2.5%, #000 97.5%, transparent),
+        linear-gradient(to bottom, transparent, #000 3.5%, #000 96.5%, transparent);
+      -webkit-mask-composite: source-in;
+      mask-image:
+        linear-gradient(to right, transparent, #000 2.5%, #000 97.5%, transparent),
+        linear-gradient(to bottom, transparent, #000 3.5%, #000 96.5%, transparent);
+      mask-composite: intersect;
     }
 
     section { margin-top: 72px; }
@@ -308,8 +313,7 @@
     @media (max-width: 560px) {
       .hero { padding-top: 32px; }
       .features { grid-template-columns: 1fr; gap: 20px; }
-      .shot { padding: 0 12px; }
-      .shot img, .demo { border-radius: 10px; }
+      .shot { padding: 0 8px; }
       section { margin-top: 56px; }
     }
   </style>
@@ -357,10 +361,7 @@
     </div>
 
     <div class="shot">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="screenshots/app-dark.webp">
-        <img src="screenshots/app-light.webp" width="1920" height="1052" alt="The clipsync app on a Mac and on an Android phone, both listing the same three paired devices">
-      </picture>
+      <video id="hero-demo" width="1600" height="800" autoplay loop muted playsinline preload="auto" poster="demo-light-poster.jpg" aria-label="clipsync syncing a 2FA code from Android to Mac and an error log from Windows to Android"></video>
     </div>
 
     <section class="wrap">
@@ -382,13 +383,6 @@
           <p>No sign-up, no email, no tracking. Free and open source under the MIT license.</p>
         </div>
       </div>
-    </section>
-
-    <section class="wrap">
-      <h2>See it in action</h2>
-      <video id="demo-video" class="demo" width="1920" height="1080" autoplay muted loop playsinline controls preload="metadata" poster="demo-poster.jpg">
-        <source src="demo.mp4" type="video/mp4">
-      </video>
     </section>
 
     <section class="wrap narrow">
@@ -503,10 +497,38 @@
 
       render();
 
-      var demo = document.getElementById('demo-video');
-      if (demo && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        demo.removeAttribute('autoplay');
-        demo.pause();
+      var demo = document.getElementById('hero-demo');
+      if (demo) {
+        var darkMq = window.matchMedia('(prefers-color-scheme: dark)');
+        var reducedMq = window.matchMedia('(prefers-reduced-motion: reduce)');
+        var currentTheme = null;
+
+        function syncDemo() {
+          var theme = darkMq.matches ? 'dark' : 'light';
+          if (theme !== currentTheme) {
+            var resumeAt = demo.currentTime || 0;
+            currentTheme = theme;
+            demo.poster = 'demo-' + theme + '-poster.jpg';
+            demo.src = 'demo-' + theme + '.mp4';
+            if (resumeAt > 0 && !reducedMq.matches) {
+              demo.addEventListener('loadedmetadata', function onMeta() {
+                demo.removeEventListener('loadedmetadata', onMeta);
+                try { demo.currentTime = Math.min(resumeAt, demo.duration || resumeAt); } catch (e) {}
+              });
+            }
+          }
+          if (reducedMq.matches) {
+            demo.pause();
+            demo.removeAttribute('autoplay');
+          } else {
+            var p = demo.play();
+            if (p && p.catch) p.catch(function () {});
+          }
+        }
+
+        syncDemo();
+        darkMq.addEventListener('change', syncDemo);
+        reducedMq.addEventListener('change', syncDemo);
       }
 
       document.querySelectorAll('.copy').forEach(function (btn) {
