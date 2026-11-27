@@ -101,7 +101,7 @@ The code is open, and every release is built from it by GitHub Actions, not on s
 gh attestation verify clipsync.apk --repo iyazerski/clipsync
 ```
 
-[SECURITY.md](SECURITY.md#check-a-download) has more ways to check, including the Android app's signing certificate. Free Windows signing is in progress, see the [code signing policy](CODE_SIGNING.md).
+[SECURITY.md](SECURITY.md#check-a-download) has more ways to check, including the Android app's signing certificate. Free Windows code signing from [SignPath Foundation](https://signpath.org) is in progress, see the [code signing policy](CODE_SIGNING.md).
 
 </details>
 
