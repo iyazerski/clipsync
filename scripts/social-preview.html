@@ -11,93 +11,352 @@
   * { box-sizing: border-box; margin: 0; }
   html, body { width: 1280px; height: 640px; overflow: hidden; }
   body {
-    background: #f6f6f3;
-    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
-    color: #16181d;
+    background: #13161c;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    color: #f3f4f6;
     -webkit-font-smoothing: antialiased;
     position: relative;
   }
+
+  /* Left brand column (same structure as original social card, without AI gradients/pills) */
   .copy {
-    position: absolute; left: 80px; top: 0; bottom: 0; width: 560px;
+    position: absolute; left: 68px; top: 0; bottom: 0; width: 430px;
     display: flex; flex-direction: column; justify-content: center;
   }
-  .brand { display: flex; align-items: center; gap: 14px; font-size: 28px; font-weight: 650; letter-spacing: -0.01em; }
-  .brand img { width: 44px; height: 44px; }
-  h1 { margin-top: 40px; font-size: 56px; line-height: 1.04; font-weight: 700; letter-spacing: -0.035em; }
-  .sub { margin-top: 24px; font-size: 23px; line-height: 1.45; color: #5b6270; }
-  .url { position: absolute; left: 80px; bottom: 52px; font: 17px ui-monospace, "SF Mono", Menlo, monospace; color: #8a909b; }
-
-  /* Browser window */
-  .win {
-    position: absolute; left: 912px; top: 170px; width: 328px; height: 300px;
-    background: #fff; border: 1px solid #e4e5e8; border-radius: 12px; overflow: hidden;
+  .brand {
+    display: flex; align-items: center; gap: 18px;
   }
-  .bar { height: 40px; background: #f3f4f6; border-bottom: 1px solid #e8e9ec; display: flex; align-items: center; padding: 0 14px; gap: 7px; }
-  .dot { width: 11px; height: 11px; border-radius: 50%; }
-  .addr { margin-left: 22px; width: 200px; height: 24px; border-radius: 6px; background: #e8e9ec; font-size: 12px; color: #6b7280; display: flex; align-items: center; justify-content: center; }
-  .card { margin: 36px auto 0; text-align: center; }
-  .eyebrow { font-size: 11px; letter-spacing: 0.12em; color: #6b7280; font-weight: 600; }
-  .card h2 { margin-top: 8px; font-size: 22px; font-weight: 650; letter-spacing: -0.01em; }
-  .card p { margin-top: 6px; font-size: 13px; color: #6b7280; }
-  .boxes { margin-top: 20px; display: flex; gap: 6px; justify-content: center; }
-  .boxes span {
-    width: 38px; height: 46px; border-radius: 8px; border: 1.5px solid #86c79a; background: #effaf2;
-    font: 600 24px ui-monospace, "SF Mono", Menlo, monospace; color: #15803d; display: flex; align-items: center; justify-content: center;
+  .brand-tile {
+    width: 64px; height: 64px; border-radius: 16px;
+    background: #232730; border: 1px solid #323744;
+    display: flex; align-items: center; justify-content: center;
   }
-  .ok { margin-top: 14px; font-size: 13px; font-weight: 600; color: #15803d; }
+  .brand-tile img { width: 42px; height: 42px; display: block; }
+  .brand-name {
+    font-size: 46px; font-weight: 700; letter-spacing: -0.03em; color: #f5f6f8;
+  }
 
-  /* Phone */
+  h1 {
+    margin-top: 34px; font-size: 40px; line-height: 1.15;
+    font-weight: 700; letter-spacing: -0.028em; color: #f3f4f6;
+  }
+  .platforms {
+    margin-top: 18px; font-size: 18px; font-weight: 500; color: #9aa2b1;
+  }
+  .foot {
+    position: absolute; left: 68px; bottom: 52px;
+    font-size: 15px; color: #788091;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .foot-url {
+    font: 14.5px ui-monospace, "SF Mono", Menlo, monospace; color: #676f80;
+  }
+
+  /* ---------- DESKTOP APP WINDOW (overlapping behind phone, just like original) ---------- */
+  .desktop {
+    position: absolute; left: 536px; top: 66px; width: 564px; height: 502px;
+    background: #1e1f22; border: 1px solid #34363d; border-radius: 13px;
+    box-shadow: 0 22px 54px rgba(0, 0, 0, 0.5);
+    overflow: hidden; display: flex; flex-direction: column; z-index: 1;
+  }
+  .titlebar {
+    height: 30px; background: #2a2b30; border-bottom: 1px solid #35373d;
+    display: flex; align-items: center; padding: 0 12px; position: relative;
+  }
+  .dots { display: flex; gap: 6.5px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .tb-title {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    font-size: 11.5px; font-weight: 500; color: #989da8;
+  }
+  .desk-body { flex: 1; display: flex; min-height: 0; }
+  .sidebar {
+    width: 156px; background: #25262a; border-right: 1px solid #35373d;
+    padding: 15px 11px 14px; display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .side-brand {
+    display: flex; align-items: center; gap: 8px; padding: 2px 5px 14px;
+    font-size: 15px; font-weight: 700; letter-spacing: -0.02em; color: #f1f2f5;
+  }
+  .side-brand img { width: 22px; height: 22px; border-radius: 6px; display: block; }
+  .nav { display: flex; flex-direction: column; gap: 3px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 9px; border-radius: 7px;
+    font-size: 12.5px; font-weight: 500; color: #e5e7eb;
+  }
+  .nav-item.active { background: #34363d; font-weight: 600; }
+  .nav-item svg { width: 15px; height: 15px; fill: #3b82f6; }
+  .side-status {
+    display: flex; align-items: center; gap: 7px; padding: 0 5px;
+    font-size: 11.5px; color: #989da8;
+  }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; }
+
+  .main { flex: 1; padding: 20px 22px; display: flex; flex-direction: column; }
+  .main h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; color: #f1f2f5; }
+  .sync-card {
+    margin-top: 14px; padding: 13px 14px; border-radius: 10px;
+    background: #25262b; border: 1px solid #34363c;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .icon-box {
+    width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .icon-box svg { width: 18px; height: 18px; fill: currentColor; }
+  .ib-green { background: rgba(34, 197, 94, 0.16); color: #4ade80; }
+  .ib-blue { background: rgba(59, 130, 246, 0.18); color: #60a5fa; }
+  .ib-gray { background: #32343b; color: #9ca3af; }
+  .row-title { font-size: 13.5px; font-weight: 650; color: #f1f2f5; }
+  .row-sub { margin-top: 2px; font-size: 11.5px; line-height: 1.35; color: #989da8; }
+  .sec-label { margin-top: 16px; margin-bottom: 8px; font-size: 11.5px; font-weight: 600; color: #989da8; }
+  .dev-list {
+    border-radius: 10px; background: #25262b; border: 1px solid #34363c; overflow: hidden;
+  }
+  .dev-row { padding: 11px 14px; display: flex; align-items: center; gap: 11px; }
+  .dev-row + .dev-row { border-top: 1px solid #34363c; }
+  .add-dashed {
+    margin-top: 12px; padding: 11px 14px; border-radius: 10px;
+    border: 1.5px dashed #34363c; display: flex; align-items: center; gap: 11px;
+  }
+
+  /* ---------- ANDROID PHONE (foreground right, tall & crisp) ---------- */
   .phone {
-    position: absolute; left: 668px; top: 90px; width: 220px; height: 460px;
-    background: #1f2125; border-radius: 38px; padding: 9px;
+    position: absolute; right: 54px; top: 34px; width: 280px; height: 572px;
+    background: #0b0d11; border: 1px solid #2b2f3a; border-radius: 38px; padding: 8px;
+    box-shadow: 0 26px 60px rgba(0, 0, 0, 0.65); z-index: 2;
   }
-  .screen { width: 100%; height: 100%; background: #f8f9fb; border-radius: 30px; overflow: hidden; position: relative; }
-  .status { height: 34px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 11px; font-weight: 600; color: #374151; }
-  .cam { width: 9px; height: 9px; border-radius: 50%; background: #1f2125; }
-  .head { display: flex; align-items: center; gap: 10px; padding: 8px 16px 12px; border-bottom: 1px solid #e8e9ec; }
-  .avatar { width: 32px; height: 32px; border-radius: 50%; background: #2563eb; color: #fff; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
-  .head b { display: block; font-size: 14px; }
-  .head small { font-size: 11px; color: #6b7280; }
-  .time { text-align: center; font-size: 10px; color: #9aa1ad; margin: 14px 0 10px; }
-  .msg { margin: 0 14px; padding: 12px 14px; background: #e9ecf2; border-radius: 14px; font-size: 13px; line-height: 1.5; }
-  .code { display: inline-block; margin: 3px 0; padding: 1px 6px; border-radius: 5px; background: #dbe6fd; color: #1d4ed8; font: 600 17px ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0.04em; }
-  .chip { margin: 12px 14px 0; display: inline-block; padding: 7px 12px; border: 1px solid #dfe2e7; border-radius: 999px; background: #fff; font-size: 12px; font-weight: 600; color: #1d4ed8; }
-  .toast {
-    position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); white-space: nowrap;
-    padding: 8px 14px; border-radius: 999px; background: #1f2125; color: #fff; font-size: 12px; font-weight: 500;
+  .p-screen {
+    width: 100%; height: 100%; background: #12151c; border-radius: 30px;
+    overflow: hidden; position: relative; display: flex; flex-direction: column;
+  }
+  .p-status {
+    height: 28px; padding: 0 18px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 10.5px; font-weight: 600; color: #e5e7eb;
+  }
+  .p-cam { width: 8px; height: 8px; border-radius: 50%; background: #0b0d11; }
+  .p-head {
+    padding: 3px 16px 9px;
+    display: flex; align-items: flex-start; justify-content: space-between;
+  }
+  .p-app { font-size: 19px; font-weight: 700; letter-spacing: -0.02em; color: #f3f4f6; }
+  .p-relay {
+    margin-top: 4px; display: inline-flex; align-items: center; gap: 5px;
+    padding: 2.5px 8px; border-radius: 999px; background: #232936;
+    font-size: 9.5px; font-weight: 500; color: #9ca3af;
+  }
+  .p-relay i { width: 5.5px; height: 5.5px; border-radius: 50%; background: #22c55e; display: block; }
+  .p-menu {
+    width: 26px; height: 26px; border-radius: 50%; background: #232936;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; color: #9ca3af;
+  }
+  .p-body { padding: 0 12px; display: flex; flex-direction: column; gap: 7px; }
+  .p-connected {
+    padding: 12px; border-radius: 15px; background: #1b3826;
+    display: flex; align-items: center; gap: 11px;
+  }
+  .p-check {
+    width: 34px; height: 34px; border-radius: 11px; flex-shrink: 0;
+    background: #52c97a; color: #0e2416;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .p-check svg { width: 20px; height: 20px; }
+  .p-conn-title { font-size: 13.5px; font-weight: 700; color: #eef6f0; }
+  .p-conn-time { margin-top: 1px; font-size: 10px; font-weight: 600; color: #a8c7b2; }
+  .p-conn-desc { margin-top: 2px; font-size: 9px; line-height: 1.32; color: #a8c7b2; }
+
+  .p-sec { margin-top: 3px; padding: 0 4px; font-size: 10px; font-weight: 650; color: #7aa7f9; }
+  .p-list { display: flex; flex-direction: column; gap: 4px; }
+  .p-card {
+    padding: 7.5px 10px; border-radius: 10px; background: #1b202a;
+    display: flex; align-items: center; justify-content: space-between; gap: 7px;
+  }
+  .p-card-left { display: flex; align-items: center; gap: 9px; }
+  .p-ic {
+    width: 26px; height: 26px; border-radius: 7.5px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .p-ic svg { width: 14px; height: 14px; fill: currentColor; }
+  .p-name { font-size: 11px; font-weight: 650; color: #f1f2f5; }
+  .p-meta { font-size: 9px; color: #989da8; display: flex; align-items: center; gap: 4px; }
+  .p-meta .gdot { width: 4.5px; height: 4.5px; border-radius: 50%; background: #22c55e; display: inline-block; }
+  .p-this {
+    padding: 2px 6.5px; border-radius: 999px;
+    background: rgba(59, 130, 246, 0.2); color: #93c5fd;
+    font-size: 9px; font-weight: 600;
+  }
+
+  .p-fab {
+    position: absolute; right: 12px; bottom: 16px;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 9px 13px; border-radius: 13px;
+    background: #c6d7ff; color: #16294f;
+    font-size: 11px; font-weight: 650;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+  .p-fab svg { width: 13px; height: 13px; fill: currentColor; }
+  .p-home {
+    position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%);
+    width: 76px; height: 3px; border-radius: 999px; background: #343844;
   }
 </style>
 </head>
 <body>
   <div class="copy">
-    <div class="brand"><img src="../docs/icon.svg" alt="">clipsync</div>
-    <h1>Copy on one device.<br>Paste on another.</h1>
-    <p class="sub">Clipboard sync for Mac, Windows, and Android.<br>Free, open source, and end-to-end encrypted.</p>
+    <div class="brand">
+      <div class="brand-tile"><img src="../docs/icon.svg" alt=""></div>
+      <span class="brand-name">clipsync</span>
+    </div>
+    <h1>One clipboard across<br>every screen.</h1>
+    <p class="platforms">Mac · Windows · Android</p>
   </div>
-  <div class="url">github.com/iyazerski/clipsync</div>
-
-  <div class="win">
-    <div class="bar">
-      <span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span>
-      <span class="addr">sign-in.acmebank.com</span>
-    </div>
-    <div class="card">
-      <div class="eyebrow">ACMEBANK</div>
-      <h2>Two-factor verification</h2>
-      <p>Enter the 6-digit code sent to your phone.</p>
-      <div class="boxes"><span>8</span><span>4</span><span>9</span><span>2</span><span>1</span><span>7</span></div>
-      <div class="ok">Verified · Signing in</div>
-    </div>
+  <div class="foot">
+    <span>Free, open source, end-to-end encrypted</span>
+    <span class="foot-url">github.com/iyazerski/clipsync</span>
   </div>
 
+  <!-- Desktop app -->
+  <div class="desktop">
+    <div class="titlebar">
+      <div class="dots">
+        <span class="dot" style="background:#ff5f57"></span>
+        <span class="dot" style="background:#febc2e"></span>
+        <span class="dot" style="background:#28c840"></span>
+      </div>
+      <span class="tb-title">clipsync</span>
+    </div>
+    <div class="desk-body">
+      <div class="sidebar">
+        <div>
+          <div class="side-brand"><img src="../docs/icon.svg" alt="">clipsync</div>
+          <div class="nav">
+            <div class="nav-item active">
+              <svg viewBox="0 -960 960 960"><path d="M140-160q-25 0-42.5-17.5T80-220q0-25 17.5-42.5T140-280h20v-440q0-33 23.5-56.5T240-800h560q17 0 28.5 11.5T840-760q0 17-11.5 28.5T800-720H240v440h180q25 0 42.5 17.5T480-220q0 25-17.5 42.5T420-160H140Zm460 0q-17 0-28.5-11.5T560-200v-400q0-17 11.5-28.5T600-640h240q17 0 28.5 11.5T880-600v400q0 17-11.5 28.5T840-160H600Zm40-120h160v-280H640v280Z"/></svg>
+              Devices
+            </div>
+            <div class="nav-item">
+              <svg viewBox="0 -960 960 960"><path d="M433-80q-27 0-46.5-18T363-142l-9-66q-13-5-24.5-12T307-235l-62 26q-25 11-50 2t-39-32l-47-82q-14-23-8-49t27-43l53-40q-1-7-1-13.5v-27q0-6.5 1-13.5l-53-40q-21-17-27-43t8-49l47-82q14-23 39-32t50 2l62 26q11-8 23-15t24-12l9-66q4-26 23.5-44t46.5-18h94q27 0 46.5 18t23.5 44l9 66q13 5 24.5 12t22.5 15l62-26q25-11 50-2t39 32l47 82q14 23 8 49t-27 43l-53 40q1 7 1 13.5v27q0 6.5-2 13.5l53 40q21 17 27 43t-8 49l-48 82q-14 23-39 32t-50-2l-60-26q-11 8-23 15t-24 12l-9 66q-4 26-23.5 44T527-80h-94Zm49-260q58 0 99-41t41-99q0-58-41-99t-99-41q-59 0-99.5 41T342-480q0 58 40.5 99t99.5 41Z"/></svg>
+              Settings
+            </div>
+          </div>
+        </div>
+        <div class="side-status"><span class="status-dot"></span>Syncing</div>
+      </div>
+
+      <div class="main">
+        <h2>Devices</h2>
+        <div class="sync-card">
+          <div class="icon-box ib-green">
+            <svg viewBox="0 -960 960 960"><path d="M240-478q0 45 17 87.5t53 78.5l10 10v-58q0-17 11.5-28.5T360-400q17 0 28.5 11.5T400-360v160q0 17-11.5 28.5T360-160H200q-17 0-28.5-11.5T160-200q0-17 11.5-28.5T200-240h70l-16-14q-52-46-73-105t-21-119q0-94 48-170.5T337-766q14-8 29.5-1t20.5 23q5 15-.5 30T367-691q-58 32-92.5 88.5T240-478Zm480-4q0-45-17-87.5T650-648l-10-10v58q0 17-11.5 28.5T600-560q-17 0-28.5-11.5T560-600v-160q0-17 11.5-28.5T600-800h160q17 0 28.5 11.5T800-760q0 17-11.5 28.5T760-720h-70l16 14q49 49 71.5 106.5T800-482q0 94-48 170.5T623-194q-14 8-29.5 1T573-216q-5-15 .5-30t19.5-23q58-32 92.5-88.5T720-482Z"/></svg>
+          </div>
+          <div>
+            <div class="row-title">Syncing</div>
+            <div class="row-sub">Connected to clip.iyazerski.dev.</div>
+          </div>
+        </div>
+
+        <div class="sec-label">Your devices</div>
+        <div class="dev-list">
+          <div class="dev-row">
+            <div class="icon-box ib-blue"><svg viewBox="0 -960 960 960"><path d="M80-160q-33 0-56.5-23.5T0-240h160q-33 0-56.5-23.5T80-320v-440q0-33 23.5-56.5T160-840h640q33 0 56.5 23.5T880-760v440q0 33-23.5 56.5T800-240h160q0 33-23.5 56.5T880-160H80Zm80-160h640v-440H160v440Z"/></svg></div>
+            <div><div class="row-title">MacBook Air</div><div class="row-sub">macOS</div></div>
+          </div>
+          <div class="dev-row">
+            <div class="icon-box ib-green"><svg viewBox="0 -960 960 960"><path d="M280-40q-33 0-56.5-23.5T200-120v-720q0-33 23.5-56.5T280-920h400q33 0 56.5 23.5T760-840v720q0 33-23.5 56.5T680-40H280Zm0-200v120h400v-120H280Zm0-80h400v-400H280v400Zm0-480h400v-40H280v40Z"/></svg></div>
+            <div><div class="row-title">Pixel 9</div><div class="row-sub">Android · Online</div></div>
+          </div>
+          <div class="dev-row">
+            <div class="icon-box ib-gray"><svg viewBox="0 -960 960 960"><path d="M400-200v-80H160q-33 0-56.5-23.5T80-360v-400q0-33 23.5-56.5T160-840h640q33 0 56.5 23.5T880-760v400q0 33-23.5 56.5T800-280H560v80h40q17 0 28.5 11.5T640-160q0 17-11.5 28.5T600-120H360q-17 0-28.5-11.5T320-160q0-17 11.5-28.5T360-200h40ZM160-360h640v-400H160v400Z"/></svg></div>
+            <div><div class="row-title">Office PC</div><div class="row-sub">Windows · Last seen yesterday</div></div>
+          </div>
+        </div>
+
+        <div class="add-dashed">
+          <div class="icon-box ib-gray"><svg viewBox="0 -960 960 960"><path d="M440-440H240q-17 0-28.5-11.5T200-480q0-17 11.5-28.5T240-520h200v-200q0-17 11.5-28.5T480-760q17 0 28.5 11.5T520-720v200h200q17 0 28.5 11.5T760-480q0 17-11.5 28.5T720-440H520v200q0 17-11.5 28.5T480-200q-17 0-28.5-11.5T440-240v-200Z"/></svg></div>
+          <div><div class="row-title">Add another device</div><div class="row-sub">Pair a phone or a computer</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Android phone -->
   <div class="phone">
-    <div class="screen">
-      <div class="status"><span>9:41</span><span class="cam"></span><span>5G</span></div>
-      <div class="head"><span class="avatar">A</span><div><b>AcmeBank</b><small>Security code</small></div></div>
-      <div class="time">Just now</div>
-      <div class="msg">Your sign-in code is<br><span class="code">849 217</span><br>Expires in 5 minutes.</div>
-      <div class="chip">Copy 849 217</div>
-      <div class="toast">Sent to MacBook Air</div>
+    <div class="p-screen">
+      <div class="p-status"><span>9:41</span><span class="p-cam"></span><span>5G</span></div>
+      <div class="p-head">
+        <div>
+          <div class="p-app">clipsync</div>
+          <div class="p-relay"><i></i>clip.iyazerski.dev</div>
+        </div>
+        <div class="p-menu">⋮</div>
+      </div>
+
+      <div class="p-body">
+        <div class="p-connected">
+          <div class="p-check">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
+          </div>
+          <div>
+            <div class="p-conn-title">Connected</div>
+            <div class="p-conn-time">Last clip 2 minutes ago</div>
+            <div class="p-conn-desc">What you copy on your computers lands on this phone's clipboard.</div>
+          </div>
+        </div>
+
+        <div class="p-sec">Your devices</div>
+        <div class="p-list">
+          <div class="p-card">
+            <div class="p-card-left">
+              <div class="p-ic ib-blue"><svg viewBox="0 -960 960 960"><path d="M280-40q-33 0-56.5-23.5T200-120v-720q0-33 23.5-56.5T280-920h400q33 0 56.5 23.5T760-840v720q0 33-23.5 56.5T680-40H280Zm0-200v120h400v-120H280Zm0-80h400v-400H280v400Zm0-480h400v-40H280v40Z"/></svg></div>
+              <div><div class="p-name">Pixel 9</div><div class="p-meta">Android</div></div>
+            </div>
+            <span class="p-this">This device</span>
+          </div>
+          <div class="p-card">
+            <div class="p-card-left">
+              <div class="p-ic ib-green"><svg viewBox="0 -960 960 960"><path d="M80-160q-33 0-56.5-23.5T0-240h160q-33 0-56.5-23.5T80-320v-440q0-33 23.5-56.5T160-840h640q33 0 56.5 23.5T880-760v440q0 33-23.5 56.5T800-240h160q0 33-23.5 56.5T880-160H80Zm80-160h640v-440H160v440Z"/></svg></div>
+              <div><div class="p-name">MacBook Air</div><div class="p-meta"><span class="gdot"></span>macOS · Online</div></div>
+            </div>
+          </div>
+          <div class="p-card">
+            <div class="p-card-left">
+              <div class="p-ic ib-gray"><svg viewBox="0 -960 960 960"><path d="M400-200v-80H160q-33 0-56.5-23.5T80-360v-400q0-33 23.5-56.5T160-840h640q33 0 56.5 23.5T880-760v400q0 33-23.5 56.5T800-280H560v80h40q17 0 28.5 11.5T640-160q0 17-11.5 28.5T600-120H360q-17 0-28.5-11.5T320-160q0-17 11.5-28.5T360-200h40ZM160-360h640v-400H160v400Z"/></svg></div>
+              <div><div class="p-name">Office PC</div><div class="p-meta">Windows · Last seen yesterday</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-sec">More ways to send</div>
+        <div class="p-list">
+          <div class="p-card">
+            <div class="p-card-left">
+              <div class="p-ic ib-gray"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 9h14M5 15h8"/></svg></div>
+              <div><div class="p-name">Select text</div><div class="p-meta">Then pick Send to computer</div></div>
+            </div>
+          </div>
+          <div class="p-card">
+            <div class="p-card-left">
+              <div class="p-ic ib-gray"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.3 13.2l7.4 4.3M15.7 6.5l-7.4 4.3"/></svg></div>
+              <div><div class="p-name">Share</div><div class="p-meta">Share text to clipsync</div></div>
+            </div>
+          </div>
+          <div class="p-card">
+            <div class="p-card-left">
+              <div class="p-ic ib-gray"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg></div>
+              <div><div class="p-name">Quick Settings tile</div><div class="p-meta">One tap from anywhere</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-fab">
+        <svg viewBox="0 -960 960 960"><path d="M360-240q-33 0-56.5-23.5T280-320v-480q0-33 23.5-56.5T360-880h360q33 0 56.5 23.5T800-800v480q0 33-23.5 56.5T720-240H360Zm0-80h360v-480H360v480ZM200-80q-33 0-56.5-23.5T120-160v-520q0-17 11.5-28.5T160-720q17 0 28.5 11.5T200-680v520h400q17 0 28.5 11.5T640-120q0 17-11.5 28.5T600-80H200Z"/></svg>
+        Send clipboard
+      </div>
+      <div class="p-home"></div>
     </div>
   </div>
 </body>
