@@ -15,8 +15,8 @@ Free, end-to-end encrypted, and no account needed.
 [![Buy me a coffee](https://img.shields.io/badge/buy%20me%20a%20coffee-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/iyazerski)
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/hero-dark.png">
-  <img src="docs/hero-light.png" width="840" alt="clipsync running on desktop and Android, syncing MacBook Air, Pixel 9, and Office PC">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/hero-dark.png">
+  <img src="docs/assets/hero-light.png" width="840" alt="clipsync running on desktop and Android, syncing MacBook Air, Pixel 9, and Office PC">
 </picture>
 
 </div>
@@ -27,7 +27,7 @@ Universal Clipboard is Apple-only, Phone Link needs a Microsoft account, and KDE
 
 - **Any network.** Works across home Wi-Fi, office networks, and mobile data.
 - **Private by default.** End-to-end encrypted with AES-256-GCM. Password manager copies are skipped automatically.
-- **No account.** No sign-up or tracking. Use the free public relay, or [host your own](#host-your-own-relay).
+- **No account.** No sign-up or tracking. Use the free public relay, or [host your own](docs/self-hosting.md).
 - **Open source.** Free and MIT licensed.
 
 ## Get started
@@ -149,35 +149,7 @@ On desktop, open **Devices**, click **⋯** next to the device, and pick **Remov
 
 ## Host your own relay
 
-By default, clipsync uses the free public relay at `clip.iyazerski.dev` (no uptime guarantee). To self-host with Docker, ports 80/443, and a domain:
-
-1. On your first computer, open clipsync, click **Use your own relay**, enter your domain (e.g. `clip.example.com`), and click **Set up my first device**.
-2. Open **Settings** and copy your **Relay token**.
-3. Start the relay on your server:
-
-```sh
-curl -fsSLO https://raw.githubusercontent.com/iyazerski/clipsync/main/relay/compose.yaml
-printf 'RELAY_DOMAIN=clip.example.com\nCLIPSYNC_TOKEN=<your token>\n' > .env
-docker compose up -d
-```
-
-This runs behind [Caddy](https://caddyserver.com) with automatic HTTPS for your devices only. Set `CLIPSYNC_PUBLIC=true` instead of `CLIPSYNC_TOKEN` to allow anyone.
-
-Already paired? On desktop, go to **Settings → Relay → Change**. On Android, unpair and join again with **Enter a code**.
-
-<details>
-<summary><b>Already have a reverse proxy?</b></summary>
-
-Run just the relay container and proxy HTTPS to port 8080:
-
-```sh
-docker run -d --restart unless-stopped -p 127.0.0.1:8080:8080 \
-  -e CLIPSYNC_TOKEN=<your token> ghcr.io/iyazerski/clipsync/relay
-```
-
-Your proxy must stream responses without buffering (Caddy and Traefik work by default, nginx needs `proxy_buffering off`, Cloudflare quick tunnels don't work).
-
-</details>
+By default, clipsync uses the free public relay at `clip.iyazerski.dev` (no uptime guarantee). To run your own with Docker, see the [self-hosting guide](docs/self-hosting.md).
 
 ## Build from source
 
@@ -190,11 +162,11 @@ make test                                 # run Go and Android checks
 cd android && ./gradlew assembleRelease   # build Android APK
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for details and pre-commit hooks (`prek install`).
+See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for details and pre-commit hooks (`prek install`).
 
 ## License
 
-[MIT](LICENSE) © Ihar Yazerski. Third-party licenses in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md). Issues and PRs welcome ([CONTRIBUTING.md](CONTRIBUTING.md)).
+[MIT](LICENSE) © Ihar Yazerski. Third-party licenses in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md). Issues and PRs welcome ([CONTRIBUTING.md](.github/CONTRIBUTING.md)).
 
 [Privacy policy](PRIVACY.md) · [Code signing policy](CODE_SIGNING.md) · [Security](SECURITY.md)
 

@@ -13,7 +13,7 @@ Passwords that your password manager marks as private stay on the computer you c
 
 ## Your own relay
 
-If you [host your own relay](README.md#host-your-own-relay), all of the above goes to your server only, apart from update checks.
+If you [host your own relay](docs/self-hosting.md), all of the above goes to your server only, apart from update checks.
 
 ## The website
 
