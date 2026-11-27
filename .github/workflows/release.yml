@@ -78,11 +78,11 @@ jobs:
               fi
               cat <<EOF
           ## Downloads
-          - **Mac (macOS 13+, Apple silicon & Intel):** [clipsync-$VERSION.dmg](https://github.com/$GH_REPO/releases/download/v$VERSION/clipsync-$VERSION.dmg), or install in Terminal (skips the first-time warning): \`curl -fsSL https://github.com/$GH_REPO/releases/latest/download/install.sh | sh\`
+          - **Mac (macOS 13+, Apple silicon & Intel):** [clipsync-$VERSION.dmg](https://github.com/$GH_REPO/releases/download/v$VERSION/clipsync-$VERSION.dmg), or install with Homebrew: \`brew install --cask iyazerski/tap/clipsync\`
           - **Windows:** [clipsync-setup-$VERSION-amd64.exe](https://github.com/$GH_REPO/releases/download/v$VERSION/clipsync-setup-$VERSION-amd64.exe), or install in PowerShell: \`irm https://github.com/$GH_REPO/releases/latest/download/install.ps1 | iex\`
           - **Android (14+):** [clipsync.apk](https://github.com/$GH_REPO/releases/download/v$VERSION/clipsync.apk) (allow installing from this source when Android asks)
 
-          > The Mac and Windows apps aren't signed yet. If you use the direct installer, on Mac go to **System Settings → Privacy & Security → Open Anyway**, and on Windows click **More info → Run anyway**.
+          > The Mac and Windows apps aren't signed yet. On Mac (\`.dmg\` or Homebrew), open clipsync once, then go to **System Settings → Privacy & Security → Open Anyway**. On Windows, click **More info → Run anyway** (the PowerShell command skips that warning).
           EOF
             } | gh release create "v$VERSION" --draft --target "$GITHUB_SHA" --title "clipsync v$VERSION" --notes-file -
           fi
@@ -204,12 +204,34 @@ jobs:
       VERSION: ${{ needs.version.outputs.version }}
     steps:
       - name: Publish the release
+        id: publish
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
           # Both desktop jobs merge their lines into SHA256SUMS. If they upload at the
-          # same moment, one can drop the other's. install.ps1 needs the Windows setup
-          # line: re-run the macOS job if this fails.
-          gh release download "v$VERSION" --pattern SHA256SUMS --output - | grep -q "setup-$VERSION-amd64\.exe$"
+          # same moment, one can drop the other's. Verify both platforms are present
+          # before publishing and updating the Homebrew cask.
+          sums=$(gh release download "v$VERSION" --pattern SHA256SUMS --output -)
+          grep -q "setup-$VERSION-amd64\.exe$" <<< "$sums"
+          mac_sha=$(awk -v f="clipsync-$VERSION-darwin-universal.tar.gz" '{ sub(/^\*/, "", $2); if ($2 == f) print $1 }' <<< "$sums")
+          test -n "$mac_sha"
+          echo "mac_sha=$mac_sha" >> "$GITHUB_OUTPUT"
           gh release edit "v$VERSION" --draft=false --latest
+      - name: Update Homebrew cask
+        env:
+          DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+          MAC_SHA: ${{ steps.publish.outputs.mac_sha }}
+        run: |
+          export GIT_SSH_COMMAND="ssh -i $RUNNER_TEMP/tap_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+          echo "$DEPLOY_KEY" > "$RUNNER_TEMP/tap_key"
+          chmod 600 "$RUNNER_TEMP/tap_key"
+          git clone --depth 1 git@github.com:iyazerski/homebrew-tap.git "$RUNNER_TEMP/tap"
+          cd "$RUNNER_TEMP/tap"
+          sed -i -E "s/^  version \".*\"/  version \"$VERSION\"/; s/^  sha256 \".*\"/  sha256 \"$MAC_SHA\"/" Casks/clipsync.rb
+          git diff --stat
+          if ! git diff --quiet; then
+            git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -am "Update clipsync to $VERSION"
+            git push
+          fi

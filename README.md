@@ -35,12 +35,12 @@ Works on **macOS 13+**, **Windows**, and optionally **Android 14+**.
 
 ### 1. Install on your computers
 
-Download the installer from the [latest release](https://github.com/iyazerski/clipsync/releases/latest), or install with one command:
+Download the installer from the [latest release](https://github.com/iyazerski/clipsync/releases/latest), or install from the command line:
 
-**Mac** (Terminal):
+**Mac** (Homebrew):
 
 ```sh
-curl -fsSL https://github.com/iyazerski/clipsync/releases/latest/download/install.sh | sh
+brew install --cask iyazerski/tap/clipsync
 ```
 
 **Windows** (PowerShell):
@@ -49,7 +49,7 @@ curl -fsSL https://github.com/iyazerski/clipsync/releases/latest/download/instal
 irm https://github.com/iyazerski/clipsync/releases/latest/download/install.ps1 | iex
 ```
 
-Because the app isn't signed by Apple or Microsoft yet, downloading the installer directly shows a first-time warning. On a Mac, open the app, then go to **System Settings → Privacy & Security** and click **Open Anyway**. On Windows, click **More info → Run anyway**. The commands above skip those warnings.
+Because the app isn't signed by Apple or Microsoft yet, macOS (`.dmg` or Homebrew) and the Windows `.exe` installer show a first-time warning. On a Mac, open the app, then go to **System Settings → Privacy & Security** and click **Open Anyway**. On Windows, click **More info → Run anyway** (the PowerShell command skips that warning).
 
 <details>
 <summary><b>Windows Defender blocked the install?</b></summary>
@@ -67,7 +67,7 @@ On a work PC, ask IT to allow that folder.
 <details>
 <summary><b>Upgrading from the old command-line version?</b></summary>
 
-Install the app above. It keeps your existing pairing and replaces the old background service. Then remove the old command with `brew uninstall clipsync` or delete `~/.local/bin/clipsync` on a Mac.
+Install the app above. It keeps your existing pairing and replaces the old background service. Then remove the old command with `brew uninstall --formula clipsync` or delete `~/.local/bin/clipsync` on a Mac.
 
 </details>
 
@@ -130,7 +130,7 @@ On a computer, open **Devices**, click **⋯** next to the device, and choose **
 <details>
 <summary><b>How do I uninstall clipsync?</b></summary>
 
-- **Mac:** Open **Settings → Unpair**, quit clipsync, and drag it from Applications to the Trash (or run `curl -fsSL https://github.com/iyazerski/clipsync/releases/latest/download/install.sh | sh -s -- --uninstall`).
+- **Mac:** Open **Settings → Unpair**, quit clipsync, and drag it from Applications to the Trash (or run `brew uninstall --cask clipsync` if you installed with Homebrew).
 - **Windows:** Open **Settings → Unpair**, quit clipsync, and uninstall it from **Settings → Apps**.
 - **Android:** Tap **Unpair** in the ⋮ menu and uninstall the app.
 

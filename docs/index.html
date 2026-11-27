@@ -398,12 +398,12 @@
 
         <div>
           <h3>Why do I see a warning when I open the app?</h3>
-          <p>The app isn't signed by Apple or Microsoft yet. On a Mac, open the app, then go to System Settings → Privacy &amp; Security and click <b>Open Anyway</b>. On Windows, click <b>More info → Run anyway</b>.</p>
-          <p>Or install from the command line, which skips the warning:</p>
+          <p>The app isn't signed by Apple or Microsoft yet. On a Mac, open the app, then go to System Settings → Privacy &amp; Security and click <b>Open Anyway</b>. On Windows, click <b>More info → Run anyway</b> (or use the PowerShell command below, which skips it).</p>
+          <p>You can also install from the command line:</p>
           <div class="cmd">
-            <span class="cmd-label">Mac (Terminal)</span>
+            <span class="cmd-label">Mac (Homebrew)</span>
             <div class="cmd-box">
-              <pre id="cmd-mac"><span class="c">curl</span> <span class="f">-fsSL</span> <span class="s">https://github.com/iyazerski/clipsync/releases/latest/download/install.sh</span> <span class="o">|</span> <span class="c">sh</span></pre>
+              <pre id="cmd-mac"><span class="c">brew</span> install <span class="f">--cask</span> <span class="s">iyazerski/tap/clipsync</span></pre>
               <button class="copy" type="button" data-copy="cmd-mac">Copy</button>
             </div>
           </div>
