@@ -152,6 +152,17 @@
       vertical-align: -2px;
     }
 
+    .note {
+      max-width: 460px;
+      margin: 10px auto 0;
+      font-size: 14px;
+      color: var(--muted);
+    }
+    [hidden] { display: none !important; }
+
+    .why p { color: var(--muted); }
+    .why p + p { margin-top: 12px; }
+
     .trademark {
       flex-basis: 100%;
       margin: 0;
@@ -348,6 +359,7 @@
         It's free, works over any network, and doesn't need an account.
       </p>
 
+      <p id="unsupported" class="note" hidden></p>
       <a id="download" class="download" href="https://github.com/iyazerski/clipsync/releases/latest">
         <svg width="20" height="20" aria-hidden="true"><use href="#os-mac"/></svg>
         <span>Download for Mac</span>
@@ -358,11 +370,18 @@
         <a id="dl-android" href="https://github.com/iyazerski/clipsync/releases/latest/download/clipsync.apk"><svg width="14" height="14" aria-hidden="true"><use href="#os-android"/></svg><span>Android</span></a>
         · <a href="https://github.com/iyazerski/clipsync/releases/latest"><span id="version">All downloads</span></a>
       </p>
+      <p id="dl-note" class="note">The app isn't signed by Apple yet, so macOS asks you to confirm the first time you open it. <a href="#unsigned">Here's how</a>.</p>
     </div>
 
     <div class="shot">
       <video id="hero-demo" width="1600" height="800" autoplay loop muted playsinline preload="auto" poster="demo-light-poster.jpg" aria-label="clipsync syncing a 2FA code from Android to Mac and an error log from Windows to Android"></video>
     </div>
+
+    <section class="wrap narrow why">
+      <h2>Why clipsync</h2>
+      <p>Apple's Universal Clipboard works only between Apple devices. Phone Link needs a Microsoft account, and its clipboard sync works with only some Android phones. KDE Connect needs your devices on the same network. clipsync works between Mac, Windows, and Android, wherever they are.</p>
+      <p>Copy a sign-in code on your phone and paste it on your laptop. Send a link from your work PC to your phone. Paste an address from your Mac into a maps app.</p>
+    </section>
 
     <section class="wrap">
       <div class="features">
@@ -372,7 +391,7 @@
         </div>
         <div>
           <h3>Private</h3>
-          <p>Text is encrypted on your device before it leaves. The server in the middle can't read it.</p>
+          <p>Text is encrypted on your device before it leaves. The server in the middle can't read it. <a href="https://github.com/iyazerski/clipsync/blob/main/SECURITY.md">Security details</a></p>
         </div>
         <div>
           <h3>Skips passwords</h3>
@@ -402,9 +421,10 @@
           <p>Yes. Your devices share a key and encrypt every copy with AES-256-GCM before sending it. The relay server only passes encrypted data along. It keeps the latest copy in memory for 2 minutes and can't read it.</p>
         </div>
 
-        <div>
+        <div id="unsigned">
           <h3>Why do I see a warning when I open the app?</h3>
-          <p>The app isn't signed by Apple or Microsoft yet. On a Mac, open the app, then go to System Settings → Privacy &amp; Security and click <b>Open Anyway</b>. On Windows, click <b>More info → Run anyway</b> (or use the PowerShell command below, which skips it).</p>
+          <p>The app isn't signed by Apple or Microsoft yet. On a Mac, open the app once, then go to System Settings → Privacy &amp; Security and click <b>Open Anyway</b>. On Windows, click <b>More info → Run anyway</b>.</p>
+          <p>Every release is built from the public source by GitHub Actions, and you can <a href="https://github.com/iyazerski/clipsync/blob/main/SECURITY.md#check-a-download">check where a download was built</a>. Windows signing is in progress, see the <a href="https://github.com/iyazerski/clipsync/blob/main/CODE_SIGNING.md">code signing policy</a>.</p>
           <p>You can also install from the command line:</p>
           <div class="cmd">
             <span class="cmd-label">Mac (Homebrew)</span>
@@ -420,6 +440,7 @@
               <button class="copy" type="button" data-copy="cmd-win">Copy</button>
             </div>
           </div>
+          <p>The PowerShell command downloads the installer without a browser, so Windows doesn't show the warning. It checks the installer against the release's checksums before running it. <a href="https://github.com/iyazerski/clipsync/releases/latest/download/install.ps1">Read the script</a>.</p>
         </div>
 
         <div>
@@ -453,6 +474,8 @@
         <a href="https://github.com/iyazerski/clipsync">GitHub</a>
         <a href="https://github.com/iyazerski/clipsync/releases">Releases</a>
         <a href="https://github.com/iyazerski/clipsync/issues">Report a bug</a>
+        <a href="https://github.com/iyazerski/clipsync/blob/main/PRIVACY.md">Privacy</a>
+        <a href="https://github.com/iyazerski/clipsync/blob/main/CODE_SIGNING.md">Code signing policy</a>
         <a href="https://buymeacoffee.com/iyazerski">Buy me a coffee</a>
       </nav>
       <p class="trademark">clipsync isn't affiliated with Apple, Microsoft, or Google. Mac, Windows, and Android are trademarks of their owners.</p>
@@ -463,12 +486,35 @@
     (function () {
       var releases = 'https://github.com/iyazerski/clipsync/releases/latest';
       var links = {
-        mac: { name: 'Mac', href: releases },
-        win: { name: 'Windows', href: releases },
-        android: { name: 'Android', href: releases + '/download/clipsync.apk' }
+        mac: {
+          name: 'Mac', href: releases,
+          note: 'The app isn\'t signed by Apple yet, so macOS asks you to confirm the first time you open it. <a href="#unsigned">Here\'s how</a>.'
+        },
+        win: {
+          name: 'Windows', href: releases,
+          note: 'The app isn\'t signed yet, so Windows may warn you the first time. <a href="#unsigned">Here\'s how to get past it</a>.'
+        },
+        android: {
+          name: 'Android', href: releases + '/download/clipsync.apk',
+          note: 'Needs Android 14 or later. Set up clipsync on your computer first, then scan the QR code it shows. Your browser asks you to allow the install.'
+        }
       };
       var ua = navigator.userAgent;
+      // iPads ask for the desktop site, so they look like a Mac with a touch screen.
+      var ios = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
+      var linux = !/Android/i.test(ua) && /Linux/i.test(ua);
       var os = /Android/i.test(ua) ? 'android' : /Windows/i.test(ua) ? 'win' : 'mac';
+
+      if (ios || linux) {
+        var missing = document.getElementById('unsupported');
+        missing.innerHTML = 'clipsync isn\'t on ' + (ios ? 'iPhone or iPad' : 'Linux') + ' yet. It runs on ' +
+          '<a href="' + releases + '">Mac</a>, <a href="' + releases + '">Windows</a>, and ' +
+          '<a href="' + links.android.href + '">Android</a>.';
+        missing.hidden = false;
+        document.getElementById('download').hidden = true;
+        document.querySelector('.hero .platforms').hidden = true;
+        document.getElementById('dl-note').hidden = true;
+      }
 
       // The main button points at the visitor's platform. The other two go in the "Also for" line.
       function render() {
@@ -479,6 +525,7 @@
           a.querySelector('span').textContent = label;
         }
         fill(document.getElementById('download'), os, 'Download for ' + links[os].name);
+        document.getElementById('dl-note').innerHTML = links[os].note;
         [document.getElementById('dl-win'), document.getElementById('dl-android')].forEach(function (a, i) {
           fill(a, others[i], links[others[i]].name);
         });
