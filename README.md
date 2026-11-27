@@ -15,13 +15,15 @@ Free, end-to-end encrypted, and no account needed.
 [![Buy me a coffee](https://img.shields.io/badge/buy%20me%20a%20coffee-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/iyazerski)
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/hero-dark.png">
-  <img src="docs/screenshots/hero-light.png" width="840" alt="clipsync running on desktop and Android, syncing MacBook Air, Pixel 9, and Office PC">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/demo-dark.webp">
+  <img src="docs/demo-light.webp" width="840" alt="A sign-in code copied on an Android phone is pasted on a Mac, and an error log copied on Windows is pasted on the phone">
 </picture>
 
 </div>
 
 ## Why clipsync
+
+Apple's Universal Clipboard works only between Apple devices. Phone Link needs a Microsoft account, and its clipboard sync works with only some Android phones. KDE Connect needs your devices on the same network. clipsync works between Mac, Windows, and Android, wherever they are.
 
 - **Mac, Windows, and Android together.** Copy a link on your phone and paste it on your PC. Copy an address on your Mac and paste it on your phone.
 - **Works anywhere.** Your devices don't need to be on the same Wi-Fi or near each other.
@@ -35,7 +37,7 @@ Works on **macOS 13+**, **Windows**, and optionally **Android 14+**.
 
 ### 1. Install on your computers
 
-Download the installer from the [latest release](https://github.com/iyazerski/clipsync/releases/latest), or install from the command line:
+Download the installer from the [website](https://iyazerski.github.io/clipsync/), which picks the right file for your computer, or install from the command line:
 
 **Mac** (Homebrew):
 
@@ -49,7 +51,12 @@ brew install --cask iyazerski/tap/clipsync
 irm https://github.com/iyazerski/clipsync/releases/latest/download/install.ps1 | iex
 ```
 
-Because the app isn't signed by Apple or Microsoft yet, macOS (`.dmg` or Homebrew) and the Windows `.exe` installer show a first-time warning. On a Mac, open the app, then go to **System Settings → Privacy & Security** and click **Open Anyway**. On Windows, click **More info → Run anyway** (the PowerShell command skips that warning).
+The app isn't signed by Apple or Microsoft yet, so your computer warns you the first time you open it:
+
+- **Mac** (`.dmg` or Homebrew): Open clipsync once, then go to **System Settings → Privacy & Security** and click **Open Anyway**.
+- **Windows** (`.exe`): Click **More info → Run anyway**. The PowerShell command doesn't show this warning because it downloads the installer without a browser. It checks the installer against the release's `SHA256SUMS` before running it.
+
+Every release is built from this repository by GitHub Actions. See [how to check a download](SECURITY.md#check-a-download).
 
 <details>
 <summary><b>Windows Defender blocked the install?</b></summary>
@@ -61,13 +68,6 @@ Add-MpPreference -AttackSurfaceReductionOnlyExclusions "$env:LOCALAPPDATA\Progra
 ```
 
 On a work PC, ask IT to allow that folder.
-
-</details>
-
-<details>
-<summary><b>Upgrading from the old command-line version?</b></summary>
-
-Install the app above. It keeps your existing pairing and replaces the old background service. Then remove the old command with `brew uninstall --formula clipsync` or delete `~/.local/bin/clipsync` on a Mac.
 
 </details>
 
@@ -89,6 +89,19 @@ That's it. Copy something on one device and paste it on another.
 <summary><b>Is my clipboard private?</b></summary>
 
 Yes. Your devices share a private key and encrypt every copy with AES-256-GCM before sending it. The relay passes encrypted data between your devices and can't read it. It only keeps the latest encrypted copy in memory for 2 minutes, and it only sees connection times, IP addresses, and clip sizes.
+
+</details>
+
+<details>
+<summary><b>Is it safe to install an app that isn't signed?</b></summary>
+
+The code is open, and every release is built from it by GitHub Actions, not on someone's laptop. You can check that a download came from that build with the [GitHub CLI](https://cli.github.com):
+
+```sh
+gh attestation verify clipsync.apk --repo iyazerski/clipsync
+```
+
+[SECURITY.md](SECURITY.md#check-a-download) has more ways to check, including the Android app's signing certificate. Free Windows signing is in progress, see the [code signing policy](CODE_SIGNING.md).
 
 </details>
 
@@ -184,5 +197,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for details and pre-commit hooks (`prek i
 ## License
 
 [MIT](LICENSE) © Ihar Yazerski. Third-party licenses are in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md). Issues and PRs are welcome ([CONTRIBUTING.md](CONTRIBUTING.md)).
+
+[Privacy policy](PRIVACY.md) · [Code signing policy](CODE_SIGNING.md) · [Security](SECURITY.md)
 
 clipsync isn't affiliated with or endorsed by Apple, Microsoft, or Google. Mac, Windows, and Android are trademarks of their owners.

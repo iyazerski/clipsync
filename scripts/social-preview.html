@@ -1,0 +1,104 @@
+<!doctype html>
+<!-- Source of docs/social-preview.png. Render it from the repo root with:
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --hide-scrollbars \
+    --force-device-scale-factor=2 --window-size=1280,640 --screenshot=docs/social-preview.png \
+    "file://$PWD/scripts/social-preview.html"
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1280px; height: 640px; overflow: hidden; }
+  body {
+    background: #f6f6f3;
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+    color: #16181d;
+    -webkit-font-smoothing: antialiased;
+    position: relative;
+  }
+  .copy {
+    position: absolute; left: 80px; top: 0; bottom: 0; width: 560px;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .brand { display: flex; align-items: center; gap: 14px; font-size: 28px; font-weight: 650; letter-spacing: -0.01em; }
+  .brand img { width: 44px; height: 44px; }
+  h1 { margin-top: 40px; font-size: 56px; line-height: 1.04; font-weight: 700; letter-spacing: -0.035em; }
+  .sub { margin-top: 24px; font-size: 23px; line-height: 1.45; color: #5b6270; }
+  .url { position: absolute; left: 80px; bottom: 52px; font: 17px ui-monospace, "SF Mono", Menlo, monospace; color: #8a909b; }
+
+  /* Browser window */
+  .win {
+    position: absolute; left: 912px; top: 170px; width: 328px; height: 300px;
+    background: #fff; border: 1px solid #e4e5e8; border-radius: 12px; overflow: hidden;
+  }
+  .bar { height: 40px; background: #f3f4f6; border-bottom: 1px solid #e8e9ec; display: flex; align-items: center; padding: 0 14px; gap: 7px; }
+  .dot { width: 11px; height: 11px; border-radius: 50%; }
+  .addr { margin-left: 22px; width: 200px; height: 24px; border-radius: 6px; background: #e8e9ec; font-size: 12px; color: #6b7280; display: flex; align-items: center; justify-content: center; }
+  .card { margin: 36px auto 0; text-align: center; }
+  .eyebrow { font-size: 11px; letter-spacing: 0.12em; color: #6b7280; font-weight: 600; }
+  .card h2 { margin-top: 8px; font-size: 22px; font-weight: 650; letter-spacing: -0.01em; }
+  .card p { margin-top: 6px; font-size: 13px; color: #6b7280; }
+  .boxes { margin-top: 20px; display: flex; gap: 6px; justify-content: center; }
+  .boxes span {
+    width: 38px; height: 46px; border-radius: 8px; border: 1.5px solid #86c79a; background: #effaf2;
+    font: 600 24px ui-monospace, "SF Mono", Menlo, monospace; color: #15803d; display: flex; align-items: center; justify-content: center;
+  }
+  .ok { margin-top: 14px; font-size: 13px; font-weight: 600; color: #15803d; }
+
+  /* Phone */
+  .phone {
+    position: absolute; left: 668px; top: 90px; width: 220px; height: 460px;
+    background: #1f2125; border-radius: 38px; padding: 9px;
+  }
+  .screen { width: 100%; height: 100%; background: #f8f9fb; border-radius: 30px; overflow: hidden; position: relative; }
+  .status { height: 34px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 11px; font-weight: 600; color: #374151; }
+  .cam { width: 9px; height: 9px; border-radius: 50%; background: #1f2125; }
+  .head { display: flex; align-items: center; gap: 10px; padding: 8px 16px 12px; border-bottom: 1px solid #e8e9ec; }
+  .avatar { width: 32px; height: 32px; border-radius: 50%; background: #2563eb; color: #fff; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .head b { display: block; font-size: 14px; }
+  .head small { font-size: 11px; color: #6b7280; }
+  .time { text-align: center; font-size: 10px; color: #9aa1ad; margin: 14px 0 10px; }
+  .msg { margin: 0 14px; padding: 12px 14px; background: #e9ecf2; border-radius: 14px; font-size: 13px; line-height: 1.5; }
+  .code { display: inline-block; margin: 3px 0; padding: 1px 6px; border-radius: 5px; background: #dbe6fd; color: #1d4ed8; font: 600 17px ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0.04em; }
+  .chip { margin: 12px 14px 0; display: inline-block; padding: 7px 12px; border: 1px solid #dfe2e7; border-radius: 999px; background: #fff; font-size: 12px; font-weight: 600; color: #1d4ed8; }
+  .toast {
+    position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); white-space: nowrap;
+    padding: 8px 14px; border-radius: 999px; background: #1f2125; color: #fff; font-size: 12px; font-weight: 500;
+  }
+</style>
+</head>
+<body>
+  <div class="copy">
+    <div class="brand"><img src="../docs/icon.svg" alt="">clipsync</div>
+    <h1>Copy on one device.<br>Paste on another.</h1>
+    <p class="sub">Clipboard sync for Mac, Windows, and Android.<br>Free, open source, and end-to-end encrypted.</p>
+  </div>
+  <div class="url">github.com/iyazerski/clipsync</div>
+
+  <div class="win">
+    <div class="bar">
+      <span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span>
+      <span class="addr">sign-in.acmebank.com</span>
+    </div>
+    <div class="card">
+      <div class="eyebrow">ACMEBANK</div>
+      <h2>Two-factor verification</h2>
+      <p>Enter the 6-digit code sent to your phone.</p>
+      <div class="boxes"><span>8</span><span>4</span><span>9</span><span>2</span><span>1</span><span>7</span></div>
+      <div class="ok">Verified · Signing in</div>
+    </div>
+  </div>
+
+  <div class="phone">
+    <div class="screen">
+      <div class="status"><span>9:41</span><span class="cam"></span><span>5G</span></div>
+      <div class="head"><span class="avatar">A</span><div><b>AcmeBank</b><small>Security code</small></div></div>
+      <div class="time">Just now</div>
+      <div class="msg">Your sign-in code is<br><span class="code">849 217</span><br>Expires in 5 minutes.</div>
+      <div class="chip">Copy 849 217</div>
+      <div class="toast">Sent to MacBook Air</div>
+    </div>
+  </div>
+</body>
+</html>

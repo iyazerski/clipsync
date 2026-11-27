@@ -40,8 +40,27 @@ Only the latest release gets fixes. Computers update themselves, or from **Check
 
 ## How releases are protected
 
-- Every release is built by [GitHub Actions](.github/workflows/release.yml) from the public source.
+- Every release is built by [GitHub Actions](.github/workflows/release.yml) from the public source. The workflow attests each download, so anyone can check which commit and workflow run built it.
 - Every desktop update is signed with an Ed25519 key that only the release workflow holds. The app and `install.sh` install an update only if its signature matches the public key built into the app.
 - `SHA256SUMS` in every release lists the checksums of the desktop downloads. `install.ps1` refuses a Windows setup that doesn't match it.
 - Every APK is signed with the same key, so Android installs an update only if it comes from the same source.
-- The Mac and Windows apps aren't signed by Apple or Microsoft, or notarized, yet. Mac apps are signed ad hoc.
+- The Mac and Windows apps aren't signed by Apple or Microsoft, or notarized, yet. Mac apps are signed ad hoc. Windows signing through SignPath Foundation is in progress, see the [code signing policy](CODE_SIGNING.md).
+
+## Check a download
+
+With the [GitHub CLI](https://cli.github.com), check that a file came from this repository's release workflow:
+
+```sh
+gh attestation verify clipsync-0.2.6.dmg --repo iyazerski/clipsync
+```
+
+This works for the `.dmg`, the Windows setup, the update archives, and `clipsync.apk` from v0.2.6 on. It prints the commit and the workflow run that built the file.
+
+Without the GitHub CLI, compare the file's SHA-256 with the release's `SHA256SUMS` (`shasum -a 256 <file>` on a Mac, `Get-FileHash <file>` in PowerShell).
+
+The Android app is signed with this certificate. Android installs updates only from the same certificate, and apps like [AppVerifier](https://github.com/soupslurpr/AppVerifier) can check it before you install:
+
+```text
+dev.iyazerski.clipsync
+78:3B:32:90:30:8E:6E:F6:AF:81:58:FB:DB:67:47:6B:E5:CF:9C:48:69:16:59:CD:A3:0B:DB:38:69:46:94:C4
+```

@@ -70,20 +70,25 @@ jobs:
               changes=$(gh api "repos/$GH_REPO/compare/${prev_tag}...${GITHUB_SHA}" | jq -r '.commits | reverse | map("- " + (.commit.message | split("\n")[0]) + " (" + .sha[0:7] + ")") | join("\n")' || true)
             fi
             {
-              if [ -n "$changes" ]; then
-                printf '## What'\''s new\n\n%s\n\n**Full changelog:** https://github.com/%s/compare/%s...v%s\n\n' \
-                  "$changes" "$GH_REPO" "$prev_tag" "$VERSION"
-              else
-                printf 'Build from %s.\n\n' "${GITHUB_SHA::7}"
-              fi
               cat <<EOF
           ## Downloads
           - **Mac (macOS 13+, Apple silicon & Intel):** [clipsync-$VERSION.dmg](https://github.com/$GH_REPO/releases/download/v$VERSION/clipsync-$VERSION.dmg), or install with Homebrew: \`brew install --cask iyazerski/tap/clipsync\`
           - **Windows:** [clipsync-setup-$VERSION-amd64.exe](https://github.com/$GH_REPO/releases/download/v$VERSION/clipsync-setup-$VERSION-amd64.exe), or install in PowerShell: \`irm https://github.com/$GH_REPO/releases/latest/download/install.ps1 | iex\`
           - **Android (14+):** [clipsync.apk](https://github.com/$GH_REPO/releases/download/v$VERSION/clipsync.apk) (allow installing from this source when Android asks)
 
-          > The Mac and Windows apps aren't signed yet. On Mac (\`.dmg\` or Homebrew), open clipsync once, then go to **System Settings → Privacy & Security → Open Anyway**. On Windows, click **More info → Run anyway** (the PowerShell command skips that warning).
+          The other files are for automatic updates and the install scripts.
+
+          > The Mac and Windows apps aren't signed by Apple or Microsoft yet. On Mac (\`.dmg\` or Homebrew), open clipsync once, then go to **System Settings → Privacy & Security → Open Anyway**. On Windows, click **More info → Run anyway**. The PowerShell command checks the installer against \`SHA256SUMS\` and downloads it without a browser, so it doesn't show that warning.
+          >
+          > Check a download: \`gh attestation verify <file> --repo $GH_REPO\` ([more ways](https://github.com/$GH_REPO/blob/main/SECURITY.md#check-a-download)). [Code signing policy](https://github.com/$GH_REPO/blob/main/CODE_SIGNING.md)
+
           EOF
+              if [ -n "$changes" ]; then
+                printf '## What'\''s new\n\n%s\n\n**Full changelog:** https://github.com/%s/compare/%s...v%s\n' \
+                  "$changes" "$GH_REPO" "$prev_tag" "$VERSION"
+              else
+                printf 'Build from %s.\n' "${GITHUB_SHA::7}"
+              fi
             } | gh release create "v$VERSION" --draft --target "$GITHUB_SHA" --title "clipsync v$VERSION" --notes-file -
           fi
 
@@ -120,6 +125,21 @@ jobs:
           cp desktop/locales/*.json desktop/build/installer-locales/
           rm desktop/build/installer-locales/hi.json
           jq '.i18n.dir = "build/installer-locales"' desktop/mygo.json > "$RUNNER_TEMP/mygo.json"
+          mv "$RUNNER_TEMP/mygo.json" desktop/mygo.json
+      - name: Give the Windows installer a product name and version
+        if: matrix.name == 'Windows'
+        # MyGo sets them on the app but not on its installer. SignPath signs only
+        # files whose product name and version it can check.
+        run: |
+          cat > desktop/build/installer-version.nsh <<EOF
+          VIProductVersion "$VERSION.0"
+          VIAddVersionKey /LANG=\${LANG_ENGLISH} "ProductName" "clipsync"
+          VIAddVersionKey /LANG=\${LANG_ENGLISH} "ProductVersion" "$VERSION"
+          VIAddVersionKey /LANG=\${LANG_ENGLISH} "FileVersion" "$VERSION"
+          VIAddVersionKey /LANG=\${LANG_ENGLISH} "FileDescription" "clipsync Setup"
+          VIAddVersionKey /LANG=\${LANG_ENGLISH} "LegalCopyright" "$(jq -r .copyright desktop/mygo.json)"
+          EOF
+          jq '.windows.installerInclude = "build/installer-version.nsh"' desktop/mygo.json > "$RUNNER_TEMP/mygo.json"
           mv "$RUNNER_TEMP/mygo.json" desktop/mygo.json
       - name: Build
         env:
@@ -194,20 +214,73 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
-  publish:
-    needs: [version, desktop, android]
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || inputs.publish)
+  # Signs the Windows installer through SignPath Foundation (see CODE_SIGNING.md)
+  # once SIGNPATH_ORGANIZATION_ID is set. Each request waits until someone
+  # approves it in SignPath.
+  sign-windows:
+    needs: [version, desktop]
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || inputs.publish) && vars.SIGNPATH_ORGANIZATION_ID != ''
     runs-on: ubuntu-latest
+    timeout-minutes: 75
     permissions:
+      actions: read
       contents: write
     env:
       VERSION: ${{ needs.version.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
     steps:
-      - name: Publish the release
-        id: publish
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
+      - name: Download the unsigned installer
+        run: gh release download "v$VERSION" --pattern "clipsync-setup-$VERSION-amd64.exe" --dir unsigned
+      - uses: actions/upload-artifact@v7
+        id: unsigned
+        with:
+          path: unsigned/clipsync-setup-${{ env.VERSION }}-amd64.exe
+          archive: false
+          retention-days: 1
+      - uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: clipsync
+          signing-policy-slug: release-signing
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          parameters: |
+            version: ${{ toJSON(env.VERSION) }}
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: signed
+          skip-decompress: true
+      - name: Replace the installer and its checksum
+        run: |
+          setup="clipsync-setup-$VERSION-amd64.exe"
+          test -f "signed/$setup"
+          sha=$(sha256sum "signed/$setup" | cut -d' ' -f1)
+          gh release download "v$VERSION" --pattern SHA256SUMS --dir sums
+          awk -v f="$setup" -v s="$sha" '{ n = $2; sub(/^\*/, "", n); if (n == f) print s "  " $2; else print }' \
+            sums/SHA256SUMS > SHA256SUMS
+          grep -q "^$sha  \*\?$setup\$" SHA256SUMS
+          gh release upload "v$VERSION" "signed/$setup" SHA256SUMS --clobber
+
+  publish:
+    needs: [version, desktop, android, sign-windows]
+    # sign-windows may be skipped only before SignPath is set up.
+    if: >-
+      ${{ !cancelled() && github.ref == 'refs/heads/main' && (github.event_name == 'push' || inputs.publish)
+      && needs.desktop.result == 'success' && needs.android.result == 'success'
+      && (needs.sign-windows.result == 'success' || (needs.sign-windows.result == 'skipped' && vars.SIGNPATH_ORGANIZATION_ID == '')) }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Check the release
+        id: check
         run: |
           # Both desktop jobs merge their lines into SHA256SUMS. If they upload at the
           # same moment, one can drop the other's. Verify both platforms are present
@@ -217,11 +290,18 @@ jobs:
           mac_sha=$(awk -v f="clipsync-$VERSION-darwin-universal.tar.gz" '{ sub(/^\*/, "", $2); if ($2 == f) print $1 }' <<< "$sums")
           test -n "$mac_sha"
           echo "mac_sha=$mac_sha" >> "$GITHUB_OUTPUT"
-          gh release edit "v$VERSION" --draft=false --latest
+          gh release download "v$VERSION" --pattern clipsync.apk --dir "$RUNNER_TEMP"
+          { echo "$sums"; (cd "$RUNNER_TEMP" && sha256sum clipsync.apk); } > "$RUNNER_TEMP/subjects.txt"
+      # Lets anyone check with gh attestation verify that a download was built here.
+      - uses: actions/attest@v4
+        with:
+          subject-checksums: ${{ runner.temp }}/subjects.txt
+      - name: Publish the release
+        run: gh release edit "v$VERSION" --draft=false --latest
       - name: Update Homebrew cask
         env:
           DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
-          MAC_SHA: ${{ steps.publish.outputs.mac_sha }}
+          MAC_SHA: ${{ steps.check.outputs.mac_sha }}
         run: |
           export GIT_SSH_COMMAND="ssh -i $RUNNER_TEMP/tap_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
           echo "$DEPLOY_KEY" > "$RUNNER_TEMP/tap_key"
