@@ -153,5 +153,9 @@
   "trayOpen": "Abrir o clipsync",
   "trayAddDevice": "Adicionar dispositivo…",
   "trayPause": "Pausar a sincronização",
-  "trayResume": "Retomar a sincronização"
+  "trayResume": "Retomar a sincronização",
+  "madeBy": "Feito por",
+  "buyCoffee": "Me pague um café",
+  "mitLicense": "Licença MIT",
+  "notices": "Licenças de código aberto"
 }

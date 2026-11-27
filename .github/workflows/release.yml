@@ -64,13 +64,27 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           if ! gh release view "v$VERSION" > /dev/null 2>&1; then
-            gh release create "v$VERSION" --draft --target "$GITHUB_SHA" --title "clipsync v$VERSION" --notes-file - <<EOF
-          Build from ${GITHUB_SHA::7}.
+            prev_tag=$(gh api "repos/$GH_REPO/releases?per_page=100" | jq -r --arg cur "v$VERSION" '[.[] | select(.draft == false and .tag_name != $cur)][0].tag_name // ""')
+            changes=""
+            if [ -n "$prev_tag" ]; then
+              changes=$(gh api "repos/$GH_REPO/compare/${prev_tag}...${GITHUB_SHA}" | jq -r '.commits | reverse | map("- " + (.commit.message | split("\n")[0]) + " (" + .sha[0:7] + ")") | join("\n")' || true)
+            fi
+            {
+              if [ -n "$changes" ]; then
+                printf '## What'\''s new\n\n%s\n\n**Full changelog:** https://github.com/%s/compare/%s...v%s\n\n' \
+                  "$changes" "$GH_REPO" "$prev_tag" "$VERSION"
+              else
+                printf 'Build from %s.\n\n' "${GITHUB_SHA::7}"
+              fi
+              cat <<EOF
+          ## Downloads
+          - **Mac (macOS 13+, Apple silicon & Intel):** [clipsync-$VERSION.dmg](https://github.com/$GH_REPO/releases/download/v$VERSION/clipsync-$VERSION.dmg), or install in Terminal (skips the first-time warning): \`curl -fsSL https://github.com/$GH_REPO/releases/latest/download/install.sh | sh\`
+          - **Windows:** [clipsync-setup-$VERSION-amd64.exe](https://github.com/$GH_REPO/releases/download/v$VERSION/clipsync-setup-$VERSION-amd64.exe), or install in PowerShell: \`irm https://github.com/$GH_REPO/releases/latest/download/install.ps1 | iex\`
+          - **Android (14+):** [clipsync.apk](https://github.com/$GH_REPO/releases/download/v$VERSION/clipsync.apk) (allow installing from this source when Android asks)
 
-          **Mac:** run \`curl -fsSL https://github.com/$GH_REPO/releases/latest/download/install.sh | sh\`. The app isn't notarized yet, so the disk image needs **System Settings → Privacy & Security → Open Anyway** the first time.
-          **Windows:** run \`irm https://github.com/$GH_REPO/releases/latest/download/install.ps1 | iex\` in PowerShell, or open the setup and click **More info → Run anyway**.
-          **Phone:** open clipsync.apk on the phone and allow installing from this source.
+          > The Mac and Windows apps aren't signed yet. If you use the direct installer, on Mac go to **System Settings → Privacy & Security → Open Anyway**, and on Windows click **More info → Run anyway**.
           EOF
+            } | gh release create "v$VERSION" --draft --target "$GITHUB_SHA" --title "clipsync v$VERSION" --notes-file -
           fi
 
   desktop:

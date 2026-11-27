@@ -153,5 +153,9 @@
   "trayOpen": "clipsync 열기",
   "trayAddDevice": "기기 추가…",
   "trayPause": "동기화 일시 정지",
-  "trayResume": "동기화 다시 시작"
+  "trayResume": "동기화 다시 시작",
+  "madeBy": "만든 사람",
+  "buyCoffee": "커피 한 잔 사 주기",
+  "mitLicense": "MIT 라이선스",
+  "notices": "오픈 소스 라이선스"
 }

@@ -135,5 +135,9 @@
   "trayOpen": "clipsync を開く",
   "trayAddDevice": "デバイスを追加…",
   "trayPause": "同期を一時停止",
-  "trayResume": "同期を再開"
+  "trayResume": "同期を再開",
+  "madeBy": "作者",
+  "buyCoffee": "コーヒーをおごる",
+  "mitLicense": "MIT ライセンス",
+  "notices": "オープンソースライセンス"
 }

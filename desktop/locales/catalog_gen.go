@@ -1421,3 +1421,43 @@ func TrayResume() string { return In(i18n.Locale()).TrayResume() }
 func (msgs Messages) TrayResume() string {
 	return Catalog.Format(msgs.locale, "trayResume", nil)
 }
+
+// MadeBy says "Made by"
+// in the language the app shows.
+func MadeBy() string { return In(i18n.Locale()).MadeBy() }
+
+// MadeBy says "Made by"
+// in the language of msgs.
+func (msgs Messages) MadeBy() string {
+	return Catalog.Format(msgs.locale, "madeBy", nil)
+}
+
+// BuyCoffee says "Buy me a coffee"
+// in the language the app shows.
+func BuyCoffee() string { return In(i18n.Locale()).BuyCoffee() }
+
+// BuyCoffee says "Buy me a coffee"
+// in the language of msgs.
+func (msgs Messages) BuyCoffee() string {
+	return Catalog.Format(msgs.locale, "buyCoffee", nil)
+}
+
+// MitLicense says "MIT License"
+// in the language the app shows.
+func MitLicense() string { return In(i18n.Locale()).MitLicense() }
+
+// MitLicense says "MIT License"
+// in the language of msgs.
+func (msgs Messages) MitLicense() string {
+	return Catalog.Format(msgs.locale, "mitLicense", nil)
+}
+
+// Notices says "Open-source licenses"
+// in the language the app shows.
+func Notices() string { return In(i18n.Locale()).Notices() }
+
+// Notices says "Open-source licenses"
+// in the language of msgs.
+func (msgs Messages) Notices() string {
+	return Catalog.Format(msgs.locale, "notices", nil)
+}
