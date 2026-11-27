@@ -135,5 +135,9 @@
   "trayOpen": "打开 clipsync",
   "trayAddDevice": "添加设备…",
   "trayPause": "暂停同步",
-  "trayResume": "继续同步"
+  "trayResume": "继续同步",
+  "madeBy": "作者",
+  "buyCoffee": "请我喝杯咖啡",
+  "mitLicense": "MIT 许可证",
+  "notices": "开源许可证"
 }

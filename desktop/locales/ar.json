@@ -153,5 +153,9 @@
   "trayOpen": "فتح clipsync",
   "trayAddDevice": "إضافة جهاز…",
   "trayPause": "إيقاف المزامنة مؤقتًا",
-  "trayResume": "استئناف المزامنة"
+  "trayResume": "استئناف المزامنة",
+  "madeBy": "من تطوير",
+  "buyCoffee": "اشترِ لي قهوة",
+  "mitLicense": "رخصة MIT",
+  "notices": "رخص المصادر المفتوحة"
 }

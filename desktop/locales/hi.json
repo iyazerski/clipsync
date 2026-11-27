@@ -153,5 +153,9 @@
   "trayOpen": "clipsync खोलें",
   "trayAddDevice": "डिवाइस जोड़ें…",
   "trayPause": "सिंक रोकें",
-  "trayResume": "सिंक फिर से शुरू करें"
+  "trayResume": "सिंक फिर से शुरू करें",
+  "madeBy": "निर्माता",
+  "buyCoffee": "मुझे एक कॉफ़ी पिलाएँ",
+  "mitLicense": "MIT लाइसेंस",
+  "notices": "ओपन-सोर्स लाइसेंस"
 }

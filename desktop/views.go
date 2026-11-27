@@ -19,6 +19,11 @@ import (
 const (
 	downloadPage = "https://github.com/iyazerski/clipsync/releases/latest"
 	relayGuide   = "https://github.com/iyazerski/clipsync#host-your-own-relay"
+	authorName   = "Ihar Yazerski"
+	authorURL    = "https://buymeacoffee.com/iyazerski"
+	repoURL      = "https://github.com/iyazerski/clipsync"
+	licenseURL   = "https://github.com/iyazerski/clipsync/blob/main/LICENSE"
+	noticesURL   = "https://github.com/iyazerski/clipsync/blob/main/THIRD_PARTY_LICENSES.md"
 )
 
 //go:embed icons/*.svg
@@ -899,6 +904,25 @@ func (a *app) settings(c *ui.Context) {
 				a.unpairing = true
 			}
 		})
+	})
+	credits(c)
+}
+
+func credits(c *ui.Context) {
+	t := c.Theme()
+	sep := func() { ui.Text(c, "·").FontSize(12).TextColor(t.TextMuted) }
+	link := func(label, url string) ui.Element {
+		return ui.Link(c, label, url).FontSize(12).TextColor(t.TextMuted)
+	}
+	ui.Row(c).Justify(ui.Center).AlignItems(ui.Center).Gap(6).Margin(4, 0, 0, 0).Children(func() {
+		ui.Text(c, locales.MadeBy()).FontSize(12).TextColor(t.TextMuted)
+		link(authorName, authorURL).Tooltip(locales.BuyCoffee())
+		sep()
+		link(locales.MitLicense(), licenseURL)
+		sep()
+		link(locales.Notices(), noticesURL)
+		sep()
+		link("GitHub", repoURL)
 	})
 }
 

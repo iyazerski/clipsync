@@ -173,5 +173,10 @@
   "trayOpen": "Open clipsync",
   "trayAddDevice": "Add device…",
   "trayPause": "Pause syncing",
-  "trayResume": "Resume syncing"
+  "trayResume": "Resume syncing",
+
+  "madeBy": "Made by",
+  "buyCoffee": "Buy me a coffee",
+  "mitLicense": "MIT License",
+  "notices": "Open-source licenses"
 }
