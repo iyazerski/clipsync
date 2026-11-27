@@ -15,29 +15,28 @@ Free, end-to-end encrypted, and no account needed.
 [![Buy me a coffee](https://img.shields.io/badge/buy%20me%20a%20coffee-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/iyazerski)
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/demo-dark.webp">
-  <img src="docs/demo-light.webp" width="840" alt="A sign-in code copied on an Android phone is pasted on a Mac, and an error log copied on Windows is pasted on the phone">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/hero-dark.png">
+  <img src="docs/hero-light.png" width="840" alt="clipsync running on desktop and Android, syncing MacBook Air, Pixel 9, and Office PC">
 </picture>
 
 </div>
 
 ## Why clipsync
 
-Apple's Universal Clipboard works only between Apple devices. Phone Link needs a Microsoft account, and its clipboard sync works with only some Android phones. KDE Connect needs your devices on the same network. clipsync works between Mac, Windows, and Android, wherever they are.
+Universal Clipboard is Apple-only, Phone Link needs a Microsoft account, and KDE Connect needs the same Wi-Fi. clipsync works across Mac, Windows, and Android on any network.
 
-- **Mac, Windows, and Android together.** Copy a link on your phone and paste it on your PC. Copy an address on your Mac and paste it on your phone.
-- **Works anywhere.** Your devices don't need to be on the same Wi-Fi or near each other.
-- **Private by default.** Text is encrypted on your device before it leaves. Nobody else can read it, and passwords from password managers are skipped automatically.
-- **No sign-up.** No account, no tracking, and no server to manage. Use the free public relay, or [host your own](#host-your-own-relay).
-- **Free and open source.** MIT licensed.
+- **Any network.** Works across home Wi-Fi, office networks, and mobile data.
+- **Private by default.** End-to-end encrypted with AES-256-GCM. Password manager copies are skipped automatically.
+- **No account.** No sign-up or tracking. Use the free public relay, or [host your own](#host-your-own-relay).
+- **Open source.** Free and MIT licensed.
 
 ## Get started
 
-Works on **macOS 13+**, **Windows**, and optionally **Android 14+**.
+Works on **macOS 13+**, **Windows**, and **Android 14+**.
 
 ### 1. Install on your computers
 
-Download the installer from the [website](https://iyazerski.github.io/clipsync/), which picks the right file for your computer, or install from the command line:
+Download the installer from the [website](https://iyazerski.github.io/clipsync/), or install from the command line:
 
 **Mac** (Homebrew):
 
@@ -51,17 +50,17 @@ brew install --cask iyazerski/tap/clipsync
 irm https://github.com/iyazerski/clipsync/releases/latest/download/install.ps1 | iex
 ```
 
-The app isn't signed by Apple or Microsoft yet, so your computer warns you the first time you open it:
+The app isn't signed by Apple or Microsoft yet, so your computer warns you the first time:
 
-- **Mac** (`.dmg` or Homebrew): Open clipsync once, then go to **System Settings → Privacy & Security** and click **Open Anyway**.
-- **Windows** (`.exe`): Click **More info → Run anyway**. The PowerShell command doesn't show this warning because it downloads the installer without a browser. It checks the installer against the release's `SHA256SUMS` before running it.
+- **Mac:** Open clipsync once, then go to **System Settings → Privacy & Security → Open Anyway**.
+- **Windows:** Click **More info → Run anyway**. The PowerShell command skips this warning and verifies `SHA256SUMS`.
 
-Every release is built from this repository by GitHub Actions. See [how to check a download](SECURITY.md#check-a-download).
+Every release is built by GitHub Actions ([verify a download](SECURITY.md#check-a-download)). Free Windows code signing from [SignPath Foundation](https://signpath.org) is in progress ([code signing policy](CODE_SIGNING.md)).
 
 <details>
 <summary><b>Windows Defender blocked the install?</b></summary>
 
-New builds don't have reputation with Microsoft Defender yet. If the ransomware protection rule **Use advanced protection against ransomware** is turned on, allow clipsync's folder in an administrator PowerShell, then install again:
+New builds don't have Defender reputation yet. If **Use advanced protection against ransomware** is on, allow clipsync's folder in an administrator PowerShell, then install again:
 
 ```powershell
 Add-MpPreference -AttackSurfaceReductionOnlyExclusions "$env:LOCALAPPDATA\Programs\clipsync"
@@ -74,88 +73,87 @@ On a work PC, ask IT to allow that folder.
 ### 2. Pair your devices
 
 1. **First computer:** Open clipsync and click **Set up my first device**.
-2. **Other computers:** Click **Add device → Computer** on your first computer. On the other computer, open clipsync, click **Join my other devices**, and type the code.
-3. **Android phone:** Click **Add device** on your computer and scan the QR code with your phone's camera. Download and install the app from the page that opens (allow installing from your browser if Android asks), then scan again and tap **Open clipsync**. (No camera? Tap **Enter a code** in the app instead.)
+2. **Other computers:** Click **Add device → Computer** on the first computer. On the other, click **Join my other devices** and type the code.
+3. **Android:** Click **Add device** on your computer and scan the QR code to download, then scan again to pair (or tap **Enter a code**).
 
-That's it. Copy something on one device and paste it on another.
+Copy on one device, paste on another.
 
-- **On a Mac:** Click **Allow** if macOS asks whether clipsync can paste.
-- **On Android:** Tap **Run in the background** when prompted so sync stays active, and add the **Quick Settings tile**. On ColorOS (OPPO/OnePlus), also turn on **Allow background activity** and **Allow auto launch** under App info → Battery usage.
-- **Sending from Android:** Anything you copy on a computer arrives on your phone automatically. Android doesn't let apps read the clipboard in the background, so sending from your phone takes one tap: highlight text and pick **Send to computer**, share text to clipsync, or tap the **Send clipboard** tile in Quick Settings.
+- **Mac:** Click **Allow** if macOS asks whether clipsync can paste.
+- **Android:** Allow background activity when prompted (on OPPO/OnePlus ColorOS, also enable **Allow background activity** and **Allow auto launch** under App info → Battery usage). Copies from computers arrive automatically. To send from Android, tap the **Send clipboard** Quick Settings tile, share text to clipsync, or highlight text and pick **Send to computer**.
 
 ## FAQ
 
 <details>
 <summary><b>Is my clipboard private?</b></summary>
 
-Yes. Your devices share a private key and encrypt every copy with AES-256-GCM before sending it. The relay passes encrypted data between your devices and can't read it. It only keeps the latest encrypted copy in memory for 2 minutes, and it only sees connection times, IP addresses, and clip sizes.
+Yes. Your devices share a private key and encrypt every copy with AES-256-GCM before sending. The relay can't read it, keeps only the latest encrypted copy in memory for 2 minutes, and only sees connection times, IP addresses, and clip sizes.
 
 </details>
 
 <details>
-<summary><b>Is it safe to install an app that isn't signed?</b></summary>
+<summary><b>Is it safe to install an unsigned app?</b></summary>
 
-The code is open, and every release is built from it by GitHub Actions, not on someone's laptop. You can check that a download came from that build with the [GitHub CLI](https://cli.github.com):
+Every release is built from this repository by GitHub Actions. You can verify any download with the [GitHub CLI](https://cli.github.com):
 
 ```sh
 gh attestation verify clipsync.apk --repo iyazerski/clipsync
 ```
 
-[SECURITY.md](SECURITY.md#check-a-download) has more ways to check, including the Android app's signing certificate. Free Windows code signing from [SignPath Foundation](https://signpath.org) is in progress, see the [code signing policy](CODE_SIGNING.md).
+See [SECURITY.md](SECURITY.md#check-a-download) for SHA-256 checksums and the Android signing certificate. Free Windows code signing from [SignPath Foundation](https://signpath.org) is in progress ([code signing policy](CODE_SIGNING.md)).
 
 </details>
 
 <details>
 <summary><b>Does it sync images or files?</b></summary>
 
-No. Text only, up to 256 KB. There's no clipboard history, and the latest copy wins.
+No. Text only, up to 256 KB. No history, and the latest copy wins.
 
 </details>
 
 <details>
 <summary><b>What if a device was offline?</b></summary>
 
-If it reconnects within 2 minutes, it gets the latest copy. After that, it starts fresh so you don't get stale text.
+If it reconnects within 2 minutes, it gets the latest copy. After that, it starts fresh.
 
 </details>
 
 <details>
 <summary><b>Does it work on iPhone or Linux?</b></summary>
 
-Not yet. clipsync currently supports macOS (Apple silicon and Intel), Windows, and Android.
+Not yet. Currently macOS (Apple silicon and Intel), Windows, and Android.
 
 </details>
 
 <details>
-<summary><b>How do I change settings or update the app?</b></summary>
+<summary><b>How do I change settings or update?</b></summary>
 
-Open **Settings** in the desktop app to pick a language, toggle opening at login or showing in the menu bar / notification area, check logs, or manage automatic updates. On Android, open the ⋮ menu and tap **Check for updates**.
+Open **Settings** on desktop for language, launch at login, tray icon, logs, and auto-updates. On Android, open **⋮ → Check for updates**.
 
 </details>
 
 <details>
 <summary><b>How do I remove a lost or old device?</b></summary>
 
-On a computer, open **Devices**, click **⋯** next to the device, and choose **Remove…**. That creates a new pairing key so the removed device can't sync anymore. Then unpair your other devices and re-add them with the new code. (If you host a private relay with `CLIPSYNC_TOKEN`, update its token from **Settings** and restart it before clicking **New code**.) **Hide from list** only hides the device from that computer's list.
+On desktop, open **Devices**, click **⋯** next to the device, and pick **Remove…**. That creates a new pairing key, so re-add your other devices with the new code. (On a private relay with `CLIPSYNC_TOKEN`, update its token from **Settings** and restart it before clicking **New code**.) **Hide from list** only hides it on that computer.
 
 </details>
 
 <details>
 <summary><b>How do I uninstall clipsync?</b></summary>
 
-- **Mac:** Open **Settings → Unpair**, quit clipsync, and drag it from Applications to the Trash (or run `brew uninstall --cask clipsync` if you installed with Homebrew).
-- **Windows:** Open **Settings → Unpair**, quit clipsync, and uninstall it from **Settings → Apps**.
-- **Android:** Tap **Unpair** in the ⋮ menu and uninstall the app.
+- **Mac:** **Settings → Unpair**, quit, and move to Trash (or `brew uninstall --cask clipsync`).
+- **Windows:** **Settings → Unpair**, quit, and uninstall from **Settings → Apps**.
+- **Android:** **⋮ → Unpair**, then uninstall.
 
 </details>
 
 ## Host your own relay
 
-By default, clipsync uses the free public relay at `clip.iyazerski.dev`. It can't read your clipboard, but it comes with no uptime guarantee. You can host your own relay on any server with Docker, ports 80 and 443 open, and a domain name pointing to it.
+By default, clipsync uses the free public relay at `clip.iyazerski.dev` (no uptime guarantee). To self-host with Docker, ports 80/443, and a domain:
 
-1. On your first computer, open clipsync, click **Use your own relay**, enter your domain (such as `clip.example.com`), and choose **Set up my first device**.
+1. On your first computer, open clipsync, click **Use your own relay**, enter your domain (e.g. `clip.example.com`), and click **Set up my first device**.
 2. Open **Settings** and copy your **Relay token**.
-3. On your server, start the relay with Docker Compose:
+3. Start the relay on your server:
 
 ```sh
 curl -fsSLO https://raw.githubusercontent.com/iyazerski/clipsync/main/relay/compose.yaml
@@ -163,27 +161,27 @@ printf 'RELAY_DOMAIN=clip.example.com\nCLIPSYNC_TOKEN=<your token>\n' > .env
 docker compose up -d
 ```
 
-This runs the relay behind [Caddy](https://caddyserver.com) with automatic HTTPS and only allows your paired devices. To let anyone use your relay, set `CLIPSYNC_PUBLIC=true` instead of `CLIPSYNC_TOKEN`.
+This runs behind [Caddy](https://caddyserver.com) with automatic HTTPS for your devices only. Set `CLIPSYNC_PUBLIC=true` instead of `CLIPSYNC_TOKEN` to allow anyone.
 
-Already paired with the public relay? On each computer, open **Settings → Relay → Change** and enter your new address. On Android, unpair and pair again using **Enter a code** with your relay address.
+Already paired? On desktop, go to **Settings → Relay → Change**. On Android, unpair and join again with **Enter a code**.
 
 <details>
 <summary><b>Already have a reverse proxy?</b></summary>
 
-Run just the relay container and point your proxy at port 8080:
+Run just the relay container and proxy HTTPS to port 8080:
 
 ```sh
 docker run -d --restart unless-stopped -p 127.0.0.1:8080:8080 \
   -e CLIPSYNC_TOKEN=<your token> ghcr.io/iyazerski/clipsync/relay
 ```
 
-Your proxy must serve HTTPS and stream responses without buffering. Caddy and Traefik work out of the box. For nginx, disable `proxy_buffering`. Cloudflare quick tunnels (`trycloudflare.com`) don't work because they buffer streams.
+Your proxy must stream responses without buffering (Caddy and Traefik work by default, nginx needs `proxy_buffering off`, Cloudflare quick tunnels don't work).
 
 </details>
 
 ## Build from source
 
-Requires [Go](https://go.dev/dl/) 1.27.4+ (desktop app built with [MyGo](https://mygo.run)) and, for Android, JDK 21 + Android SDK (`ANDROID_HOME`).
+Requires [Go](https://go.dev/dl/) 1.27.4+ (desktop built with [MyGo](https://mygo.run)) and, for Android, JDK 21 + Android SDK (`ANDROID_HOME`).
 
 ```sh
 make dev                                  # run desktop app with reload
@@ -196,7 +194,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for details and pre-commit hooks (`prek i
 
 ## License
 
-[MIT](LICENSE) © Ihar Yazerski. Third-party licenses are in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md). Issues and PRs are welcome ([CONTRIBUTING.md](CONTRIBUTING.md)).
+[MIT](LICENSE) © Ihar Yazerski. Third-party licenses in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md). Issues and PRs welcome ([CONTRIBUTING.md](CONTRIBUTING.md)).
 
 [Privacy policy](PRIVACY.md) · [Code signing policy](CODE_SIGNING.md) · [Security](SECURITY.md)
 

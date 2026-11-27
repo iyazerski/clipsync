@@ -1,0 +1,539 @@
+<!doctype html>
+<!-- Source of docs/hero-light.png and docs/hero-dark.png. Render from the repo root with:
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --hide-scrollbars \
+    --force-device-scale-factor=2 --window-size=1280,840 --screenshot=docs/hero-light.png \
+    "file://$PWD/scripts/readme-hero.html?theme=light"
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --hide-scrollbars \
+    --force-device-scale-factor=2 --window-size=1280,840 --screenshot=docs/hero-dark.png \
+    "file://$PWD/scripts/readme-hero.html?theme=dark"
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --canvas: #f5f5f3;
+    --canvas-border: #e4e4df;
+    --title: #111318;
+    --sub: #545b68;
+    --kicker: #6b7280;
+
+    /* Desktop window */
+    --win-bg: #ffffff;
+    --win-sidebar: #f5f5f4;
+    --win-titlebar: #f0f0ef;
+    --win-border: #e2e3e6;
+    --win-card: #f7f7f6;
+    --win-card-border: #e5e6e8;
+    --win-nav-active: #e7e8eb;
+    --win-text: #16181d;
+    --win-muted: #656c78;
+    --win-btn-bg: #f6f6f5;
+    --win-btn-border: #d8dade;
+    --win-shadow: 0 2px 6px rgba(0, 0, 0, 0.04), 0 18px 44px rgba(0, 0, 0, 0.08);
+    --blue: #2563eb;
+    --blue-tint: #dbeafe;
+    --blue-text: #1d4ed8;
+    --green: #16a34a;
+    --green-tint: #dcfce7;
+    --green-text: #15803d;
+    --gray-tint: #ebebee;
+    --gray-icon: #5c6370;
+
+    /* Android phone */
+    --bezel: #16181d;
+    --phone-bg: #f3f5f8;
+    --phone-card: #ffffff;
+    --phone-pill: #e7eaf0;
+    --phone-connected-bg: #dceee0;
+    --phone-connected-badge: #1e7e3e;
+    --phone-connected-text: #14281b;
+    --phone-connected-sub: #385241;
+    --phone-section: #1d4ed8;
+    --phone-fab-bg: #2f5597;
+    --phone-fab-text: #ffffff;
+    --phone-shadow: 0 4px 10px rgba(0, 0, 0, 0.08), 0 22px 48px rgba(0, 0, 0, 0.14);
+  }
+
+  [data-theme="dark"] {
+    --canvas: #12151b;
+    --canvas-border: #232833;
+    --title: #f3f4f6;
+    --sub: #959dac;
+    --kicker: #7e8696;
+
+    /* Desktop window */
+    --win-bg: #1e1f22;
+    --win-sidebar: #25262a;
+    --win-titlebar: #2a2b30;
+    --win-border: #35373d;
+    --win-card: #25262b;
+    --win-card-border: #34363c;
+    --win-nav-active: #34363d;
+    --win-text: #f1f2f5;
+    --win-muted: #989da8;
+    --win-btn-bg: #2a2c32;
+    --win-btn-border: #3c3f47;
+    --win-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 22px 52px rgba(0, 0, 0, 0.45);
+    --blue: #3b82f6;
+    --blue-tint: rgba(59, 130, 246, 0.18);
+    --blue-text: #60a5fa;
+    --green: #22c55e;
+    --green-tint: rgba(34, 197, 94, 0.16);
+    --green-text: #4ade80;
+    --gray-tint: #32343b;
+    --gray-icon: #9ca3af;
+
+    /* Android phone */
+    --bezel: #0b0d11;
+    --phone-bg: #12151c;
+    --phone-card: #1b202a;
+    --phone-pill: #232936;
+    --phone-connected-bg: #1b3826;
+    --phone-connected-badge: #52c97a;
+    --phone-connected-text: #eef6f0;
+    --phone-connected-sub: #a8c7b2;
+    --phone-section: #7aa7f9;
+    --phone-fab-bg: #c6d7ff;
+    --phone-fab-text: #16294f;
+    --phone-shadow: 0 6px 14px rgba(0, 0, 0, 0.38), 0 26px 56px rgba(0, 0, 0, 0.55);
+  }
+
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1280px; height: 840px; overflow: hidden; }
+  body {
+    background: var(--canvas);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    color: var(--title);
+    -webkit-font-smoothing: antialiased;
+    position: relative;
+    border: 1px solid var(--canvas-border);
+  }
+
+  /* Header */
+  .header {
+    position: absolute; left: 56px; top: 44px; right: 56px;
+  }
+  h1 {
+    font-size: 40px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.1;
+    color: var(--title);
+  }
+  .sub {
+    margin-top: 10px; max-width: 780px;
+    font-size: 16.5px; line-height: 1.48; color: var(--sub);
+  }
+
+  /* Platform kickers */
+  .kicker {
+    position: absolute;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.07em;
+    text-transform: uppercase; color: var(--kicker);
+  }
+  .kicker svg { width: 14px; height: 14px; fill: currentColor; }
+  .k-desk { left: 56px; top: 180px; }
+  .k-phone { right: 56px; top: 166px; }
+
+  /* ---------- DESKTOP APP WINDOW ---------- */
+  .desktop {
+    position: absolute; left: 56px; top: 206px; width: 792px; height: 582px;
+    background: var(--win-bg); border: 1px solid var(--win-border);
+    border-radius: 13px; box-shadow: var(--win-shadow);
+    overflow: hidden; display: flex; flex-direction: column;
+  }
+  .titlebar {
+    height: 32px; background: var(--win-titlebar); border-bottom: 1px solid var(--win-border);
+    display: flex; align-items: center; padding: 0 13px; position: relative;
+  }
+  .dots { display: flex; gap: 7px; }
+  .dot { width: 11px; height: 11px; border-radius: 50%; }
+  .tb-title {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    font-size: 12px; font-weight: 500; color: var(--win-muted);
+  }
+
+  .desk-body { flex: 1; display: flex; min-height: 0; }
+  .sidebar {
+    width: 210px; background: var(--win-sidebar); border-right: 1px solid var(--win-border);
+    padding: 18px 14px 16px; display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .side-brand {
+    display: flex; align-items: center; gap: 10px; padding: 2px 6px 18px;
+    font-size: 17px; font-weight: 700; letter-spacing: -0.02em; color: var(--win-text);
+  }
+  .side-brand img { width: 28px; height: 28px; border-radius: 7px; display: block; }
+  .nav { display: flex; flex-direction: column; gap: 3px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 9px;
+    padding: 8px 11px; border-radius: 8px;
+    font-size: 13.5px; font-weight: 500; color: var(--win-text);
+  }
+  .nav-item.active { background: var(--win-nav-active); font-weight: 600; }
+  .nav-item svg { width: 17px; height: 17px; fill: var(--blue); }
+  .side-status {
+    display: flex; align-items: center; gap: 8px; padding: 0 6px;
+    font-size: 12.5px; color: var(--win-muted);
+  }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+
+  .main {
+    flex: 1; padding: 26px 32px; display: flex; flex-direction: column;
+  }
+  .main-head {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .main-head h2 {
+    font-size: 24px; font-weight: 700; letter-spacing: -0.02em; color: var(--win-text);
+  }
+  .add-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px; border-radius: 8px;
+    background: var(--blue); color: #ffffff;
+    font-size: 13px; font-weight: 600;
+  }
+  .add-btn svg { width: 15px; height: 15px; fill: currentColor; }
+
+  .sync-card {
+    margin-top: 20px; padding: 16px 18px; border-radius: 12px;
+    background: var(--win-card); border: 1px solid var(--win-card-border);
+    display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  }
+  .sync-left { display: flex; align-items: center; gap: 14px; }
+  .icon-box {
+    width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .icon-box svg { width: 20px; height: 20px; fill: currentColor; }
+  .ib-green { background: var(--green-tint); color: var(--green-text); }
+  .ib-blue { background: var(--blue-tint); color: var(--blue-text); }
+  .ib-gray { background: var(--gray-tint); color: var(--gray-icon); }
+
+  .row-title { font-size: 14.5px; font-weight: 650; color: var(--win-text); }
+  .row-sub { margin-top: 2px; font-size: 12.5px; line-height: 1.38; color: var(--win-muted); }
+
+  .pause-btn {
+    display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+    padding: 6px 13px; border-radius: 8px;
+    background: var(--win-btn-bg); border: 1px solid var(--win-btn-border);
+    font-size: 12.5px; font-weight: 600; color: var(--win-text);
+  }
+  .pause-btn svg { width: 14px; height: 14px; fill: currentColor; }
+
+  .sec-label {
+    margin-top: 22px; margin-bottom: 10px;
+    font-size: 12.5px; font-weight: 600; color: var(--win-muted);
+  }
+  .dev-list {
+    border-radius: 12px; background: var(--win-card); border: 1px solid var(--win-card-border);
+    overflow: hidden;
+  }
+  .dev-row {
+    padding: 14px 18px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .dev-row + .dev-row { border-top: 1px solid var(--win-card-border); }
+  .dev-left { display: flex; align-items: center; gap: 13px; }
+  .this-pill {
+    padding: 3px 9px; border-radius: 999px;
+    background: var(--blue-tint); color: var(--blue-text);
+    font-size: 11px; font-weight: 600;
+  }
+
+  .add-dashed {
+    margin-top: 14px; padding: 14px 18px; border-radius: 12px;
+    border: 1.5px dashed var(--win-card-border);
+    display: flex; align-items: center; gap: 13px;
+  }
+
+  /* ---------- ANDROID PHONE ---------- */
+  .phone {
+    position: absolute; right: 56px; top: 192px; width: 312px; height: 604px;
+    background: var(--bezel); border-radius: 40px; padding: 9px;
+    box-shadow: var(--phone-shadow);
+  }
+  .p-screen {
+    width: 100%; height: 100%; background: var(--phone-bg); border-radius: 31px;
+    overflow: hidden; position: relative; display: flex; flex-direction: column;
+  }
+  .p-status {
+    height: 30px; padding: 0 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 11px; font-weight: 600; color: var(--win-text);
+  }
+  .p-cam { width: 9px; height: 9px; border-radius: 50%; background: var(--bezel); }
+  .p-head {
+    padding: 4px 18px 10px;
+    display: flex; align-items: flex-start; justify-content: space-between;
+  }
+  .p-app { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; color: var(--win-text); }
+  .p-relay {
+    margin-top: 5px; display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 9px; border-radius: 999px; background: var(--phone-pill);
+    font-size: 10px; font-weight: 500; color: var(--win-muted);
+  }
+  .p-relay i { width: 6px; height: 6px; border-radius: 50%; background: var(--green); display: block; }
+  .p-menu {
+    width: 28px; height: 28px; border-radius: 50%; background: var(--phone-pill);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 700; color: var(--win-muted);
+  }
+
+  .p-body { padding: 0 14px; display: flex; flex-direction: column; gap: 8px; }
+  .p-connected {
+    padding: 13px 14px; border-radius: 16px;
+    background: var(--phone-connected-bg);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .p-check {
+    width: 38px; height: 38px; border-radius: 12px; flex-shrink: 0;
+    background: var(--phone-connected-badge); color: #ffffff;
+    display: flex; align-items: center; justify-content: center;
+  }
+  [data-theme="dark"] .p-check { color: #0e2416; }
+  .p-check svg { width: 22px; height: 22px; }
+  .p-conn-title { font-size: 14.5px; font-weight: 700; color: var(--phone-connected-text); }
+  .p-conn-time { margin-top: 1px; font-size: 10.5px; font-weight: 600; color: var(--phone-connected-sub); }
+  .p-conn-desc { margin-top: 3px; font-size: 9.5px; line-height: 1.35; color: var(--phone-connected-sub); }
+
+  .p-sec {
+    margin-top: 4px; padding: 0 4px;
+    font-size: 10.5px; font-weight: 650; color: var(--phone-section);
+  }
+  .p-list { display: flex; flex-direction: column; gap: 4px; }
+  .p-card {
+    padding: 8px 11px; border-radius: 11px; background: var(--phone-card);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .p-card-left { display: flex; align-items: center; gap: 10px; }
+  .p-ic {
+    width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .p-ic svg { width: 15px; height: 15px; fill: currentColor; }
+  .p-name { font-size: 11.5px; font-weight: 650; color: var(--win-text); }
+  .p-meta { font-size: 9.5px; color: var(--win-muted); display: flex; align-items: center; gap: 4px; }
+  .p-meta .gdot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); display: inline-block; }
+  .p-this {
+    padding: 2.5px 7px; border-radius: 999px;
+    background: var(--blue-tint); color: var(--blue-text);
+    font-size: 9.5px; font-weight: 600;
+  }
+
+  .p-fab {
+    position: absolute; right: 14px; bottom: 18px;
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 10px 14px; border-radius: 14px;
+    background: var(--phone-fab-bg); color: var(--phone-fab-text);
+    font-size: 11.5px; font-weight: 650;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+  }
+  .p-fab svg { width: 14px; height: 14px; fill: currentColor; }
+  .p-home {
+    position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%);
+    width: 82px; height: 3.5px; border-radius: 999px; background: var(--win-border);
+  }
+</style>
+</head>
+<body>
+  <script>
+    const theme = new URLSearchParams(location.search).get('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', theme);
+  </script>
+
+  <div class="header">
+    <h1>One clipboard across every screen.</h1>
+    <p class="sub">Copy on your computer, paste on your phone. End-to-end encrypted, with no account needed.</p>
+  </div>
+
+  <!-- Platform kickers -->
+  <div class="kicker k-desk">
+    <svg viewBox="0 -960 960 960"><path d="M80-160q-33 0-56.5-23.5T0-240h160q-33 0-56.5-23.5T80-320v-440q0-33 23.5-56.5T160-840h640q33 0 56.5 23.5T880-760v440q0 33-23.5 56.5T800-240h160q0 33-23.5 56.5T880-160H80Zm80-160h640v-440H160v440Z"/></svg>
+    macOS &amp; Windows
+  </div>
+  <div class="kicker k-phone">
+    Android
+    <svg viewBox="0 -960 960 960"><path d="M280-40q-33 0-56.5-23.5T200-120v-720q0-33 23.5-56.5T280-920h400q33 0 56.5 23.5T760-840v720q0 33-23.5 56.5T680-40H280Zm0-200v120h400v-120H280Zm0-80h400v-400H280v400Zm0-480h400v-40H280v40Z"/></svg>
+  </div>
+
+  <!-- Desktop app -->
+  <div class="desktop">
+    <div class="titlebar">
+      <div class="dots">
+        <span class="dot" style="background:#ff5f57"></span>
+        <span class="dot" style="background:#febc2e"></span>
+        <span class="dot" style="background:#28c840"></span>
+      </div>
+      <span class="tb-title">clipsync</span>
+    </div>
+    <div class="desk-body">
+      <div class="sidebar">
+        <div>
+          <div class="side-brand"><img src="../docs/icon.svg" alt="">clipsync</div>
+          <div class="nav">
+            <div class="nav-item active">
+              <svg viewBox="0 -960 960 960"><path d="M140-160q-25 0-42.5-17.5T80-220q0-25 17.5-42.5T140-280h20v-440q0-33 23.5-56.5T240-800h560q17 0 28.5 11.5T840-760q0 17-11.5 28.5T800-720H240v440h180q25 0 42.5 17.5T480-220q0 25-17.5 42.5T420-160H140Zm460 0q-17 0-28.5-11.5T560-200v-400q0-17 11.5-28.5T600-640h240q17 0 28.5 11.5T880-600v400q0 17-11.5 28.5T840-160H600Zm40-120h160v-280H640v280Z"/></svg>
+              Devices
+            </div>
+            <div class="nav-item">
+              <svg viewBox="0 -960 960 960"><path d="M433-80q-27 0-46.5-18T363-142l-9-66q-13-5-24.5-12T307-235l-62 26q-25 11-50 2t-39-32l-47-82q-14-23-8-49t27-43l53-40q-1-7-1-13.5v-27q0-6.5 1-13.5l-53-40q-21-17-27-43t8-49l47-82q14-23 39-32t50 2l62 26q11-8 23-15t24-12l9-66q4-26 23.5-44t46.5-18h94q27 0 46.5 18t23.5 44l9 66q13 5 24.5 12t22.5 15l62-26q25-11 50-2t39 32l47 82q14 23 8 49t-27 43l-53 40q1 7 1 13.5v27q0 6.5-2 13.5l53 40q21 17 27 43t-8 49l-48 82q-14 23-39 32t-50-2l-60-26q-11 8-23 15t-24 12l-9 66q-4 26-23.5 44T527-80h-94Zm49-260q58 0 99-41t41-99q0-58-41-99t-99-41q-59 0-99.5 41T342-480q0 58 40.5 99t99.5 41Z"/></svg>
+              Settings
+            </div>
+          </div>
+        </div>
+        <div class="side-status"><span class="status-dot"></span>Syncing</div>
+      </div>
+
+      <div class="main">
+        <div class="main-head">
+          <h2>Devices</h2>
+          <div class="add-btn">
+            <svg viewBox="0 -960 960 960"><path d="M440-440H240q-17 0-28.5-11.5T200-480q0-17 11.5-28.5T240-520h200v-200q0-17 11.5-28.5T480-760q17 0 28.5 11.5T520-720v200h200q17 0 28.5 11.5T760-480q0 17-11.5 28.5T720-440H520v200q0 17-11.5 28.5T480-200q-17 0-28.5-11.5T440-240v-200Z"/></svg>
+            Add device
+          </div>
+        </div>
+
+        <div class="sync-card">
+          <div class="sync-left">
+            <div class="icon-box ib-green">
+              <svg viewBox="0 -960 960 960"><path d="M240-478q0 45 17 87.5t53 78.5l10 10v-58q0-17 11.5-28.5T360-400q17 0 28.5 11.5T400-360v160q0 17-11.5 28.5T360-160H200q-17 0-28.5-11.5T160-200q0-17 11.5-28.5T200-240h70l-16-14q-52-46-73-105t-21-119q0-94 48-170.5T337-766q14-8 29.5-1t20.5 23q5 15-.5 30T367-691q-58 32-92.5 88.5T240-478Zm480-4q0-45-17-87.5T650-648l-10-10v58q0 17-11.5 28.5T600-560q-17 0-28.5-11.5T560-600v-160q0-17 11.5-28.5T600-800h160q17 0 28.5 11.5T800-760q0 17-11.5 28.5T760-720h-70l16 14q49 49 71.5 106.5T800-482q0 94-48 170.5T623-194q-14 8-29.5 1T573-216q-5-15 .5-30t19.5-23q58-32 92.5-88.5T720-482Z"/></svg>
+            </div>
+            <div>
+              <div class="row-title">Syncing</div>
+              <div class="row-sub">Connected to clip.iyazerski.dev. Last clip 2 minutes ago.</div>
+            </div>
+          </div>
+          <div class="pause-btn">
+            <svg viewBox="0 -960 960 960"><path d="M600-200q-33 0-56.5-23.5T520-280v-400q0-33 23.5-56.5T600-760h80q33 0 56.5 23.5T760-680v400q0 33-23.5 56.5T680-200h-80Zm-320 0q-33 0-56.5-23.5T200-280v-400q0-33 23.5-56.5T280-760h80q33 0 56.5 23.5T440-680v400q0 33-23.5 56.5T360-200h-80Z"/></svg>
+            Pause
+          </div>
+        </div>
+
+        <div class="sec-label">Your devices</div>
+        <div class="dev-list">
+          <div class="dev-row">
+            <div class="dev-left">
+              <div class="icon-box ib-blue">
+                <svg viewBox="0 -960 960 960"><path d="M80-160q-33 0-56.5-23.5T0-240h160q-33 0-56.5-23.5T80-320v-440q0-33 23.5-56.5T160-840h640q33 0 56.5 23.5T880-760v440q0 33-23.5 56.5T800-240h160q0 33-23.5 56.5T880-160H80Zm80-160h640v-440H160v440Z"/></svg>
+              </div>
+              <div>
+                <div class="row-title">MacBook Air</div>
+                <div class="row-sub">macOS</div>
+              </div>
+            </div>
+            <span class="this-pill">This device</span>
+          </div>
+          <div class="dev-row">
+            <div class="dev-left">
+              <div class="icon-box ib-green">
+                <svg viewBox="0 -960 960 960"><path d="M280-40q-33 0-56.5-23.5T200-120v-720q0-33 23.5-56.5T280-920h400q33 0 56.5 23.5T760-840v720q0 33-23.5 56.5T680-40H280Zm0-200v120h400v-120H280Zm0-80h400v-400H280v400Zm0-480h400v-40H280v40Z"/></svg>
+              </div>
+              <div>
+                <div class="row-title">Pixel 9</div>
+                <div class="row-sub">Android · Online</div>
+              </div>
+            </div>
+          </div>
+          <div class="dev-row">
+            <div class="dev-left">
+              <div class="icon-box ib-gray">
+                <svg viewBox="0 -960 960 960"><path d="M400-200v-80H160q-33 0-56.5-23.5T80-360v-400q0-33 23.5-56.5T160-840h640q33 0 56.5 23.5T880-760v400q0 33-23.5 56.5T800-280H560v80h40q17 0 28.5 11.5T640-160q0 17-11.5 28.5T600-120H360q-17 0-28.5-11.5T320-160q0-17 11.5-28.5T360-200h40ZM160-360h640v-400H160v400Z"/></svg>
+              </div>
+              <div>
+                <div class="row-title">Office PC</div>
+                <div class="row-sub">Windows · Last seen yesterday</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="add-dashed">
+          <div class="icon-box ib-gray">
+            <svg viewBox="0 -960 960 960"><path d="M440-440H240q-17 0-28.5-11.5T200-480q0-17 11.5-28.5T240-520h200v-200q0-17 11.5-28.5T480-760q17 0 28.5 11.5T520-720v200h200q17 0 28.5 11.5T760-480q0 17-11.5 28.5T720-440H520v200q0 17-11.5 28.5T480-200q-17 0-28.5-11.5T440-240v-200Z"/></svg>
+          </div>
+          <div>
+            <div class="row-title">Add another device</div>
+            <div class="row-sub">Pair a phone or a computer</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Android app -->
+  <div class="phone">
+    <div class="p-screen">
+      <div class="p-status"><span>9:41</span><span class="p-cam"></span><span>5G</span></div>
+      <div class="p-head">
+        <div>
+          <div class="p-app">clipsync</div>
+          <div class="p-relay"><i></i>clip.iyazerski.dev</div>
+        </div>
+        <div class="p-menu">⋮</div>
+      </div>
+
+      <div class="p-body">
+        <div class="p-connected">
+          <div class="p-check">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
+          </div>
+          <div>
+            <div class="p-conn-title">Connected</div>
+            <div class="p-conn-time">Last clip 2 minutes ago</div>
+            <div class="p-conn-desc">What you copy on your computers lands on this phone's clipboard.</div>
+          </div>
+        </div>
+
+        <div class="p-sec">Your devices</div>
+        <div class="p-list">
+          <div class="p-card">
+            <div class="p-card-left">
+              <div class="p-ic ib-blue"><svg viewBox="0 -960 960 960"><path d="M280-40q-33 0-56.5-23.5T200-120v-720q0-33 23.5-56.5T280-920h400q33 0 56.5 23.5T760-840v720q0 33-23.5 56.5T680-40H280Zm0-200v120h400v-120H280Zm0-80h400v-400H280v400Zm0-480h400v-40H280v40Z"/></svg></div>
+              <div><div class="p-name">Pixel 9</div><div class="p-meta">Android</div></div>
+            </div>
+            <span class="p-this">This device</span>
+          </div>
+          <div class="p-card">
+            <div class="p-card-left">
+              <div class="p-ic ib-green"><svg viewBox="0 -960 960 960"><path d="M80-160q-33 0-56.5-23.5T0-240h160q-33 0-56.5-23.5T80-320v-440q0-33 23.5-56.5T160-840h640q33 0 56.5 23.5T880-760v440q0 33-23.5 56.5T800-240h160q0 33-23.5 56.5T880-160H80Zm80-160h640v-440H160v440Z"/></svg></div>
+              <div><div class="p-name">MacBook Air</div><div class="p-meta"><span class="gdot"></span>macOS · Online</div></div>
+            </div>
+          </div>
+          <div class="p-card">
+            <div class="p-card-left">
+              <div class="p-ic ib-gray"><svg viewBox="0 -960 960 960"><path d="M400-200v-80H160q-33 0-56.5-23.5T80-360v-400q0-33 23.5-56.5T160-840h640q33 0 56.5 23.5T880-760v400q0 33-23.5 56.5T800-280H560v80h40q17 0 28.5 11.5T640-160q0 17-11.5 28.5T600-120H360q-17 0-28.5-11.5T320-160q0-17 11.5-28.5T360-200h40ZM160-360h640v-400H160v400Z"/></svg></div>
+              <div><div class="p-name">Office PC</div><div class="p-meta">Windows · Last seen yesterday</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-sec">More ways to send</div>
+        <div class="p-list">
+          <div class="p-card">
+            <div class="p-card-left">
+              <div class="p-ic ib-gray"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 9h14M5 15h8"/></svg></div>
+              <div><div class="p-name">Select text</div><div class="p-meta">Then pick Send to computer</div></div>
+            </div>
+          </div>
+          <div class="p-card">
+            <div class="p-card-left">
+              <div class="p-ic ib-gray"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.3 13.2l7.4 4.3M15.7 6.5l-7.4 4.3"/></svg></div>
+              <div><div class="p-name">Share</div><div class="p-meta">Share text to clipsync</div></div>
+            </div>
+          </div>
+          <div class="p-card">
+            <div class="p-card-left">
+              <div class="p-ic ib-gray"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg></div>
+              <div><div class="p-name">Quick Settings tile</div><div class="p-meta">One tap from anywhere</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-fab">
+        <svg viewBox="0 -960 960 960"><path d="M360-240q-33 0-56.5-23.5T280-320v-480q0-33 23.5-56.5T360-880h360q33 0 56.5 23.5T800-800v480q0 33-23.5 56.5T720-240H360Zm0-80h360v-480H360v480ZM200-80q-33 0-56.5-23.5T120-160v-520q0-17 11.5-28.5T160-720q17 0 28.5 11.5T200-680v520h400q17 0 28.5 11.5T640-120q0 17-11.5 28.5T600-80H200Z"/></svg>
+        Send clipboard
+      </div>
+      <div class="p-home"></div>
+    </div>
+  </div>
+</body>
+</html>

@@ -161,7 +161,6 @@
     [hidden] { display: none !important; }
 
     .why p { color: var(--muted); }
-    .why p + p { margin-top: 12px; }
 
     .trademark {
       flex-basis: 100%;
@@ -355,8 +354,8 @@
     <div class="hero wrap">
       <h1>Copy on one device,<br>paste on another.</h1>
       <p class="lead">
-        clipsync keeps your clipboard in sync across Mac, Windows, and Android.
-        It's free, works over any network, and doesn't need an account.
+        Free, open-source clipboard sync for Mac, Windows, and Android.
+        Works over any network, no account needed.
       </p>
 
       <p id="unsupported" class="note" hidden></p>
@@ -370,7 +369,7 @@
         <a id="dl-android" href="https://github.com/iyazerski/clipsync/releases/latest/download/clipsync.apk"><svg width="14" height="14" aria-hidden="true"><use href="#os-android"/></svg><span>Android</span></a>
         · <a href="https://github.com/iyazerski/clipsync/releases/latest"><span id="version">All downloads</span></a>
       </p>
-      <p id="dl-note" class="note">The app isn't signed by Apple yet, so macOS asks you to confirm the first time you open it. <a href="#unsigned">Here's how</a>.</p>
+      <p id="dl-note" class="note">Unsigned app. macOS asks you to confirm on first open. <a href="#unsigned">Here's how</a>.</p>
     </div>
 
     <div class="shot">
@@ -379,27 +378,26 @@
 
     <section class="wrap narrow why">
       <h2>Why clipsync</h2>
-      <p>Apple's Universal Clipboard works only between Apple devices. Phone Link needs a Microsoft account, and its clipboard sync works with only some Android phones. KDE Connect needs your devices on the same network. clipsync works between Mac, Windows, and Android, wherever they are.</p>
-      <p>Copy a sign-in code on your phone and paste it on your laptop. Send a link from your work PC to your phone. Paste an address from your Mac into a maps app.</p>
+      <p>Universal Clipboard is Apple-only, Phone Link needs a Microsoft account, and KDE Connect needs the same Wi-Fi. clipsync works across Mac, Windows, and Android on any network.</p>
     </section>
 
     <section class="wrap">
       <div class="features">
         <div>
           <h3>Works anywhere</h3>
-          <p>Your devices don't need to share Wi-Fi. Home, office, and mobile data all work.</p>
+          <p>Home Wi-Fi, office, or mobile data. No shared network needed.</p>
         </div>
         <div>
           <h3>Private</h3>
-          <p>Text is encrypted on your device before it leaves. The server in the middle can't read it. <a href="https://github.com/iyazerski/clipsync/blob/main/SECURITY.md">Security details</a></p>
+          <p>Encrypted on your device before it leaves. The relay can't read it. <a href="https://github.com/iyazerski/clipsync/blob/main/SECURITY.md">Security</a></p>
         </div>
         <div>
           <h3>Skips passwords</h3>
-          <p>On Mac and Windows, copies your password manager marks as private stay on that device.</p>
+          <p>Private copies from password managers stay on your Mac or PC.</p>
         </div>
         <div>
           <h3>No account</h3>
-          <p>No sign-up, no email, no tracking. Free and open source under the MIT license.</p>
+          <p>No sign-up, no tracking. Free and MIT-licensed.</p>
         </div>
       </div>
     </section>
@@ -407,9 +405,9 @@
     <section class="wrap narrow">
       <h2>How it works</h2>
       <ol class="steps">
-        <li>Install clipsync on your computer and click <b>Set up my first device</b>.</li>
-        <li>Click <b>Add device</b>. Type the short code on your other computer, or scan the QR code with your phone.</li>
-        <li>Copy text as usual. It shows up on your other devices right away.</li>
+        <li>Install on your computer and click <b>Set up my first device</b>.</li>
+        <li>Click <b>Add device</b>, then enter the code on another computer or scan the QR on Android.</li>
+        <li>Copy text as usual. It's ready to paste on your other devices right away.</li>
       </ol>
     </section>
 
@@ -418,14 +416,14 @@
       <div class="faq">
         <div>
           <h3>Is my clipboard private?</h3>
-          <p>Yes. Your devices share a key and encrypt every copy with AES-256-GCM before sending it. The relay server only passes encrypted data along. It keeps the latest copy in memory for 2 minutes and can't read it.</p>
+          <p>Yes. Devices encrypt every copy with AES-256-GCM using a shared key. The relay can't read it and drops it from memory after 2 minutes.</p>
         </div>
 
         <div id="unsigned">
           <h3>Why do I see a warning when I open the app?</h3>
-          <p>The app isn't signed by Apple or Microsoft yet. On a Mac, open the app once, then go to System Settings → Privacy &amp; Security and click <b>Open Anyway</b>. On Windows, click <b>More info → Run anyway</b>.</p>
-          <p>Every release is built from the public source by GitHub Actions, and you can <a href="https://github.com/iyazerski/clipsync/blob/main/SECURITY.md#check-a-download">check where a download was built</a>. Free Windows code signing from <a href="https://signpath.org">SignPath Foundation</a> is in progress, see the <a href="https://github.com/iyazerski/clipsync/blob/main/CODE_SIGNING.md">code signing policy</a>.</p>
-          <p>You can also install from the command line:</p>
+          <p>Not signed by Apple or Microsoft yet. On Mac, open once, then go to System Settings → Privacy &amp; Security → <b>Open Anyway</b>. On Windows, click <b>More info → Run anyway</b>.</p>
+          <p>Releases are built by GitHub Actions (<a href="https://github.com/iyazerski/clipsync/blob/main/SECURITY.md#check-a-download">verify a download</a>). Free Windows code signing from <a href="https://signpath.org">SignPath Foundation</a> is in progress (<a href="https://github.com/iyazerski/clipsync/blob/main/CODE_SIGNING.md">code signing policy</a>).</p>
+          <p>Or install from the command line (PowerShell skips the Windows warning and verifies checksums, <a href="https://github.com/iyazerski/clipsync/releases/latest/download/install.ps1">read the script</a>):</p>
           <div class="cmd">
             <span class="cmd-label">Mac (Homebrew)</span>
             <div class="cmd-box">
@@ -440,27 +438,26 @@
               <button class="copy" type="button" data-copy="cmd-win">Copy</button>
             </div>
           </div>
-          <p>The PowerShell command downloads the installer without a browser, so Windows doesn't show the warning. It checks the installer against the release's checksums before running it. <a href="https://github.com/iyazerski/clipsync/releases/latest/download/install.ps1">Read the script</a>.</p>
         </div>
 
         <div>
           <h3>Why does sending from Android take a tap?</h3>
-          <p>Android doesn't let apps read the clipboard in the background. Copies from your computers arrive on your phone automatically. To send from your phone, select text and pick <b>Send to computer</b>, share it to clipsync, or tap the <b>Send clipboard</b> tile in Quick Settings.</p>
+          <p>Android blocks background clipboard reads. Copies from computers arrive automatically. To send from Android, tap the <b>Send clipboard</b> Quick Settings tile, share text to clipsync, or select text → <b>Send to computer</b>.</p>
         </div>
 
         <div>
           <h3>Does it sync images or files?</h3>
-          <p>No. Text only, up to 256 KB. There's no history, and the latest copy wins.</p>
+          <p>No. Text only, up to 256 KB. No history, latest copy wins.</p>
         </div>
 
         <div>
           <h3>Does it work on iPhone or Linux?</h3>
-          <p>Not yet. clipsync runs on macOS 13+, Windows, and Android 14+.</p>
+          <p>Not yet. Supports macOS 13+, Windows, and Android 14+.</p>
         </div>
 
         <div>
           <h3>Can I run my own server?</h3>
-          <p>Yes. By default clipsync uses a free public relay at <code>clip.iyazerski.dev</code>, which has no uptime guarantee. You can run your own with Docker. See the <a href="https://github.com/iyazerski/clipsync#host-your-own-relay">self-hosting guide</a>.</p>
+          <p>Yes. The free public relay (<code>clip.iyazerski.dev</code>) has no uptime guarantee. You can <a href="https://github.com/iyazerski/clipsync#host-your-own-relay">self-host with Docker</a>.</p>
         </div>
       </div>
       <p class="platforms">More answers in the <a href="https://github.com/iyazerski/clipsync#faq">README</a>.</p>
@@ -488,15 +485,15 @@
       var links = {
         mac: {
           name: 'Mac', href: releases,
-          note: 'The app isn\'t signed by Apple yet, so macOS asks you to confirm the first time you open it. <a href="#unsigned">Here\'s how</a>.'
+          note: 'Unsigned app. macOS asks you to confirm on first open. <a href="#unsigned">Here\'s how</a>.'
         },
         win: {
           name: 'Windows', href: releases,
-          note: 'The app isn\'t signed yet, so Windows may warn you the first time. <a href="#unsigned">Here\'s how to get past it</a>.'
+          note: 'Unsigned app. Windows may warn you on first open. <a href="#unsigned">Here\'s how</a>.'
         },
         android: {
           name: 'Android', href: releases + '/download/clipsync.apk',
-          note: 'Needs Android 14 or later. Set up clipsync on your computer first, then scan the QR code it shows. Your browser asks you to allow the install.'
+          note: 'Android 14+. Set up on a computer first, then scan its QR code.'
         }
       };
       var ua = navigator.userAgent;
