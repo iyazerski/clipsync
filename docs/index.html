@@ -32,6 +32,10 @@
       --accent: #2563eb;
       --accent-hover: #1d4ed8;
       --code-bg: #f3f4f6;
+      --syn-cmd: #8250df;
+      --syn-flag: #0550ae;
+      --syn-str: #0a3069;
+      --syn-op: #cf222e;
     }
 
     @media (prefers-color-scheme: dark) {
@@ -43,6 +47,10 @@
         --accent: #3b82f6;
         --accent-hover: #60a5fa;
         --code-bg: #1a1d24;
+        --syn-cmd: #d2a8ff;
+        --syn-flag: #79c0ff;
+        --syn-str: #a5d6ff;
+        --syn-op: #ff7b72;
       }
     }
 
@@ -231,9 +239,9 @@
 
     .cmd-box {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       gap: 12px;
-      padding: 12px 14px;
+      padding: 8px 14px;
       border-radius: 8px;
       background: var(--code-bg);
     }
@@ -245,11 +253,18 @@
 
     .cmd-box pre {
       flex: 1;
+      min-width: 0;
       margin: 0;
-      white-space: pre-wrap;
-      word-break: break-all;
+      padding: 6px 0 10px;
+      overflow-x: auto;
+      scrollbar-width: thin;
       color: var(--text);
     }
+
+    .cmd .c { color: var(--syn-cmd); }
+    .cmd .f { color: var(--syn-flag); }
+    .cmd .s { color: var(--syn-str); }
+    .cmd .o { color: var(--syn-op); }
 
     .copy {
       flex-shrink: 0;
@@ -388,14 +403,14 @@
           <div class="cmd">
             <span class="cmd-label">Mac (Terminal)</span>
             <div class="cmd-box">
-              <pre id="cmd-mac">curl -fsSL https://github.com/iyazerski/clipsync/releases/latest/download/install.sh | sh</pre>
+              <pre id="cmd-mac"><span class="c">curl</span> <span class="f">-fsSL</span> <span class="s">https://github.com/iyazerski/clipsync/releases/latest/download/install.sh</span> <span class="o">|</span> <span class="c">sh</span></pre>
               <button class="copy" type="button" data-copy="cmd-mac">Copy</button>
             </div>
           </div>
           <div class="cmd">
             <span class="cmd-label">Windows (PowerShell)</span>
             <div class="cmd-box">
-              <pre id="cmd-win">irm https://github.com/iyazerski/clipsync/releases/latest/download/install.ps1 | iex</pre>
+              <pre id="cmd-win"><span class="c">irm</span> <span class="s">https://github.com/iyazerski/clipsync/releases/latest/download/install.ps1</span> <span class="o">|</span> <span class="c">iex</span></pre>
               <button class="copy" type="button" data-copy="cmd-win">Copy</button>
             </div>
           </div>
