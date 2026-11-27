@@ -163,11 +163,16 @@
       max-width: 1100px;
       padding: 0 24px;
     }
-    .shot img {
+    .shot img,
+    .demo {
       display: block;
       width: 100%;
       height: auto;
       border-radius: 16px;
+    }
+    .demo {
+      border: 1px solid var(--line);
+      background: #090e17;
     }
 
     section { margin-top: 72px; }
@@ -304,7 +309,7 @@
       .hero { padding-top: 32px; }
       .features { grid-template-columns: 1fr; gap: 20px; }
       .shot { padding: 0 12px; }
-      .shot img { border-radius: 10px; }
+      .shot img, .demo { border-radius: 10px; }
       section { margin-top: 56px; }
     }
   </style>
@@ -377,6 +382,13 @@
           <p>No sign-up, no email, no tracking. Free and open source under the MIT license.</p>
         </div>
       </div>
+    </section>
+
+    <section class="wrap">
+      <h2>See it in action</h2>
+      <video id="demo-video" class="demo" width="1920" height="1080" autoplay muted loop playsinline controls preload="metadata" poster="demo-poster.jpg">
+        <source src="demo.mp4" type="video/mp4">
+      </video>
     </section>
 
     <section class="wrap narrow">
@@ -490,6 +502,12 @@
       }
 
       render();
+
+      var demo = document.getElementById('demo-video');
+      if (demo && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        demo.removeAttribute('autoplay');
+        demo.pause();
+      }
 
       document.querySelectorAll('.copy').forEach(function (btn) {
         btn.addEventListener('click', function () {
