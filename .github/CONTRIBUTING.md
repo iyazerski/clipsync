@@ -4,7 +4,7 @@ Thanks for helping with clipsync. Bug reports, ideas and pull requests are all w
 
 ## Report a bug or ask for a feature
 
-[Open an issue](https://github.com/iyazerski/clipsync/issues/new/choose) and pick a template. For questions, use [Discussions](https://github.com/iyazerski/clipsync/discussions). For security problems, follow [SECURITY.md](SECURITY.md) instead.
+[Open an issue](https://github.com/iyazerski/clipsync/issues/new/choose) and pick a template. For questions, use [Discussions](https://github.com/iyazerski/clipsync/discussions). For security problems, follow [SECURITY.md](../SECURITY.md) instead.
 
 ## Make a change
 
@@ -38,4 +38,4 @@ Before you open a pull request:
 
 Every merge to `main` that changes the desktop service or the app ships a release to all users, and every change to the relay deploys it, so `main` must always work. To check release packaging without publishing or deploying, run `gh workflow run release.yml --ref <branch> -f publish=false`. The APK uses the debug signing key for this check.
 
-By contributing, you agree that your work is released under the [MIT License](LICENSE). Please follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+By contributing, you agree that your work is released under the [MIT License](../LICENSE). Please follow the [Code of Conduct](CODE_OF_CONDUCT.md).

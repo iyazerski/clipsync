@@ -16,11 +16,11 @@
   <meta property="og:title" content="clipsync: Copy on one device, paste on another">
   <meta property="og:description" content="Sync your clipboard across Mac, Windows, and Android over any network. Free, end-to-end encrypted, and no account needed.">
   <meta property="og:url" content="https://iyazerski.github.io/clipsync/">
-  <meta property="og:image" content="https://iyazerski.github.io/clipsync/social-preview.png">
+  <meta property="og:image" content="https://iyazerski.github.io/clipsync/assets/social-preview.png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="clipsync: Copy on one device, paste on another">
   <meta name="twitter:description" content="Sync your clipboard across Mac, Windows, and Android over any network. Free, end-to-end encrypted, and no account needed.">
-  <meta name="twitter:image" content="https://iyazerski.github.io/clipsync/social-preview.png">
+  <meta name="twitter:image" content="https://iyazerski.github.io/clipsync/assets/social-preview.png">
 
   <style>
     :root {
@@ -373,7 +373,7 @@
     </div>
 
     <div class="shot">
-      <video id="hero-demo" width="1600" height="800" autoplay loop muted playsinline preload="auto" poster="demo-light-poster.jpg" aria-label="clipsync syncing a 2FA code from Android to Mac and an error log from Windows to Android"></video>
+      <video id="hero-demo" width="1600" height="800" autoplay loop muted playsinline preload="auto" poster="assets/demo-light-poster.jpg" aria-label="clipsync syncing a 2FA code from Android to Mac and an error log from Windows to Android"></video>
     </div>
 
     <section class="wrap narrow why">
@@ -457,7 +457,7 @@
 
         <div>
           <h3>Can I run my own server?</h3>
-          <p>Yes. The free public relay (<code>clip.iyazerski.dev</code>) has no uptime guarantee. You can <a href="https://github.com/iyazerski/clipsync#host-your-own-relay">self-host with Docker</a>.</p>
+          <p>Yes. The free public relay (<code>clip.iyazerski.dev</code>) has no uptime guarantee. You can <a href="https://github.com/iyazerski/clipsync/blob/main/docs/self-hosting.md">self-host with Docker</a>.</p>
         </div>
       </div>
       <p class="platforms">More answers in the <a href="https://github.com/iyazerski/clipsync#faq">README</a>.</p>
@@ -552,8 +552,8 @@
           if (theme !== currentTheme) {
             var resumeAt = demo.currentTime || 0;
             currentTheme = theme;
-            demo.poster = 'demo-' + theme + '-poster.jpg';
-            demo.src = 'demo-' + theme + '.mp4';
+            demo.poster = 'assets/demo-' + theme + '-poster.jpg';
+            demo.src = 'assets/demo-' + theme + '.mp4';
             if (resumeAt > 0 && !reducedMq.matches) {
               demo.addEventListener('loadedmetadata', function onMeta() {
                 demo.removeEventListener('loadedmetadata', onMeta);
